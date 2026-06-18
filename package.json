@@ -1,0 +1,15 @@
+{
+  "name": "webportal-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/web",
+    "packages/mobile"
+  ],
+  "scripts": {
+    "web:dev": "npm run dev -w packages/web",
+    "web:build": "npm run build -w packages/web",
+    "mobile:start": "npm run start -w packages/mobile"
+  }
+}
