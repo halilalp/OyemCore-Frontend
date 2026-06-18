@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.oyemsoft.webportal",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -26,6 +27,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "34b84bb1-9215-4902-8c3d-137be6ef5766"
+      }
     }
   }
 }
