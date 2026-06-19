@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar } from 'react-native';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useHelpdeskStore } from '../store/useHelpdeskStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -633,26 +633,7 @@ export const TalepScreen = () => {
               {/* Açıklama with formatting tools */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Açıklama *</Text>
-                <View style={styles.formattingToolbar}>
-                  <TouchableOpacity 
-                    style={styles.toolbarBtn} 
-                    onPress={() => setFormAciklama(prev => prev + ' **kalın** ')}
-                  >
-                    <Text style={styles.toolbarBtnText}>B</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.toolbarBtn} 
-                    onPress={() => setFormAciklama(prev => prev + ' *italik* ')}
-                  >
-                    <Text style={styles.toolbarBtnText}>I</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.toolbarBtn} 
-                    onPress={() => setFormAciklama(prev => prev + '\n- Liste Öğe ')}
-                  >
-                    <Text style={styles.toolbarBtnText}>• Liste</Text>
-                  </TouchableOpacity>
-                </View>
+
                 <TextInput
                   style={[styles.textInput, styles.textArea]}
                   placeholder="Lütfen talebinizi detaylı olarak açıklayınız..."
@@ -1279,6 +1260,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   contentWrapper: {
     flex: 1,

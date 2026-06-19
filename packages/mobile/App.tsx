@@ -4,7 +4,7 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, View, ActivityIndicator } from 'react-native';
 import { api } from '@webportal/shared';
 
 import { useAuthStore } from './src/store/useAuthStore';
@@ -73,8 +73,20 @@ async function registerForPushNotificationsAsync() {
 }
 
 export default function App() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading, restoreSession } = useAuthStore();
   const { colors } = useThemeStore();
+
+  React.useEffect(() => {
+    restoreSession();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#009ef7" />
+      </View>
+    );
+  }
 
   React.useEffect(() => {
     if (isAuthenticated) {
