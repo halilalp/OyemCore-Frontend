@@ -4,7 +4,7 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { api } from '@webportal/shared';
 
 import { useAuthStore } from './src/store/useAuthStore';
@@ -63,13 +63,7 @@ async function registerForPushNotificationsAsync() {
   }
 
   // Get project ID if configured in app.json (for Expo SDK 51/52+)
-  let projectId = undefined;
-  try {
-    const expoConfig = require('./app.json');
-    projectId = expoConfig?.expo?.extra?.eas?.projectId;
-  } catch (e) {
-    // Fallback/ignore if EAS project is not yet configured
-  }
+  let projectId = '34b84bb1-9215-4902-8c3d-137be6ef5766';
 
   const tokenData = await Notifications.getExpoPushTokenAsync({
     projectId: projectId,
@@ -89,11 +83,22 @@ export default function App() {
           if (token) {
             console.log('Retrieved Expo Push Token:', token);
             api.savePushToken(token)
-              .then(() => console.log('Successfully saved push token to backend'))
-              .catch(err => console.error('Error saving push token to backend:', err));
+              .then(() => {
+                console.log('Successfully saved push token to backend');
+                Alert.alert('Bildirim Kaydı Başarılı', 'Bildirim altyapısı kuruldu.');
+              })
+              .catch(err => {
+                console.error('Error saving push token to backend:', err);
+                Alert.alert('Veritabanı Hatası', 'Token sunucuya kaydedilemedi: ' + (err.message || err));
+              });
+          } else {
+            Alert.alert('Bildirim Hatası', 'Bildirim tokeni alınamadı.');
           }
         })
-        .catch(err => console.error('Error registering for push notifications:', err));
+        .catch(err => {
+          console.error('Error registering for push notifications:', err);
+          Alert.alert('Bildirim Hatası', 'Cihaz kaydı başarısız: ' + err);
+        });
     }
   }, [isAuthenticated]);
 
