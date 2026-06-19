@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, Dimensions, TouchableOpacity } from 'react-native';
-import { useThemeStore } from '../store/useThemeStore';
-import { BottomNavBar } from '../components/BottomNavBar';
+import { useThemeStore } from '../../../store/useThemeStore';
+import { BottomNavBar } from '../../../components/BottomNavBar';
 
 
 export const PerformansScreen = () => {

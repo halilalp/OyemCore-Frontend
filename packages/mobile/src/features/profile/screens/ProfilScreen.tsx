@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
-import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
-import { BottomNavBar } from '../components/BottomNavBar';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useThemeStore } from '../../../store/useThemeStore';
+import { BottomNavBar } from '../../../components/BottomNavBar';
 
 
 export const ProfilScreen = () => {

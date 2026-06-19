@@ -1,42 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
 import { useIzinStore } from '../store/useIzinStore';
-import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
-import { useIsFocused } from '@react-navigation/native';
-import { IzinOnay } from '@webportal/shared';
-import { BottomNavBar } from '../components/BottomNavBar';
-import { DatePickerModal } from '../components/DatePickerModal';
-import { SearchableSelectorModal } from '../components/SearchableSelectorModal';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useThemeStore } from '../../../store/useThemeStore';
+import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
+import { IzinOnay, api } from '@webportal/shared';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { DatePickerModal } from '../../../components/DatePickerModal';
+import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
-  if (Platform.OS === 'web') {
-    const confirmed = window.confirm(`${title}\n\n${message}`);
-    if (confirmed) {
-      onConfirm();
-    }
-  } else {
-    Alert.alert(title, message, [
-      { text: 'İptal', style: 'cancel' },
-      { text: 'Evet', onPress: onConfirm }
-    ]);
-  }
+  Alert.alert(title, message, [
+    { text: 'İptal', style: 'cancel' },
+    { text: 'Evet', onPress: onConfirm }
+  ]);
 };
 
 const showAlert = (title: string, message: string) => {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
+  Alert.alert(title, message);
 };
 
 
 export const IzinScreen = () => {
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const isFocused = useIsFocused();
-  const { colors } = useThemeStore();
-  const styles = createStyles(colors);
+  const { colors, theme } = useThemeStore();
+  const styles = createStyles(colors, theme);
 
   const {
     requests,
@@ -67,6 +59,26 @@ export const IzinScreen = () => {
   // Detail View modal state
   const [selectedDetailRequest, setSelectedDetailRequest] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailHistory, setDetailHistory] = useState<any[]>([]);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+
+  // Load history when selectedDetailRequest changes
+  useEffect(() => {
+    if (selectedDetailRequest?.belgeNo) {
+      loadHistory(selectedDetailRequest.belgeNo);
+    } else {
+      setDetailHistory([]);
+    }
+  }, [selectedDetailRequest]);
+
+  const loadHistory = async (belgeNo: string) => {
+    try {
+      const hist = await api.getIzinHistory(belgeNo);
+      setDetailHistory(hist || []);
+    } catch (e) {
+      console.error('İzin tarihçesi yüklenemedi:', e);
+    }
+  };
 
   // DatePicker modal states
   const [isCikisDatePickerOpen, setIsCikisDatePickerOpen] = useState(false);
@@ -80,6 +92,36 @@ export const IzinScreen = () => {
       loadInitialData();
     }
   }, [isFocused]);
+
+  // Auto-open leave detail if route parameter code is passed from notification click
+  useEffect(() => {
+    if (isFocused && route.params?.code) {
+      const code = route.params.code;
+      if (code && selectedDetailRequest?.belgeNo !== code) {
+        // Search in requests
+        const foundRequest = requests.find(r => r.belgeNo === code);
+        if (foundRequest) {
+          setSelectedDetailRequest(foundRequest);
+          setIsDetailModalOpen(true);
+        } else {
+          // Search in approvals
+          const foundApproval = approvals.find(a => a.belgeNo === code);
+          if (foundApproval) {
+            setSelectedDetailRequest(foundApproval);
+            setIsDetailModalOpen(true);
+          }
+        }
+      }
+    }
+  }, [isFocused, route.params?.code, requests, approvals]);
+
+  const handleCloseDetail = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDetailRequest(null);
+    setDetailHistory([]);
+    setIsHistoryExpanded(false);
+    navigation.setParams({ id: undefined, code: undefined });
+  };
 
   const handleSubmit = async () => {
     if (!formCikisTar.trim() || !formIsBasiTar.trim() || !formIsGunu.trim()) {
@@ -315,11 +357,15 @@ export const IzinScreen = () => {
       </View>
 
       {/* Form Modal */}
-      <Modal visible={isModalOpen} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={isModalOpen} animationType="slide" onRequestClose={() => setIsModalOpen(false)}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContentWrapper}>
             <View style={styles.modalHeader}>
+              <View style={{ width: 40 }} />
               <Text style={styles.modalTitle}>Yeni İzin Talebi</Text>
+              <TouchableOpacity onPress={() => setIsModalOpen(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={22} color={colors.danger} />
+              </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalScroll}>
               
@@ -428,17 +474,15 @@ export const IzinScreen = () => {
 
 
       {/* Detail Modal */}
-      <Modal visible={isDetailModalOpen} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={isDetailModalOpen} animationType="slide" onRequestClose={handleCloseDetail}>
         {selectedDetailRequest && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
               <View style={styles.modalHeader}>
+                <View style={{ width: 40 }} />
                 <Text style={styles.modalTitle}>İzin Talebi Detayı</Text>
-                <TouchableOpacity onPress={() => {
-                  setIsDetailModalOpen(false);
-                  setSelectedDetailRequest(null);
-                }}>
-                  <Text style={styles.closeBtnText}>Kapat</Text>
+                <TouchableOpacity onPress={handleCloseDetail} style={styles.closeButton}>
+                  <Ionicons name="close" size={22} color={colors.danger} />
                 </TouchableOpacity>
               </View>
               <ScrollView contentContainerStyle={styles.modalScroll}>
@@ -497,6 +541,36 @@ export const IzinScreen = () => {
                   ) : null}
                 </View>
 
+                {/* Collapsible History Section */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}
+                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.historySectionTitle}>Talep Geçmişi</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.textSecondary }}>
+                      {isHistoryExpanded ? '▲' : '▼'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {isHistoryExpanded && (
+                    <View style={{ marginTop: 12, gap: 12 }}>
+                      {detailHistory && detailHistory.length > 0 ? (
+                        detailHistory.map((h, i) => (
+                          <View key={i} style={styles.historyCard}>
+                            <Text style={styles.historyTime}>{h.Tarih || h.tarih}</Text>
+                            <Text style={styles.historySubject}>{h.Konu || h.konu}</Text>
+                            <Text style={styles.historyDesc}>{h.Aciklama || h.aciklama}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.emptyText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+
                 {/* If we are looking at approvals list and the request is pending my approval */}
                 {activeTab === 'approvals' && selectedDetailRequest.durum === null && (
                   <View style={styles.detailActionsRow}>
@@ -529,7 +603,7 @@ export const IzinScreen = () => {
       </Modal>
 
       <BottomNavBar currentScreen="Izin" customAction={{
-        icon: '📝',
+        icon: 'create-outline',
         label: 'Yeni İzin',
         onPress: () => setIsModalOpen(true)
       }} />
@@ -537,7 +611,7 @@ export const IzinScreen = () => {
   );
 };
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -760,10 +834,21 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: theme === 'light' ? '#fee2e2' : '#2d1e1e', // Light red background in light theme, dark red in dark theme
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 16,
@@ -980,5 +1065,42 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  historySection: {
+    padding: 16,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: 8,
+  },
+  historySectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  historyCard: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyTime: {
+    fontSize: 10,
+    color: colors.placeholder,
+    fontWeight: '600',
+  },
+  historySubject: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 4,
+  },
+  historyDesc: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
   },
 });

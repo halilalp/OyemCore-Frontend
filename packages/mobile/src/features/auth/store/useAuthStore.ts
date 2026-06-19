@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { User, setAuthToken } from '@webportal/shared';
+import { User, setAuthToken, setApiBaseUrl, api } from '@webportal/shared';
 import { authService } from '../services/authService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '../../../store/storage';
+import { Platform } from 'react-native';
 
 interface AuthState {
   token: string | null;
@@ -37,6 +38,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    try {
+      await api.clearPushToken();
+      console.log('Successfully cleared push token on logout');
+    } catch (e) {
+      console.warn('Could not clear push token on logout:', e);
+    }
     authService.logout();
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
@@ -60,6 +67,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const token = await AsyncStorage.getItem('token');
       const userStr = await AsyncStorage.getItem('user');
+      const savedApiUrl = await AsyncStorage.getItem('apiUrl');
+
+      if (savedApiUrl) {
+        setApiBaseUrl(savedApiUrl);
+      } else {
+        // Fallback default to the developer machine's Wi-Fi IP (192.168.1.123) for physical devices
+        const defaultIp = '192.168.1.123:5140';
+        setApiBaseUrl(`http://${defaultIp}/api`);
+      }
+
       if (token && userStr) {
         const user = JSON.parse(userStr);
         setAuthToken(token);

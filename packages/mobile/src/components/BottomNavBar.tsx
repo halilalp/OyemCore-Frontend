@@ -1,11 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore } from '../features/auth/store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
+import { Ionicons } from '@expo/vector-icons';
 
 interface BottomNavBarProps {
-  currentScreen?: 'Talepler' | 'Izin' | 'Bakim' | 'Ticket' | 'Performans' | 'Profil';
+  currentScreen?: 'Talepler' | 'Izin' | 'Bakim' | 'Ticket' | 'Performans' | 'Profil' | 'Zimmet' | 'Tedarikci';
   customAction?: {
     icon: string;
     label: string;
@@ -27,6 +28,32 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, custo
     navigation.navigate('Profil');
   };
 
+  const getActiveIcon = (screen: string) => {
+    switch (screen) {
+      case 'Talepler': return 'mail-unread';
+      case 'Izin': return 'airplane';
+      case 'Bakim': return 'construct';
+      case 'Ticket': return 'ticket';
+      case 'Performans': return 'bar-chart';
+      case 'Zimmet': return 'cube';
+      case 'Tedarikci': return 'shield-checkmark';
+      default: return 'cube';
+    }
+  };
+
+  const getActiveLabel = (screen: string) => {
+    switch (screen) {
+      case 'Talepler': return 'Talepler';
+      case 'Izin': return 'İzinler';
+      case 'Bakim': return 'Bakım';
+      case 'Ticket': return 'Ticket';
+      case 'Performans': return 'Performans';
+      case 'Zimmet': return 'Demirbaş';
+      case 'Tedarikci': return 'Tedarikçi';
+      default: return 'Modül';
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Dashboard Button */}
@@ -35,8 +62,8 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, custo
         onPress={handleDashboard}
         activeOpacity={0.7}
       >
-        <Text style={styles.icon}>📊</Text>
-        <Text style={styles.label}>Dashboard</Text>
+        <Ionicons name="home-outline" size={20} color={colors.textSecondary} style={styles.icon} />
+        <Text style={styles.label}>Ana Sayfa</Text>
       </TouchableOpacity>
 
       {/* Custom Module-Specific Button (if provided) */}
@@ -47,26 +74,21 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, custo
           activeOpacity={0.7}
         >
           <View style={styles.customIconContainer}>
-            <Text style={styles.customIcon}>{customAction.icon}</Text>
+            <Ionicons name={customAction.icon as any} size={18} color={colors.primary} />
           </View>
           <Text style={[styles.label, styles.activeLabel]}>{customAction.label}</Text>
         </TouchableOpacity>
       ) : currentScreen && currentScreen !== 'Profil' ? (
         // Fallback indicator button showing what screen we're on
         <View style={styles.navButton}>
-          <Text style={[styles.icon, styles.activeIcon]}>
-            {currentScreen === 'Talepler' ? '📬' :
-             currentScreen === 'Izin' ? '✈️' :
-             currentScreen === 'Bakim' ? '⚙️' :
-             currentScreen === 'Ticket' ? '🎫' :
-             currentScreen === 'Performans' ? '📈' : '📦'}
-          </Text>
+          <Ionicons 
+            name={getActiveIcon(currentScreen) as any} 
+            size={22} 
+            color={colors.primary} 
+            style={styles.activeIcon} 
+          />
           <Text style={[styles.label, styles.activeLabel]}>
-            {currentScreen === 'Talepler' ? 'Talepler' :
-             currentScreen === 'Izin' ? 'İzinler' :
-             currentScreen === 'Bakim' ? 'Bakım' :
-             currentScreen === 'Ticket' ? 'Ticket' :
-             currentScreen === 'Performans' ? 'Performans' : 'Modül'}
+            {getActiveLabel(currentScreen)}
           </Text>
         </View>
       ) : null}
@@ -77,7 +99,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, custo
         onPress={handleProfil}
         activeOpacity={0.7}
       >
-        <Text style={[styles.icon, currentScreen === 'Profil' && styles.activeIcon]}>👤</Text>
+        <Ionicons 
+          name={currentScreen === 'Profil' ? 'person' : 'person-outline'} 
+          size={20} 
+          color={currentScreen === 'Profil' ? colors.primary : colors.textSecondary} 
+          style={styles.icon} 
+        />
         <Text style={[styles.label, currentScreen === 'Profil' && styles.activeLabel]}>Profil</Text>
       </TouchableOpacity>
 
@@ -87,7 +114,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ currentScreen, custo
         onPress={logout}
         activeOpacity={0.7}
       >
-        <Text style={styles.icon}>🚪</Text>
+        <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} style={styles.icon} />
         <Text style={styles.label}>Çıkış</Text>
       </TouchableOpacity>
     </View>
@@ -130,11 +157,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary + '30',
   },
-  customIcon: {
-    fontSize: 18,
-  },
   icon: {
-    fontSize: 20,
     opacity: 0.75,
   },
   activeIcon: {

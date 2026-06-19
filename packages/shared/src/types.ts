@@ -5,6 +5,9 @@ export interface User {
   sicilNo: string;
   adminBelgeTur: string;
   sirketKodu: string;
+  yonetici?: boolean;
+  zimmetSorumlusu?: boolean;
+  kullaniciAdi?: string;
 }
 
 export interface AuthResponse {

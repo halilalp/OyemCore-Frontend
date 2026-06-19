@@ -1,38 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Linking, Platform } from 'react-native';
-import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Linking, Platform, StatusBar } from 'react-native';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 import { api, Ticket, Company, Personel } from '@webportal/shared';
 import * as DocumentPicker from 'expo-document-picker';
-import { BottomNavBar } from '../components/BottomNavBar';
-import { DatePickerModal } from '../components/DatePickerModal';
-import { SearchableSelectorModal } from '../components/SearchableSelectorModal';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { DatePickerModal } from '../../../components/DatePickerModal';
+import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 
 
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
-  if (Platform.OS === 'web') {
-    const confirmed = window.confirm(`${title}\n\n${message}`);
-    if (confirmed) {
-      onConfirm();
-    }
-  } else {
-    Alert.alert(title, message, [
-      { text: 'İptal', style: 'cancel' },
-      { text: 'Evet', onPress: onConfirm }
-    ]);
-  }
+  Alert.alert(title, message, [
+    { text: 'İptal', style: 'cancel' },
+    { text: 'Evet', onPress: onConfirm }
+  ]);
 };
 
 const showAlert = (title: string, message: string) => {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
+  Alert.alert(title, message);
 };
 
 export const TicketScreen = () => {
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const { user } = useAuthStore();
   const { colors } = useThemeStore();
   const styles = createStyles(colors);
@@ -55,6 +48,7 @@ export const TicketScreen = () => {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   // Create Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -109,6 +103,22 @@ export const TicketScreen = () => {
     }
   };
 
+  // Auto-open ticket detail if route parameter id is passed from notification click
+  useEffect(() => {
+    if (isFocused && route.params?.id) {
+      const tktId = parseInt(route.params.id);
+      if (!isNaN(tktId) && selectedTicket?.id !== tktId) {
+        const found = tickets.find(t => t.id === tktId);
+        if (found) {
+          handleTicketPress(found);
+        } else {
+          // If not in the list, construct a dummy ticket to trigger loading details
+          handleTicketPress({ id: tktId } as Ticket);
+        }
+      }
+    }
+  }, [isFocused, route.params?.id, tickets]);
+
   const handleTicketPress = async (ticket: Ticket) => {
     setSelectedTicket(ticket);
     setIsDetailOpen(true);
@@ -122,6 +132,15 @@ export const TicketScreen = () => {
     } catch (err) {
       console.error('Detay yüklenemedi:', err);
     }
+  };
+
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setSelectedTicket(null);
+    setDetails(null);
+    setNewComment('');
+    setIsHistoryExpanded(false);
+    navigation.setParams({ id: undefined, code: undefined });
   };
 
   const handleAddComment = async () => {
@@ -187,8 +206,7 @@ export const TicketScreen = () => {
     confirmAction('Bileti Sil', 'Bu destek biletini silmek istediğinize emin misiniz?', async () => {
       try {
         await api.deleteTicket(selectedTicket.id);
-        setIsDetailOpen(false);
-        setSelectedTicket(null);
+        handleCloseDetail();
         loadTickets();
       } catch (err) {
         showAlert('Hata', 'Bilet silinemedi.');
@@ -399,7 +417,7 @@ export const TicketScreen = () => {
       </View>
 
       {/* Detail Modal */}
-      <Modal visible={isDetailOpen} animationType="slide" onRequestClose={() => setIsDetailOpen(false)}>
+      <Modal visible={isDetailOpen} animationType="slide" onRequestClose={handleCloseDetail}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContentWrapper}>
             <View style={styles.modalHeader}>
@@ -410,7 +428,7 @@ export const TicketScreen = () => {
                     <Text style={styles.deleteHeaderBtnText}>Sil</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.closeButton} onPress={() => setIsDetailOpen(false)}>
+                <TouchableOpacity style={styles.closeButton} onPress={handleCloseDetail}>
                   <Text style={styles.closeButtonText}>Kapat</Text>
                 </TouchableOpacity>
               </View>
@@ -551,14 +569,32 @@ export const TicketScreen = () => {
 
                 {/* History Section */}
                 <View style={styles.historySection}>
-                  <Text style={styles.sectionTitleHeader}>Bilet Tarihçesi</Text>
-                  {details?.tarihce.map((h, i) => (
-                    <View key={i} style={styles.historyCard}>
-                      <Text style={styles.historyTime}>{h.tarih}</Text>
-                      <Text style={styles.historySubject}>{h.konu}</Text>
-                      <Text style={styles.historyDesc}>{h.aciklama}</Text>
+                  <TouchableOpacity 
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}
+                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.sectionTitleHeader}>Bilet Tarihçesi</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.textSecondary }}>
+                      {isHistoryExpanded ? '▲' : '▼'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {isHistoryExpanded && (
+                    <View style={{ marginTop: 12, gap: 12 }}>
+                      {details?.tarihce && details.tarihce.length > 0 ? (
+                        details.tarihce.map((h, i) => (
+                          <View key={i} style={styles.historyCard}>
+                            <Text style={styles.historyTime}>{h.tarih}</Text>
+                            <Text style={styles.historySubject}>{h.konu}</Text>
+                            <Text style={styles.historyDesc}>{h.aciklama}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.emptyText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                      )}
                     </View>
-                  ))}
+                  )}
                 </View>
               </ScrollView>
             )}
@@ -941,7 +977,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16,
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderColor: colors.border,

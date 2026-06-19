@@ -72,7 +72,10 @@ export const mapClaimsToUser = (claims: any): User | null => {
     // Dynamic fields for kıdem and izin balance
     yillikIzin: claims['YillikIzin'] || '0',
     iseBasTar: claims['IseBasTar'] || '',
-    unvan: claims['Unvan'] || ''
+    unvan: claims['Unvan'] || '',
+    yonetici: claims['Yonetici'] === 'true' || claims['yonetici'] === 'true' || claims['Yonetici'] === true || claims['yonetici'] === true,
+    zimmetSorumlusu: claims['ZimmetSorumlusu'] === 'true' || claims['zimmetSorumlusu'] === 'true' || claims['ZimmetSorumlusu'] === true || claims['zimmetSorumlusu'] === true,
+    kullaniciAdi: claims['KullaniciAdi'] || claims['kullaniciAdi'] || ''
   } as any;
 };
 

@@ -61,6 +61,11 @@ export const api = {
     return response.data;
   },
 
+  clearPushToken: async (): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>('/auth/clear-push-token');
+    return response.data;
+  },
+
   // Ticket Endpoints
   getTickets: async (sirketKodu: string, aramaText: string, pageIndex: number, pageSize: number): Promise<{ tickets: Ticket[], counts: Record<string, number> }> => {
     const response = await apiClient.get<{ tickets: Ticket[], counts: Record<string, number> }>('/tickets', {
@@ -413,6 +418,11 @@ export const api = {
     return response.data;
   },
 
+  getIzinHistory: async (belgeNo: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/izin/${belgeNo}/history`);
+    return response.data;
+  },
+
   // Request (Talep) Endpoints
   getTaleps: async (tur: string): Promise<Talep[]> => {
     const response = await apiClient.get<Talep[]>('/talep', { params: { tur } });
@@ -491,6 +501,238 @@ export const api = {
 
   getAllPersonnel: async (): Promise<Personel[]> => {
     const response = await apiClient.get<Personel[]>('/talep/all-personnel');
+    return response.data;
+  },
+
+  // ====================================================================
+  // Zimmet (Asset Tracking) Endpoints
+  // ====================================================================
+  getMyDebits: async (search = ''): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Zimmet/my-debits', { params: { search } });
+    return response.data;
+  },
+
+  reportObjection: async (aygitId: number, aciklama: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>('/Zimmet/objection', { aygitId, aciklama });
+    return response.data;
+  },
+
+  getAllAssets: async (params: {
+    search?: string;
+    categoryId?: string;
+    brandId?: string;
+    status?: string;
+    pageIndex?: number;
+    pageSize?: number;
+  }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Zimmet/all-assets', { params });
+    return response.data;
+  },
+
+  getAssetDetail: async (id: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/Zimmet/asset/${id}`);
+    return response.data;
+  },
+
+  getAssetHistory: async (id: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Zimmet/asset/${id}/history`);
+    return response.data;
+  },
+
+  assignAsset: async (data: { aygitId: number, sicilNo: string, aciklama: string, kullanimSekli: string }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>('/Zimmet/assign', data);
+    return response.data;
+  },
+
+  releaseAsset: async (data: { aygitId: number, aciklama: string }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>('/Zimmet/release', data);
+    return response.data;
+  },
+
+  confirmBarcode: async (id: number): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/Zimmet/barcode-onay/${id}`);
+    return response.data;
+  },
+
+  getZimmetDropdowns: async (): Promise<any> => {
+    const response = await apiClient.get<any>('/Zimmet/dropdowns');
+    return response.data;
+  },
+
+  // ====================================================================
+  // Tedarikci (Supplier Evaluation) Endpoints
+  // ====================================================================
+  getTedarikciList: async (params: {
+    ted?: string;
+    TurKod?: string;
+    Durum?: string;
+    MahsulYil?: string;
+    Arama?: string;
+    PageIndex?: number;
+    PageSize?: number;
+    BasTar?: string;
+    BitTar?: string;
+  }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Tedarikci/list', { params });
+    return response.data;
+  },
+
+  getTedarikciDetail: async (belgeNo: string): Promise<any> => {
+    const response = await apiClient.get<any>(`/Tedarikci/detail/${belgeNo}`);
+    return response.data;
+  },
+
+  getTedarikciHistory: async (belgeNo: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Tedarikci/history/${belgeNo}`);
+    return response.data;
+  },
+
+  getTedarikciParameters: async (belgeNo: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Tedarikci/parameters/${belgeNo}`);
+    return response.data;
+  },
+
+  saveTedarikciScores: async (data: {
+    BelgeNo: string;
+    ID: string; // JSON string of parameter scores
+    istTar: string;
+    gerTar: string;
+    BelgeDurum: string;
+    RiskDurum: string;
+  }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>('/Tedarikci/save-scores', data);
+    return response.data;
+  },
+
+  completeTedarikci: async (belgeNo: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/Tedarikci/complete/${belgeNo}`);
+    return response.data;
+  },
+
+  cancelTedarikci: async (belgeNo: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/Tedarikci/cancel/${belgeNo}`);
+    return response.data;
+  },
+
+  createTedarikci: async (data: {
+    Tedarikci: string;
+    TurKod: string;
+    IstTarih: string;
+    MahsulYil: string;
+    KayitTarih: string;
+    Aciklama: string;
+  }): Promise<{ success: boolean, message: string, belgeNo?: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string, belgeNo?: string }>('/Tedarikci/create', data);
+    return response.data;
+  },
+
+  getTedarikciDropdowns: async (): Promise<any> => {
+    const response = await apiClient.get<any>('/Tedarikci/dropdowns');
+    return response.data;
+  },
+
+  createAsset: async (data: any): Promise<{ success: boolean, message: string, aygitID?: number }> => {
+    const response = await apiClient.post<{ success: boolean, message: string, aygitID?: number }>('/Zimmet/create', data);
+    return response.data;
+  },
+
+  updateAsset: async (id: number, data: any): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/Zimmet/update/${id}`, data);
+    return response.data;
+  },
+
+  getSayimList: async (params: { search?: string, categoryId?: string, brandId?: string }): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Zimmet/sayim-list', { params });
+    return response.data;
+  },
+
+  addSayim: async (code: string): Promise<{ success: boolean, message: string, aygitID?: number }> => {
+    const response = await apiClient.post<{ success: boolean, message: string, aygitID?: number }>('/Zimmet/sayim-add', { code });
+    return response.data;
+  },
+
+  removeSayim: async (aygitId: number): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>('/Zimmet/sayim-remove', { aygitId });
+    return response.data;
+  },
+
+  // Admin Settings Module
+  adminResetPassword: async (id: number, newPassword: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>(`/admin/users/${id}/reset-password`, { newPassword });
+    return response.data;
+  },
+
+  adminGetUserDocumentTypes: async (userId: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/admin/users/${userId}/document-types`);
+    return response.data;
+  },
+
+  adminSaveUserDocumentTypes: async (userId: number, codes: string[]): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>(`/admin/users/${userId}/document-types`, codes);
+    return response.data;
+  },
+
+  adminGetHelpDeskCategories: async (params?: { search?: string; categoryId?: string; typeCode?: string }): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/admin/helpdesk/categories', { params });
+    return response.data;
+  },
+
+  adminGetHelpDeskCategoryDetail: async (id: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/admin/helpdesk/categories/${id}`);
+    return response.data;
+  },
+
+  adminSaveHelpDeskCategory: async (category: any): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/admin/helpdesk/categories', category);
+    return response.data;
+  },
+
+  adminDeleteHelpDeskCategory: async (id: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete<{ message: string }>(`/admin/helpdesk/categories/${id}`);
+    return response.data;
+  },
+
+  adminSaveCategoryResponsible: async (responsible: any): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/admin/helpdesk/categories/responsibles', responsible);
+    return response.data;
+  },
+
+  adminDeleteCategoryResponsible: async (id: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete<{ message: string }>(`/admin/helpdesk/categories/responsibles/${id}`);
+    return response.data;
+  },
+
+  adminGetHelpDeskTypes: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/admin/helpdesk/types');
+    return response.data;
+  },
+
+  adminGetCompanies: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/admin/helpdesk/companies');
+    return response.data;
+  },
+
+  adminGetLogsPaged: async (params: {
+    search?: string;
+    userEmail?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ items: any[]; totalCount: number }> => {
+    const response = await apiClient.get<{ items: any[]; totalCount: number }>('/admin/logs/paged', { params });
+    return response.data;
+  },
+
+  adminGetBelgeTarihcePaged: async (params: {
+    search?: string;
+    documentCode?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ items: any[]; totalCount: number }> => {
+    const response = await apiClient.get<{ items: any[]; totalCount: number }>('/admin/belge-tarihce/paged', { params });
     return response.data;
   }
 };

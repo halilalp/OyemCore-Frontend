@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar } from 'react-native';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useHelpdeskStore } from '../store/useHelpdeskStore';
-import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 import { Talep } from '@webportal/shared';
-import { BottomNavBar } from '../components/BottomNavBar';
-import { SearchableSelectorModal } from '../components/SearchableSelectorModal';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { DatePickerModal } from '../../../components/DatePickerModal';
+import { Ionicons } from '@expo/vector-icons';
 
 
 export const TalepScreen = () => {
@@ -16,8 +18,8 @@ export const TalepScreen = () => {
   const { user } = useAuthStore();
   const { type } = route.params || { type: 'IT' }; // IT or ERP or BAKIM
 
-  const { colors } = useThemeStore();
-  const styles = createStyles(colors);
+  const { colors, theme } = useThemeStore();
+  const styles = createStyles(colors, type, theme);
 
   const {
     requests,
@@ -47,6 +49,24 @@ export const TalepScreen = () => {
 
   const [activeTab, setActiveTab] = useState<'open' | 'mine' | 'closed'>('open');
   const [searchText, setSearchText] = useState('');
+
+  // Search Filters States
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState('');
+  const [selectedFilterAltCategory, setSelectedFilterAltCategory] = useState('');
+  const [selectedFilterStatus, setSelectedFilterStatus] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
+  // Selector modal controls for filters
+  const [isFilterCategorySelectorOpen, setIsFilterCategorySelectorOpen] = useState(false);
+  const [isFilterAltCategorySelectorOpen, setIsFilterAltCategorySelectorOpen] = useState(false);
+  const [isFilterStatusSelectorOpen, setIsFilterStatusSelectorOpen] = useState(false);
+  const [isFilterStartDatePickerOpen, setIsFilterStartDatePickerOpen] = useState(false);
+  const [isFilterEndDatePickerOpen, setIsFilterEndDatePickerOpen] = useState(false);
+
+  // Local Slicing Pagination
+  const [pageIndexLocal, setPageIndexLocal] = useState(1);
+  const pageSizeLocal = 15;
   
   // Detail Modal state
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -55,6 +75,7 @@ export const TalepScreen = () => {
 
   // Expanded description state
   const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   // New workflows state
   const [isHelperSelectOpen, setIsHelperSelectOpen] = useState(false);
@@ -102,6 +123,22 @@ export const TalepScreen = () => {
     }
   }, [isFocused, type]);
 
+  // Auto-open detail if route parameter id is passed from notification click
+  useEffect(() => {
+    if (isFocused && route.params?.id) {
+      const talepId = parseInt(route.params.id);
+      if (!isNaN(talepId) && selectedRequest?.talepID !== talepId) {
+        const found = requests.find(r => r.talepID === talepId);
+        if (found) {
+          handleOpenDetail(found);
+        } else {
+          // If not in the list, construct a dummy request to trigger loading details
+          handleOpenDetail({ talepID: talepId } as Talep);
+        }
+      }
+    }
+  }, [isFocused, route.params?.id, requests]);
+
   // Load details when request selected
   const handleOpenDetail = async (request: Talep) => {
     setSelectedRequest(request);
@@ -119,6 +156,8 @@ export const TalepScreen = () => {
     setNewComment('');
     setQuestionResponse('');
     setApprovalComment('');
+    // Clear navigation parameters to prevent reopening the modal
+    navigation.setParams({ id: undefined, code: undefined });
   };
 
   const handleToggleLock = async () => {
@@ -220,13 +259,13 @@ export const TalepScreen = () => {
     if (!selectedRequest) return;
     try {
       await updateRequestStatus(selectedRequest.talepID, 'KAPATILDI');
-      Alert.alert('Başarılı', 'Talep kapatıldı.');
+      Alert.alert('Başarılı', 'Talep tamamlandı.');
       if (isDetailOpen) {
         handleCloseDetail();
       }
       loadInitialData(type);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Talep kapatılamadı.');
+      Alert.alert('Hata', err.message || 'Talep tamamlanamadı.');
     }
   };
 
@@ -268,20 +307,25 @@ export const TalepScreen = () => {
 
     try {
       const payload: any = {
-        talepTurKodu: type,
-        talepKategoriID: parseInt(formAltKategori || formKategori),
-        konu: formKonu,
-        aciklama: formAciklama,
-        onemSeviye: formOnem,
+        talep: {
+          talepTurKodu: type,
+          kategoriID: formKategori ? parseInt(formKategori) : null,
+          altKategoriID: formAltKategori ? parseInt(formAltKategori) : null,
+          konu: formKonu,
+          aciklama: formAciklama,
+          onemSeviye: formOnem,
+        }
       };
 
       if (type === 'BAKIM') {
-        payload.sirketKodu = formSirket;
-        payload.bolumKodu = formBolum;
-        payload.makineKodu = formMakine;
-        payload.uretimDurusu = formDurus;
-        payload.gidaGuvOncelik = formGida;
-        payload.isGuvOncelik = formIsg;
+        payload.bakim = {
+          sirketKodu: formSirket,
+          bolumKodu: formBolum,
+          makineKodu: formMakine,
+          uretimDurusu: formDurus,
+          gidaGuvOncelik: formGida,
+          isGuvOncelik: formIsg,
+        };
       }
 
       await createRequest(payload);
@@ -374,8 +418,65 @@ export const TalepScreen = () => {
       queryMatch = konu.includes(query) || kod.includes(query) || sahip.includes(query);
     }
 
-    return tabMatch && queryMatch;
+    // Kategori Filter
+    let categoryMatch = true;
+    if (selectedFilterCategory !== '') {
+      categoryMatch = r.kategoriID?.toString() === selectedFilterCategory || 
+                      categories.find(c => c.talepKategoriID.toString() === selectedFilterCategory)?.tanim === r.kategoriAdi;
+    }
+
+    // Alt Kategori Filter
+    let altCategoryMatch = true;
+    if (selectedFilterAltCategory !== '') {
+      altCategoryMatch = r.altKategoriID?.toString() === selectedFilterAltCategory;
+    }
+
+    // Durum Filter
+    let statusMatch = true;
+    if (selectedFilterStatus !== '') {
+      const hasOnay = !!r.sorumluAd && r.durum !== 'Kapalı' && r.durum !== 'KAPATILDI';
+      const statStyle = getStatusStyle(r.durum, hasOnay);
+      statusMatch = statStyle.label === selectedFilterStatus;
+    }
+
+    // Date Range Filter
+    let dateMatch = true;
+    if (filterStartDate !== '' || filterEndDate !== '') {
+      const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date(0);
+        const parts = dateStr.split(' ')[0].split('.');
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+        return new Date(dateStr);
+      };
+      
+      const recordDate = parseDate(r.kayitTarStr);
+      
+      if (filterStartDate !== '') {
+        const start = parseDate(filterStartDate);
+        dateMatch = dateMatch && recordDate >= start;
+      }
+      if (filterEndDate !== '') {
+        const end = parseDate(filterEndDate);
+        end.setDate(end.getDate() + 1);
+        dateMatch = dateMatch && recordDate <= end;
+      }
+    }
+
+    return tabMatch && queryMatch && categoryMatch && altCategoryMatch && statusMatch && dateMatch;
   });
+
+  const paginatedRequests = filteredRequests.slice(0, pageIndexLocal * pageSizeLocal);
+
+  useEffect(() => {
+    setPageIndexLocal(1);
+  }, [activeTab, searchText, selectedFilterCategory, selectedFilterAltCategory, selectedFilterStatus, filterStartDate, filterEndDate]);
+
+  const loadMoreLocalRequests = () => {
+    if (paginatedRequests.length >= filteredRequests.length) return;
+    setPageIndexLocal(prev => prev + 1);
+  };
 
   // Check actions menu availability
   const hasActions = !!selectedRequest && (
@@ -388,6 +489,21 @@ export const TalepScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentWrapper}>
+        
+        {/* Page Title Header */}
+        <View style={styles.pageTitleHeader}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.pageTitleText}>
+            {type === 'IT' ? 'HelpDesk IT Talepleri' : type === 'ERP' ? 'HelpDesk ERP Talepleri' : 'HelpDesk Bakım Talepleri'}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
         
         {/* Search & Filter compact bar */}
         <View style={styles.headerBar}>
@@ -406,6 +522,88 @@ export const TalepScreen = () => {
             <Text style={styles.createBtnText}>+ Yeni</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Collapsible Filter Panel */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
+          <View style={styles.filterChipContainer}>
+            {/* Category Filter */}
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedFilterCategory !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              onPress={() => setIsFilterCategorySelectorOpen(true)}
+            >
+              <Text style={[styles.filterChipText, selectedFilterCategory !== '' && styles.activeFilterChipText]}>
+                {selectedFilterCategory === '' ? 'Kategori Seç' : (categories.find(c => c.talepKategoriID.toString() === selectedFilterCategory)?.tanim || 'Kategori')}
+              </Text>
+              {selectedFilterCategory !== '' && (
+                <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedFilterCategory(''); setSelectedFilterAltCategory(''); }} style={{ marginLeft: 6 }}>
+                  <Ionicons name="close-circle" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+
+            {/* Alt Kategori Filter */}
+            {categories.filter(c => c.ustKategoriID?.toString() === selectedFilterCategory).length > 0 && (
+              <TouchableOpacity 
+                style={[styles.filterChip, selectedFilterAltCategory !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+                onPress={() => setIsFilterAltCategorySelectorOpen(true)}
+              >
+                <Text style={[styles.filterChipText, selectedFilterAltCategory !== '' && styles.activeFilterChipText]}>
+                  {selectedFilterAltCategory === '' ? 'Alt Kategori Seç' : (categories.find(c => c.talepKategoriID.toString() === selectedFilterAltCategory)?.tanim || 'Alt Kategori')}
+                </Text>
+                {selectedFilterAltCategory !== '' && (
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedFilterAltCategory(''); }} style={{ marginLeft: 6 }}>
+                    <Ionicons name="close-circle" size={14} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Durum Filter */}
+            <TouchableOpacity 
+              style={[styles.filterChip, selectedFilterStatus !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              onPress={() => setIsFilterStatusSelectorOpen(true)}
+            >
+              <Text style={[styles.filterChipText, selectedFilterStatus !== '' && styles.activeFilterChipText]}>
+                {selectedFilterStatus === '' ? 'Durum Seç' : selectedFilterStatus}
+              </Text>
+              {selectedFilterStatus !== '' && (
+                <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedFilterStatus(''); }} style={{ marginLeft: 6 }}>
+                  <Ionicons name="close-circle" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+
+            {/* Start Date Filter */}
+            <TouchableOpacity 
+              style={[styles.filterChip, filterStartDate !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              onPress={() => setIsFilterStartDatePickerOpen(true)}
+            >
+              <Text style={[styles.filterChipText, filterStartDate !== '' && styles.activeFilterChipText]}>
+                {filterStartDate === '' ? 'Başlangıç Tar.' : filterStartDate}
+              </Text>
+              {filterStartDate !== '' && (
+                <TouchableOpacity onPress={(e) => { e.stopPropagation(); setFilterStartDate(''); }} style={{ marginLeft: 6 }}>
+                  <Ionicons name="close-circle" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+
+            {/* End Date Filter */}
+            <TouchableOpacity 
+              style={[styles.filterChip, filterEndDate !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              onPress={() => setIsFilterEndDatePickerOpen(true)}
+            >
+              <Text style={[styles.filterChipText, filterEndDate !== '' && styles.activeFilterChipText]}>
+                {filterEndDate === '' ? 'Bitiş Tar.' : filterEndDate}
+              </Text>
+              {filterEndDate !== '' && (
+                <TouchableOpacity onPress={(e) => { e.stopPropagation(); setFilterEndDate(''); }} style={{ marginLeft: 6 }}>
+                  <Ionicons name="close-circle" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -434,9 +632,16 @@ export const TalepScreen = () => {
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
         ) : (
           <FlatList
-            data={filteredRequests}
+            data={paginatedRequests}
             keyExtractor={(item) => item.talepID.toString()}
             contentContainerStyle={styles.listContainer}
+            onEndReached={loadMoreLocalRequests}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              paginatedRequests.length < filteredRequests.length ? (
+                <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 10 }} />
+              ) : null
+            }
             renderItem={({ item }) => {
               const hasOnay = !!item.sorumluAd && item.durum !== 'Kapalı' && item.durum !== 'KAPATILDI'; 
               const statStyle = getStatusStyle(item.durum, hasOnay);
@@ -490,11 +695,15 @@ export const TalepScreen = () => {
       </View>
 
       {/* Create Modal (Full Screen Form) */}
-      <Modal visible={isCreateOpen} animationType="slide" presentationStyle="fullScreen">
+      <Modal visible={isCreateOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setIsCreateOpen(false)}>
         <SafeAreaView style={styles.formContainer}>
           <View style={styles.formContentWrapper}>
             <View style={styles.formHeader}>
+              <View style={{ width: 40 }} />
               <Text style={styles.formHeaderTitle}>Yeni Talep</Text>
+              <TouchableOpacity onPress={() => setIsCreateOpen(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={22} color={colors.danger} />
+              </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
               
@@ -788,19 +997,90 @@ export const TalepScreen = () => {
         />
       </Modal>
 
+      {/* Category Filter Selector */}
+      <SearchableSelectorModal
+        visible={isFilterCategorySelectorOpen}
+        onClose={() => setIsFilterCategorySelectorOpen(false)}
+        onSelect={(item) => {
+          setSelectedFilterCategory(item.talepKategoriID.toString());
+          setSelectedFilterAltCategory('');
+          setIsFilterCategorySelectorOpen(false);
+        }}
+        data={categories.filter(c => c.ustKategoriID === null)}
+        keyExtractor={(item) => item.talepKategoriID.toString()}
+        labelExtractor={(item) => item.tanim}
+        title="Kategori Seçin"
+      />
+
+      {/* Alt Kategori Filter Selector */}
+      <SearchableSelectorModal
+        visible={isFilterAltCategorySelectorOpen}
+        onClose={() => setIsFilterAltCategorySelectorOpen(false)}
+        onSelect={(item) => {
+          setSelectedFilterAltCategory(item.talepKategoriID.toString());
+          setIsFilterAltCategorySelectorOpen(false);
+        }}
+        data={categories.filter(c => c.ustKategoriID?.toString() === selectedFilterCategory)}
+        keyExtractor={(item) => item.talepKategoriID.toString()}
+        labelExtractor={(item) => item.tanim}
+        title="Alt Kategori Seçin"
+      />
+
+      {/* Status Filter Selector */}
+      <SearchableSelectorModal
+        visible={isFilterStatusSelectorOpen}
+        onClose={() => setIsFilterStatusSelectorOpen(false)}
+        onSelect={(item) => {
+          setSelectedFilterStatus(item.id);
+          setIsFilterStatusSelectorOpen(false);
+        }}
+        data={[
+          { id: 'BEKLEMEDE', name: 'BEKLEMEDE' },
+          { id: 'ONAY BEKLİYOR', name: 'ONAY BEKLİYOR' },
+          { id: 'TAMAMLANDI', name: 'TAMAMLANDI' }
+        ]}
+        keyExtractor={(item) => item.id}
+        labelExtractor={(item) => item.name}
+        title="Durum Seçin"
+      />
+
+      {/* Start Date Filter Picker */}
+      <DatePickerModal
+        visible={isFilterStartDatePickerOpen}
+        onClose={() => setIsFilterStartDatePickerOpen(false)}
+        onSelectDate={(date) => {
+          setFilterStartDate(date);
+          setIsFilterStartDatePickerOpen(false);
+        }}
+        title="Başlangıç Tarihi Seçin"
+      />
+
+      {/* End Date Filter Picker */}
+      <DatePickerModal
+        visible={isFilterEndDatePickerOpen}
+        onClose={() => setIsFilterEndDatePickerOpen(false)}
+        onSelectDate={(date) => {
+          setFilterEndDate(date);
+          setIsFilterEndDatePickerOpen(false);
+        }}
+        title="Bitiş Tarihi Seçin"
+      />
+
       {/* Detail Modal (Full Screen) */}
-      <Modal visible={isDetailOpen} animationType="slide" presentationStyle="fullScreen">
+      <Modal visible={isDetailOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setIsDetailOpen(false)}>
         {selectedRequest && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
               
               {/* Fixed Detail Header */}
               <View style={styles.detailHeader}>
-                <TouchableOpacity onPress={handleCloseDetail} style={styles.backBtn}>
-                  <Text style={styles.backBtnText}>◀ Geri</Text>
+                <TouchableOpacity onPress={handleCloseDetail} style={styles.backButton}>
+                  <Ionicons name="arrow-back" size={22} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.detailHeaderTitle}>{selectedRequest.talepKodu}</Text>
-                <View style={{ width: 50 }} /> {/* balance spacing */}
+                <TouchableOpacity onPress={handleCloseDetail} style={styles.closeButton}>
+                  <Ionicons name="close" size={22} color={colors.danger} />
+                </TouchableOpacity>
               </View>
 
               {/* Scrollable Main Detail Panel */}
@@ -956,7 +1236,7 @@ export const TalepScreen = () => {
 
                 {/* Developments Conversational Timeline */}
                 <View style={styles.chatSection}>
-                  <Text style={styles.chatSectionTitle}>💬 Talep Gelişmeleri & Tarihçe</Text>
+                  <Text style={styles.chatSectionTitle}>💬 Talep Gelişmeleri</Text>
                   
                   {detailData?.gelismeler && detailData.gelismeler.length > 0 ? (
                     <View style={styles.chatContainer}>
@@ -991,23 +1271,140 @@ export const TalepScreen = () => {
                   )}
                 </View>
 
+                {/* Collapsible History Section */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.historyTitle}>📜 Talep Tarihçesi</Text>
+                    <Ionicons 
+                      name={isHistoryExpanded ? "chevron-up" : "chevron-down"} 
+                      size={18} 
+                      color={colors.text} 
+                    />
+                  </TouchableOpacity>
+
+                  {isHistoryExpanded && (
+                    <View style={styles.historyContainer}>
+                      {detailData?.tarihce && detailData.tarihce.length > 0 ? (
+                        detailData.tarihce.map((h, i) => (
+                          <View key={i} style={styles.historyItem}>
+                            <View style={styles.historyItemHeader}>
+                              <Text style={styles.historyItemSubject}>{h.konu}</Text>
+                              <Text style={styles.historyItemTime}>{h.tarih}</Text>
+                            </View>
+                            <Text style={styles.historyItemContent}>{h.aciklama}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.emptyHistoryText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+
               </ScrollView>
 
-              {/* Fixed Bottom Action & Composer Bar */}
+              {/* Fixed Bottom Action & Composer Bar Wrapper */}
               {selectedRequest.durum !== 'Kapalı' && selectedRequest.durum !== 'KAPATILDI' && (
-                <View style={styles.fixedComposerBar}>
+                <View style={styles.fixedComposerWrapper}>
+                  {/* Action panel at the bottom of the screen */}
+                  <View style={{ gap: 8, marginBottom: 8 }}>
+                    {/* Row 1: Primary Actions */}
+                    <View style={styles.bottomActionsPanel}>
+                      {selectedRequest.sorumluSicil !== user?.sicilNo && (
+                        <TouchableOpacity 
+                          style={styles.bottomActionBtn}
+                          onPress={() => handleAssign(user?.sicilNo || '')}
+                        >
+                          <Ionicons name="person-outline" size={15} color={colors.primary} />
+                          <Text style={styles.bottomActionBtnText}>Kendime Ata</Text>
+                        </TouchableOpacity>
+                      )}
+                      
+                      <TouchableOpacity 
+                        style={styles.bottomActionBtn}
+                        onPress={() => setIsAssignOpen(true)}
+                      >
+                        <Ionicons name="settings-outline" size={15} color={colors.primary} />
+                        <Text style={styles.bottomActionBtnText}>Sorumlu Ata</Text>
+                      </TouchableOpacity>
+
+                      {(detailData?.girisTur === 'SAHIP' || detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'HAVUZ') && (
+                        <TouchableOpacity 
+                          style={[styles.bottomActionBtn, styles.bottomActionBtnDanger]}
+                          onPress={handleCloseTicket}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={15} color={colors.danger} />
+                          <Text style={[styles.bottomActionBtnText, { color: colors.danger }]}>Talebi Tamamla</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Row 2: Specialist Actions */}
+                    {detailData?.girisTur === 'SORUMLU' && (
+                      <View style={styles.bottomActionsPanel}>
+                        {/* Lock / Unlock */}
+                        <TouchableOpacity 
+                          style={styles.bottomActionBtn}
+                          onPress={handleToggleLock}
+                        >
+                          <Ionicons name={detailData.talep?.kilitli ? "lock-open-outline" : "lock-closed-outline"} size={14} color={colors.accent} />
+                          <Text style={styles.bottomActionBtnText}>
+                            {detailData.talep?.kilitli ? 'Aç' : 'Kilitle'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Send Approval / Retract */}
+                        {detailData.onayBilgisi ? (
+                          <TouchableOpacity 
+                            style={styles.bottomActionBtn}
+                            onPress={handleRetractApproval}
+                          >
+                            <Ionicons name="arrow-undo-outline" size={14} color={colors.warning} />
+                            <Text style={styles.bottomActionBtnText}>Geri Çek</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity 
+                            style={styles.bottomActionBtn}
+                            onPress={() => setIsSupervisorSelectOpen(true)}
+                          >
+                            <Ionicons name="send-outline" size={14} color={colors.warning} />
+                            <Text style={styles.bottomActionBtnText}>Onaya Gönder</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Helper Add */}
+                        <TouchableOpacity 
+                          style={styles.bottomActionBtn}
+                          onPress={() => setIsHelperSelectOpen(true)}
+                        >
+                          <Ionicons name="people-outline" size={14} color={colors.info} />
+                          <Text style={styles.bottomActionBtnText}>Yardımcı</Text>
+                        </TouchableOpacity>
+
+                        {/* Ask Question */}
+                        <TouchableOpacity 
+                          style={styles.bottomActionBtn}
+                          onPress={() => {
+                            if (getQuestionTargets().length === 0) {
+                              Alert.alert('Uyarı', 'Soru sorabileceğiniz ilişkili bir personel bulunmamaktadır.');
+                            } else {
+                              setIsAskQuestionModalOpen(true);
+                            }
+                          }}
+                        >
+                          <Ionicons name="help-circle-outline" size={14} color={colors.info} />
+                          <Text style={styles.bottomActionBtnText}>Soru Sor</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+
                   <View style={styles.composerRow}>
                     
-                    {/* Actions "+" Button */}
-                    {hasActions && (
-                      <TouchableOpacity 
-                        style={styles.composerAddBtn} 
-                        onPress={() => setIsActionsMenuOpen(true)}
-                      >
-                        <Text style={styles.composerAddIcon}>➕</Text>
-                      </TouchableOpacity>
-                    )}
-
                     {/* Text Field */}
                     <TextInput
                       style={styles.composerInput}
@@ -1029,140 +1426,6 @@ export const TalepScreen = () => {
               )}
 
             </View>
-
-            {/* Actions Menu Bottom Sheet Modal */}
-            <Modal visible={isActionsMenuOpen} transparent animationType="slide">
-              <TouchableOpacity 
-                style={styles.modalOverlay} 
-                activeOpacity={1} 
-                onPress={() => setIsActionsMenuOpen(false)}
-              >
-                <View style={styles.actionSheetWrapper}>
-                  <View style={styles.actionSheetHeader}>
-                    <View style={styles.actionSheetKnob} />
-                    <Text style={styles.actionSheetTitle}>İşlem Seçenekleri</Text>
-                  </View>
-                  
-                  <ScrollView style={styles.actionSheetOptionsList}>
-                    
-                    {/* Toggle Lock */}
-                    {detailData?.girisTur === 'SORUMLU' && (
-                      <TouchableOpacity 
-                        style={styles.actionSheetOption}
-                        onPress={() => {
-                          setIsActionsMenuOpen(false);
-                          handleToggleLock();
-                        }}
-                      >
-                        <Text style={styles.actionOptionText}>
-                          {detailData.talep?.kilitli ? '🔓 Kilidi Aç' : '🔒 Talebi Kilitle'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Send Approval / Retract */}
-                    {detailData?.girisTur === 'SORUMLU' && (
-                      detailData.onayBilgisi ? (
-                        <TouchableOpacity 
-                          style={styles.actionSheetOption}
-                          onPress={() => {
-                            setIsActionsMenuOpen(false);
-                            handleRetractApproval();
-                          }}
-                        >
-                          <Text style={styles.actionOptionText}>↩️ Onayı Geri Çek</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity 
-                          style={styles.actionSheetOption}
-                          onPress={() => {
-                            setIsActionsMenuOpen(false);
-                            setIsSupervisorSelectOpen(true);
-                          }}
-                        >
-                          <Text style={styles.actionOptionText}>✍️ Onaya Gönder</Text>
-                        </TouchableOpacity>
-                      )
-                    )}
-
-                    {/* Helper Add */}
-                    {detailData?.girisTur === 'SORUMLU' && (
-                      <TouchableOpacity 
-                        style={styles.actionSheetOption}
-                        onPress={() => {
-                          setIsActionsMenuOpen(false);
-                          setIsHelperSelectOpen(true);
-                        }}
-                      >
-                        <Text style={styles.actionOptionText}>👥 Yardımcı Ekle</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Ask Question */}
-                    {detailData?.girisTur === 'SORUMLU' && (
-                      <TouchableOpacity 
-                        style={styles.actionSheetOption}
-                        onPress={() => {
-                          setIsActionsMenuOpen(false);
-                          if (getQuestionTargets().length === 0) {
-                            Alert.alert('Uyarı', 'Soru sorabileceğiniz ilişkili bir personel bulunmamaktadır.');
-                          } else {
-                            setIsAskQuestionModalOpen(true);
-                          }
-                        }}
-                      >
-                        <Text style={styles.actionOptionText}>❓ Soru Sor</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Assign to self */}
-                    {selectedRequest.sorumluSicil !== user?.sicilNo && (
-                      <TouchableOpacity 
-                        style={styles.actionSheetOption}
-                        onPress={() => {
-                          setIsActionsMenuOpen(false);
-                          handleAssign(user?.sicilNo || '');
-                        }}
-                      >
-                        <Text style={styles.actionOptionText}>👤 Kendime Ata</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Assign to other */}
-                    <TouchableOpacity 
-                      style={styles.actionSheetOption}
-                      onPress={() => {
-                        setIsActionsMenuOpen(false);
-                        setIsAssignOpen(true);
-                      }}
-                    >
-                      <Text style={styles.actionOptionText}>⚙️ Sorumlu Ata</Text>
-                    </TouchableOpacity>
-
-                    {/* Close request */}
-                    {(detailData?.girisTur === 'SAHIP' || detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'HAVUZ') && (
-                      <TouchableOpacity 
-                        style={[styles.actionSheetOption, styles.actionSheetOptionDanger]}
-                        onPress={() => {
-                          setIsActionsMenuOpen(false);
-                          handleCloseTicket();
-                        }}
-                      >
-                        <Text style={[styles.actionOptionText, { color: colors.danger }]}>❌ Talebi Kapat</Text>
-                      </TouchableOpacity>
-                    )}
-
-                  </ScrollView>
-                  
-                  <TouchableOpacity 
-                    style={styles.actionSheetCancelBtn} 
-                    onPress={() => setIsActionsMenuOpen(false)}
-                  >
-                    <Text style={styles.actionSheetCancelText}>İptal</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            </Modal>
 
             {/* Personnel Assign selection modal */}
             <SearchableSelectorModal
@@ -1246,7 +1509,7 @@ export const TalepScreen = () => {
       <BottomNavBar 
         currentScreen="Talepler" 
         customAction={{
-          icon: '📝',
+          icon: 'create-outline',
           label: 'Yeni Talep',
           onPress: () => setIsCreateOpen(true)
         }} 
@@ -1256,11 +1519,45 @@ export const TalepScreen = () => {
 };
 
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, type: string, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  pageTitleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: theme === 'light' ? '#f5f5f5' : '#1e1e2d',
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: theme === 'light' ? '#fee2e2' : '#2d1e1e', // Light red background in light theme, dark red in dark theme
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageTitleText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
   },
   contentWrapper: {
     flex: 1,
@@ -1441,13 +1738,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   formHeader: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    height: 56,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
   },
   formCancelBtn: {
     paddingHorizontal: 8,
@@ -1595,11 +1893,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    height: 56,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
   },
   backBtn: {
     paddingHorizontal: 8,
@@ -1619,7 +1918,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   detailScroll: {
     padding: 16,
     gap: 16,
-    paddingBottom: 90, // Spacing for composer bar
+    paddingBottom: 220, // Spacing for composer bar & action panel
   },
   banner: {
     padding: 12,
@@ -1872,23 +2171,53 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
   },
 
-  // Fixed Bottom Composer Bar
-  fixedComposerBar: {
+  // Fixed Bottom Composer Wrapper & Actions Panel
+  fixedComposerWrapper: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 72,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    justifyContent: 'center',
     paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
     elevation: 10,
     shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
+    gap: 8,
+  },
+  bottomActionsPanel: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    paddingVertical: 4,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bottomActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  bottomActionBtnDanger: {
+    borderColor: colors.danger + '30',
+    backgroundColor: colors.danger + '05',
+  },
+  bottomActionBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text,
   },
   composerRow: {
     flexDirection: 'row',
@@ -2089,5 +2418,101 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  filtersScroll: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  filtersScrollView: {
+    flexGrow: 0,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexShrink: 0,
+  },
+  activeFilterChip: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  activeFilterChipText: {
+    color: '#fff',
+  },
+  historySection: {
+    marginTop: 8,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.card,
+  },
+  historyTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  historyContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  historyItem: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+    gap: 8,
+  },
+  historyItemSubject: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  historyItemTime: {
+    fontSize: 10,
+    color: colors.placeholder,
+    fontWeight: '600',
+  },
+  historyItemContent: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  emptyHistoryText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });

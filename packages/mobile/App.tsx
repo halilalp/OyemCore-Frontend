@@ -7,19 +7,69 @@ import * as Device from 'expo-device';
 import { Platform, Alert, View, ActivityIndicator } from 'react-native';
 import { api } from '@webportal/shared';
 
-import { useAuthStore } from './src/store/useAuthStore';
+import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useThemeStore } from './src/store/useThemeStore';
-import { LoginScreen } from './src/screens/LoginScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
-import { TicketScreen } from './src/screens/TicketScreen';
-import { IzinScreen } from './src/screens/IzinScreen';
-import { TalepScreen } from './src/screens/TalepScreen';
-import { BakimScreen } from './src/screens/BakimScreen';
-import { ProfilScreen } from './src/screens/ProfilScreen';
-import { PerformansScreen } from './src/screens/PerformansScreen';
+import { LoginScreen } from './src/features/auth/screens/LoginScreen';
+import { HomeScreen } from './src/features/home/screens/HomeScreen';
+import { TicketScreen } from './src/features/ticket/screens/TicketScreen';
+import { IzinScreen } from './src/features/izin/screens/IzinScreen';
+import { TalepScreen } from './src/features/helpdesk/screens/TalepScreen';
+import { BakimScreen } from './src/features/bakim_yonetim/screens/BakimScreen';
+import { ProfilScreen } from './src/features/profile/screens/ProfilScreen';
+import { PerformansScreen } from './src/features/profile/screens/PerformansScreen';
+import { ZimmetlerimScreen } from './src/features/zimmet/screens/ZimmetlerimScreen';
+import { DemirbasYonetimScreen } from './src/features/zimmet/screens/DemirbasYonetimScreen';
+import { DemirbasSayimScreen } from './src/features/zimmet/screens/DemirbasSayimScreen';
+import { TedarikciScreen } from './src/features/tedarikci/screens/TedarikciScreen';
+import { AdminAyarlarScreen } from './src/features/admin/screens/AdminAyarlarScreen';
+import { AdminKullaniciScreen } from './src/features/admin/screens/AdminKullaniciScreen';
+import { AdminHelpDeskScreen } from './src/features/admin/screens/AdminHelpDeskScreen';
+import { AdminLogsScreen } from './src/features/admin/screens/AdminLogsScreen';
+import { AdminTarihceScreen } from './src/features/admin/screens/AdminTarihceScreen';
+import { AlertModal } from './src/components/AlertModal';
+import { useAlertStore } from './src/store/useAlertStore';
 
 const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef();
+
+// Globally override Alert.alert to use the premium AlertModal overlay
+Alert.alert = (title?: string, message?: string, buttons?: any[], options?: any) => {
+  if (buttons && buttons.length > 0) {
+    const confirmBtn = buttons.find(b => b.text === 'Evet' || b.text === 'Tamam' || b.text === 'Gönder' || b.text === 'Kaydet' || b.text === 'Onayla');
+    const cancelBtn = buttons.find(b => b.text === 'İptal' || b.style === 'cancel');
+    
+    const onConfirmPress = () => {
+      const btn = confirmBtn || buttons[0];
+      if (btn && btn.onPress) btn.onPress();
+    };
+    
+    const onCancelPress = () => {
+      const btn = cancelBtn || (buttons.length > 1 ? buttons[1] : null);
+      if (btn && btn.onPress) btn.onPress();
+    };
+
+    useAlertStore.getState().showConfirm(
+      title || 'Onay',
+      message || '',
+      onConfirmPress,
+      buttons.length > 1 ? onCancelPress : undefined
+    );
+  } else {
+    let type: 'success' | 'error' | 'warning' | 'info' = 'info';
+    const lowerTitle = (title || '').toLowerCase();
+    const lowerMsg = (message || '').toLowerCase();
+    
+    if (lowerTitle.includes('hata') || lowerMsg.includes('hata') || lowerMsg.includes('başarısız') || lowerTitle.includes('error') || lowerMsg.includes('olmadı') || lowerMsg.includes('bulunamadı')) {
+      type = 'error';
+    } else if (lowerTitle.includes('başarı') || lowerMsg.includes('başarı') || lowerTitle.includes('success') || lowerMsg.includes('kaydedildi') || lowerMsg.includes('tamamlandı')) {
+      type = 'success';
+    } else if (lowerTitle.includes('uyarı') || lowerMsg.includes('uyarı') || lowerTitle.includes('warning') || lowerMsg.includes('dikkat')) {
+      type = 'warning';
+    }
+    
+    useAlertStore.getState().showAlert(title || '', message || '', type);
+  }
+};
 
 // Configure how notifications are displayed when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -80,14 +130,6 @@ export default function App() {
     restoreSession();
   }, []);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-        <ActivityIndicator size="large" color="#009ef7" />
-      </View>
-    );
-  }
-
   React.useEffect(() => {
     if (isAuthenticated) {
       registerForPushNotificationsAsync()
@@ -100,15 +142,15 @@ export default function App() {
                 Alert.alert('Bildirim Kaydı Başarılı', 'Bildirim altyapısı kuruldu.');
               })
               .catch(err => {
-                console.error('Error saving push token to backend:', err);
+                console.warn('Error saving push token to backend:', err);
                 Alert.alert('Veritabanı Hatası', 'Token sunucuya kaydedilemedi: ' + (err.message || err));
               });
           } else {
-            Alert.alert('Bildirim Hatası', 'Bildirim tokeni alınamadı.');
+            console.log('Push notifications not registered (could be running on emulator/simulator)');
           }
         })
         .catch(err => {
-          console.error('Error registering for push notifications:', err);
+          console.warn('Error registering for push notifications:', err);
           Alert.alert('Bildirim Hatası', 'Cihaz kaydı başarısız: ' + err);
         });
     }
@@ -136,6 +178,8 @@ export default function App() {
           if (targetScreen === 'BakimScreen') targetScreen = 'Bakim';
           if (targetScreen === 'TicketScreen') targetScreen = 'Ticket';
           if (targetScreen === 'HomeScreen') targetScreen = 'Home';
+          if (targetScreen === 'ZimmetScreen' || targetScreen === 'Zimmet') targetScreen = 'Zimmetlerim';
+          if (targetScreen === 'TedarikciScreen') targetScreen = 'Tedarikci';
 
           (navigationRef as any).navigate(targetScreen, {
             code: data.code,
@@ -151,6 +195,14 @@ export default function App() {
       responseListener.remove();
     };
   }, [isAuthenticated]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#009ef7" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer ref={navigationRef}>
@@ -240,10 +292,42 @@ export default function App() {
                 headerTitleStyle: { fontWeight: '800' }
               }} 
             />
+            <Stack.Screen 
+              name="Zimmetlerim" 
+              component={ZimmetlerimScreen} 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="DemirbasYonetim" 
+              component={DemirbasYonetimScreen} 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="DemirbasSayim" 
+              component={DemirbasSayimScreen} 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="Tedarikci" 
+              component={TedarikciScreen} 
+              options={{ 
+                headerShown: true, 
+                title: 'Tedarikçi Değerlendirme', 
+                headerStyle: { backgroundColor: colors.navbarBg }, 
+                headerTintColor: colors.navbarTint,
+                headerTitleStyle: { fontWeight: '800' }
+              }} 
+            />
+            <Stack.Screen name="AdminAyarlar" component={AdminAyarlarScreen} />
+            <Stack.Screen name="AdminKullanici" component={AdminKullaniciScreen} />
+            <Stack.Screen name="AdminHelpDesk" component={AdminHelpDeskScreen} />
+            <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
+            <Stack.Screen name="AdminTarihce" component={AdminTarihceScreen} />
           </>
         )}
       </Stack.Navigator>
       <StatusBar style={colors.statusBar} />
+      <AlertModal />
     </NavigationContainer>
   );
 }

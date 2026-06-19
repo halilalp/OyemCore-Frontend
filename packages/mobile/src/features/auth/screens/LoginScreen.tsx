@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, Dimensions } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 import { setApiBaseUrl } from '@webportal/shared';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '../../../store/storage';
 
 export const LoginScreen = () => {
   const { login, resetPassword, isLoading, error } = useAuthStore();
@@ -18,6 +19,17 @@ export const LoginScreen = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  // Load saved IP address on mount
+  useEffect(() => {
+    AsyncStorage.getItem('ipAddress')
+      .then(savedIp => {
+        if (savedIp) {
+          setIpAddress(savedIp);
+        }
+      })
+      .catch(err => console.error('Failed to load saved IP address:', err));
+  }, []);
+
   // Responsive dimension check
   const windowWidth = Dimensions.get('window').width;
   const isTablet = windowWidth > 768;
@@ -29,7 +41,14 @@ export const LoginScreen = () => {
     const formattedUrl = ipAddress.includes(':') 
       ? `http://${ipAddress}/api` 
       : `http://${ipAddress}:5000/api`;
-    setApiBaseUrl(formattedUrl);
+
+    try {
+      setApiBaseUrl(formattedUrl);
+      await AsyncStorage.setItem('apiUrl', formattedUrl);
+      await AsyncStorage.setItem('ipAddress', ipAddress);
+    } catch (e) {
+      console.error('Failed to save API settings:', e);
+    }
 
     if (isResetMode) {
       if (!sicilNo || !username) {
@@ -65,10 +84,10 @@ export const LoginScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={isTablet ? styles.tabletContainer : styles.phoneContainer}>
           
-          {/* Left Side (Tablet) or Top Side (Phone): OyemSoft Logo */}
+          {/* Left Side (Tablet) or Top Side (Phone): WebPortal Space Logo */}
           <View style={isTablet ? styles.leftLogoContainer : styles.topLogoContainer}>
             <Image
-              source={require('../../assets/logo.png')}
+              source={require('../../../../assets/webportal.png')}
               style={isTablet ? styles.logoTablet : styles.logoPhone}
               resizeMode="contain"
             />
@@ -80,13 +99,6 @@ export const LoginScreen = () => {
             <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
               <Text style={styles.themeToggleText}>{theme === 'light' ? '🌙 Koyu' : '☀️ Açık'}</Text>
             </TouchableOpacity>
-
-            {/* WebPortal Badge Logo */}
-            <Image
-              source={require('../../assets/webportal.png')}
-              style={styles.webportalLogo}
-              resizeMode="contain"
-            />
 
             <Text style={styles.title}>
               {isResetMode ? 'ŞİFRE SIFIRLAMA' : 'HOŞGELDİNİZ'}
@@ -207,7 +219,7 @@ export const LoginScreen = () => {
 
             {/* Watermark Logo absolute positioned */}
             <Image
-              source={require('../../assets/logo-2.png')}
+              source={require('../../../../assets/logo-2.png')}
               style={styles.watermarkLogo}
               resizeMode="contain"
             />
@@ -261,12 +273,12 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     marginBottom: 28,
   },
   logoTablet: {
-    width: '100%',
+    width: '95%',
     height: 180,
   },
   logoPhone: {
-    width: 200,
-    height: 70,
+    width: '90%',
+    height: 120,
   },
   card: {
     backgroundColor: colors.card,
@@ -286,10 +298,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     overflow: 'hidden',
   },
   webportalLogo: {
-    height: 52,
-    width: 180,
+    height: 70,
+    width: '95%',
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   title: {
     fontSize: 20,

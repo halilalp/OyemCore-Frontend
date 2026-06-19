@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Dimensions, Animated, TextInput, Platform, StatusBar } from 'react-native';
-import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { api } from '@webportal/shared';
+import { Ionicons } from '@expo/vector-icons';
 
 export const HomeScreen = () => {
   const { user, logout } = useAuthStore();
@@ -18,7 +19,15 @@ export const HomeScreen = () => {
     totalUsers: 0,
     smsCount: 0
   });
+  const [badges, setBadges] = useState({
+    helpdesk: 0,
+    izin: 0,
+    tedarikci: 0,
+    zimmet: 0
+  });
   const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<number[]>([]);
+  const [hasLoadedPermissions, setHasLoadedPermissions] = useState(false);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -32,6 +41,49 @@ export const HomeScreen = () => {
           totalUsers: dashboardStats.totalUsers || 0,
           smsCount: dashboardStats.smsCount || 0
         });
+
+        // Fetch User Permissions
+        if (user?.kullaniciID) {
+          try {
+            const permissions = await api.adminGetPermissions(user.kullaniciID);
+            setUserPermissions(permissions || []);
+          } catch (pe) {
+            console.log('Failed fetching user permissions:', pe);
+          }
+        }
+        setHasLoadedPermissions(true);
+
+        let izinCount = 0;
+        try {
+          const approvals = await api.getIzinApprovals();
+          izinCount = approvals.length;
+        } catch (e) {
+          console.log('Failed fetching izin approvals for badge:', e);
+        }
+
+        let tedCount = 0;
+        try {
+          const tedRes = await api.getTedarikciList({ Durum: 'BEKLEMEDE', PageSize: 1 });
+          tedCount = tedRes.totalCount || 0;
+        } catch (e) {
+          console.log('Failed fetching tedarikci list for badge:', e);
+        }
+
+        let zimmetCount = 0;
+        try {
+          const myDebits = await api.getMyDebits();
+          zimmetCount = myDebits.filter((d: any) => d.hataBildir === true).length;
+        } catch (e) {
+          console.log('Failed fetching my debits for badge:', e);
+        }
+
+        setBadges({
+          helpdesk: dashboardStats.activeTickets || 0,
+          izin: izinCount,
+          tedarikci: tedCount,
+          zimmet: zimmetCount
+        });
+
       } catch (err) {
         console.error('İstatistikler yüklenemedi:', err);
       } finally {
@@ -53,45 +105,48 @@ export const HomeScreen = () => {
 
   const [moduleSearch, setModuleSearch] = useState('');
   const [showAllModules, setShowAllModules] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<'all' | 'talepler' | 'envanter' | 'diger'>('all');
 
   const windowWidth = Dimensions.get('window').width;
   const containerWidth = windowWidth > 800 ? 800 : windowWidth;
-  const numColumns = windowWidth > 600 ? 6 : 4;
-  const gap = 10;
+  const numColumns = windowWidth > 800 ? 4 : (windowWidth > 600 ? 3 : 2);
+  const gap = 12;
   const padding = 16;
   const cardWidth = (containerWidth - padding * 2 - (numColumns - 1) * gap) / numColumns;
 
   const modules = [
-    { id: 'helpdesk_it', title: 'HelpDesk IT', icon: '💻', screen: 'Talepler', params: { type: 'IT' }, badge: stats.activeTickets > 0 ? `${stats.activeTickets}` : undefined, color: '#3b82f6' },
-    { id: 'helpdesk_erp', title: 'HelpDesk ERP', icon: '📊', screen: 'Talepler', params: { type: 'ERP' }, color: '#10b981' },
-    { id: 'helpdesk_bakim', title: 'HelpDesk Bakım', icon: '🛠️', screen: 'Talepler', params: { type: 'BAKIM' }, color: '#f59e0b' },
-    { id: 'bakim_yonetim', title: 'Bakım Yönetimi', icon: '⚙️', screen: 'Bakim', color: '#8e44ad' },
-    { id: 'izin', title: 'İzin İşlemleri', icon: '✈️', screen: 'Izin', color: '#ef4444' },
-    { id: 'ticket', title: 'Ticket-Oyemsoft', icon: '🎫', screen: 'Ticket', color: '#009ef7' },
-    // Mock modules to simulate 20+ modules
-    { id: 'm_personel', title: 'Personel Yetkinlik', icon: '👥', screen: 'HomeScreen', color: '#6c757d' },
-    { id: 'm_rapor', title: 'Performans Analizi', icon: '📈', screen: 'Performans', color: '#28a745' },
-    { id: 'm_demirbas', title: 'Demirbaş Takip', icon: '📦', screen: 'HomeScreen', color: '#fd7e14' },
-    { id: 'm_kalite', title: 'Kalite Güvence', icon: '🎯', screen: 'HomeScreen', color: '#dc3545' },
-    { id: 'm_sevkiyat', title: 'Sevkiyat Planı', icon: '🚚', screen: 'HomeScreen', color: '#17a2b8' },
-    { id: 'm_satinalma', title: 'Satınalma Talep', icon: '🛒', screen: 'HomeScreen', color: '#e83e8c' },
-    { id: 'm_depo', title: 'Depo Stok', icon: '🏢', screen: 'HomeScreen', color: '#6f42c1' },
-    { id: 'm_uretim', title: 'Üretim Emri', icon: '🏭', screen: 'HomeScreen', color: '#20c997' },
-    { id: 'm_finans', title: 'Finansal Veri', icon: '💵', screen: 'HomeScreen', color: '#ffc107' },
-    { id: 'm_crm', title: 'Müşteri Kayıt', icon: '🤝', screen: 'HomeScreen', color: '#007bff' },
-    { id: 'm_ik', title: 'İzin Yönetimi', icon: '📂', screen: 'HomeScreen', color: '#28a745' },
-    { id: 'm_evrak', title: 'Evrak Arşivi', icon: '📝', screen: 'HomeScreen', color: '#17a2b8' },
-    { id: 'm_sozlesme', title: 'Sözleşme Takip', icon: '📜', screen: 'HomeScreen', color: '#fd7e14' },
-    { id: 'm_arac', title: 'Araç Görev', icon: '🚗', screen: 'HomeScreen', color: '#6f42c1' },
+    { id: 'helpdesk_it', title: 'HelpDesk IT', icon: 'laptop-outline', screen: 'Talepler', params: { type: 'IT' }, badge: badges.helpdesk > 0 ? `${badges.helpdesk}` : undefined, color: '#3b82f6', category: 'talepler', requiredPages: [1082] },
+    { id: 'helpdesk_erp', title: 'HelpDesk ERP', icon: 'analytics-outline', screen: 'Talepler', params: { type: 'ERP' }, color: '#10b981', category: 'talepler', requiredPages: [1082] },
+    { id: 'helpdesk_bakim', title: 'HelpDesk Bakım', icon: 'construct-outline', screen: 'Talepler', params: { type: 'BAKIM' }, color: '#f59e0b', category: 'talepler', requiredPages: [1082] },
+    { id: 'bakim_yonetim', title: 'Bakım Yönetimi', icon: 'settings-outline', screen: 'Bakim', color: '#8e44ad', category: 'talepler', requiredPages: [1139, 1140, 1195, 1087] },
+    { id: 'izin', title: 'İzin İşlemleri', icon: 'airplane-outline', screen: 'Izin', badge: badges.izin > 0 ? `${badges.izin}` : undefined, color: '#ef4444', category: 'diger', requiredPages: [1091, 1092] },
+    { id: 'ticket', title: 'Ticket-Oyemsoft', icon: 'ticket-outline', screen: 'Ticket', color: '#009ef7', category: 'talepler' },
+    { id: 'm_zimmetlerim', title: 'Zimmetlerim', icon: 'cube-outline', screen: 'Zimmetlerim', badge: badges.zimmet > 0 ? `${badges.zimmet}` : undefined, color: '#fd7e14', category: 'envanter' },
+    { id: 'm_demirbas_yonetim', title: 'Demirbaş Yönetimi', icon: 'settings-outline', screen: 'DemirbasYonetim', color: '#9c27b0', category: 'envanter', requiredPages: [29, 30] },
+    { id: 'm_sayim', title: 'Demirbaş Sayımı', icon: 'barcode-outline', screen: 'DemirbasSayim', color: '#4caf50', category: 'envanter', requiredPages: [29, 30] },
+    { id: 'm_tedarikci', title: 'Tedarikçi Değerlendirme', icon: 'shield-checkmark-outline', screen: 'Tedarikci', badge: badges.tedarikci > 0 ? `${badges.tedarikci}` : undefined, color: '#dc3545', category: 'envanter', requiredPages: [1102] },
+    { id: 'admin_settings', title: 'Yönetici Ayarları', icon: 'settings-outline', screen: 'AdminAyarlar', color: '#009ef7', category: 'diger' },
   ];
 
-  const filteredModules = modules.filter(m => 
-    m.title.toLocaleLowerCase('tr').includes(moduleSearch.toLocaleLowerCase('tr'))
-  );
+  const permittedModules = modules.filter(m => {
+    if (m.id === 'admin_settings') {
+      return user?.yonetici || user?.zimmetSorumlusu || user?.kullaniciAdi === 'admin';
+    }
+    if (m.requiredPages) {
+      return hasLoadedPermissions && m.requiredPages.some(pageId => userPermissions.includes(pageId));
+    }
+    return true; // public or fallback
+  });
 
-  const displayedModules = moduleSearch.trim() !== ''
+  const filteredModules = permittedModules.filter(m => {
+    const matchesSearch = m.title.toLocaleLowerCase('tr').includes(moduleSearch.toLocaleLowerCase('tr'));
+    const matchesCategory = activeCategory === 'all' || m.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const displayedModules = moduleSearch.trim() !== '' || activeCategory !== 'all'
     ? filteredModules
-    : (showAllModules ? modules : modules.slice(0, 8));
+    : (showAllModules ? permittedModules : permittedModules.slice(0, 8));
 
   // Weekly calendar mock with status codes corresponding to reference web interface
   const weeklyAgenda = [
@@ -128,14 +183,14 @@ export const HomeScreen = () => {
                 onPress={() => navigation.navigate('Profil')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.headerActionIcon}>👤</Text>
+                <Ionicons name="person-outline" size={18} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerActionButton}
                 onPress={logout}
                 activeOpacity={0.7}
               >
-                <Text style={styles.headerActionIcon}>🚪</Text>
+                <Ionicons name="log-out-outline" size={18} color={colors.danger} />
               </TouchableOpacity>
               <View style={styles.headerAvatarContainer}>
                 <View style={styles.headerAvatar}>
@@ -146,22 +201,32 @@ export const HomeScreen = () => {
             </View>
           </View>
 
-          {/* Quick Action Grid (4 columns responsive layout) */}
+          {/* Quick Action Grid (Ergonomic layout) */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
-              {modules.length > 8 && moduleSearch.trim() === '' && (
-                <TouchableOpacity onPress={() => setShowAllModules(!showAllModules)}>
+              {modules.length > 8 && moduleSearch.trim() === '' && activeCategory === 'all' && (
+                <TouchableOpacity 
+                  onPress={() => setShowAllModules(!showAllModules)}
+                  style={styles.toggleContainer}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.toggleText}>
-                    {showAllModules ? 'Özet Gör ⬆️' : `Tümünü Gör (${modules.length}) ⬇️`}
+                    {showAllModules ? 'Özet Gör' : `Tümünü Gör (${modules.length})`}
                   </Text>
+                  <Ionicons 
+                    name={showAllModules ? "chevron-up" : "chevron-down"} 
+                    size={14} 
+                    color={colors.primary} 
+                    style={{ marginLeft: 4 }}
+                  />
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Search Input for Modules */}
             <View style={styles.moduleSearchContainer}>
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Ionicons name="search-outline" size={15} color={colors.textSecondary} style={{ marginRight: 6 }} />
               <TextInput
                 style={styles.moduleSearchInput}
                 placeholder="İşlem veya modül ara..."
@@ -175,6 +240,40 @@ export const HomeScreen = () => {
                   <Text style={styles.clearBtnText}>✕</Text>
                 </TouchableOpacity>
               )}
+            </View>
+
+            {/* Category Filter Tabs (Pills) */}
+            <View style={styles.categoryTabsContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryTabsScroll}>
+                <TouchableOpacity 
+                  style={[styles.categoryTab, activeCategory === 'all' && styles.activeCategoryTab]}
+                  onPress={() => setActiveCategory('all')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.categoryTabText, activeCategory === 'all' && styles.activeCategoryTabText]}>Tümü</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.categoryTab, activeCategory === 'talepler' && styles.activeCategoryTab]}
+                  onPress={() => setActiveCategory('talepler')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.categoryTabText, activeCategory === 'talepler' && styles.activeCategoryTabText]}>Destek & Talep</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.categoryTab, activeCategory === 'envanter' && styles.activeCategoryTab]}
+                  onPress={() => setActiveCategory('envanter')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.categoryTabText, activeCategory === 'envanter' && styles.activeCategoryTabText]}>Demirbaş & Varlık</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.categoryTab, activeCategory === 'diger' && styles.activeCategoryTab]}
+                  onPress={() => setActiveCategory('diger')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.categoryTabText, activeCategory === 'diger' && styles.activeCategoryTabText]}>İK & Diğer</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
 
             <View style={[styles.grid, { gap }]}>
@@ -192,16 +291,17 @@ export const HomeScreen = () => {
                   }}
                 >
                   <View style={[styles.moduleIconContainer, { backgroundColor: mod.color + '15' }]}>
-                    <Text style={[styles.moduleIcon, { color: mod.color }]}>{mod.icon}</Text>
+                    <Ionicons name={mod.icon as any} size={18} color={mod.color} />
                     {mod.badge && (
                       <View style={styles.badgeContainer}>
                         <Text style={styles.badgeText}>{mod.badge}</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={styles.moduleTitle} numberOfLines={2} ellipsizeMode="tail">
+                  <Text style={styles.moduleTitle} numberOfLines={1}>
                     {mod.title}
                   </Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.placeholder} style={styles.arrowIcon} />
                 </TouchableOpacity>
               ))}
               {displayedModules.length === 0 && (
@@ -215,7 +315,10 @@ export const HomeScreen = () => {
           {/* Weekly Agenda Widget */}
           <View style={styles.widgetCard}>
             <View style={styles.widgetHeader}>
-              <Text style={styles.widgetTitle}>📅 Haftalık Ajanda</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                <Text style={styles.widgetTitle}>Haftalık Ajanda</Text>
+              </View>
               <Text style={styles.widgetSubtitle}>Haziran 2026</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.agendaScroll}>
@@ -250,7 +353,10 @@ export const HomeScreen = () => {
 
           {/* Market Data */}
           <View style={styles.widgetCard}>
-            <Text style={styles.widgetTitle}>📈 Finansal Göstergeler</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Ionicons name="trending-up-outline" size={16} color={colors.primary} />
+              <Text style={styles.widgetTitle}>Finansal Göstergeler</Text>
+            </View>
             <View style={styles.marketRowContainer}>
               {marketData.map((m, idx) => (
                 <View key={idx} style={styles.marketMiniCard}>
@@ -266,7 +372,10 @@ export const HomeScreen = () => {
 
           {/* Announcements */}
           <View style={styles.widgetCard}>
-            <Text style={styles.widgetTitle}>📢 Kurumsal Duyurular</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
+              <Text style={styles.widgetTitle}>Kurumsal Duyurular</Text>
+            </View>
             <View style={styles.announcementCard}>
               <View style={styles.announcementIndicator} />
               <View style={styles.announcementContent}>
@@ -393,29 +502,30 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 16,
     padding: 10,
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-    minHeight: 92,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+    minHeight: 56,
   },
   moduleIconContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: 8,
+    marginRight: 10,
   },
   moduleIcon: {
-    fontSize: 22,
+    fontSize: 16,
   },
   badgeContainer: {
     position: 'absolute',
@@ -435,11 +545,42 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '800',
   },
   moduleTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'center',
-    lineHeight: 14,
+    flex: 1,
+    textAlign: 'left',
+  },
+  arrowIcon: {
+    marginLeft: 4,
+  },
+  categoryTabsContainer: {
+    marginBottom: 16,
+  },
+  categoryTabsScroll: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  categoryTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: 4,
+  },
+  activeCategoryTab: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryTabText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  activeCategoryTabText: {
+    color: '#ffffff',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -451,6 +592,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: colors.primary,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   moduleSearchContainer: {
     flexDirection: 'row',

@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList } from 'react-native';
-import { useAuthStore } from '../store/useAuthStore';
-import { useThemeStore } from '../store/useThemeStore';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused } from '@react-navigation/native';
 import { api, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@webportal/shared';
-import { BottomNavBar } from '../components/BottomNavBar';
-import { DatePickerModal } from '../components/DatePickerModal';
-import { SearchableSelectorModal } from '../components/SearchableSelectorModal';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { DatePickerModal } from '../../../components/DatePickerModal';
+import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { Ionicons } from '@expo/vector-icons';
 
 
 
 export const BakimScreen = () => {
   const isFocused = useIsFocused();
   const { user } = useAuthStore();
-  const { colors } = useThemeStore();
-  const styles = createStyles(colors);
+  const { colors, theme } = useThemeStore();
+  const styles = createStyles(colors, theme);
 
   const [activeTab, setActiveTab] = useState<'plan' | 'periyodik' | 'rapor'>('plan');
   const [isLoading, setIsLoading] = useState(false);
@@ -721,14 +722,15 @@ export const BakimScreen = () => {
       {/* ======================================================== */}
 
       {/* PLAN DETAILS MODAL */}
-      <Modal visible={selectedPlan !== null} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={selectedPlan !== null} animationType="slide" onRequestClose={() => setSelectedPlan(null)}>
         {selectedPlan && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
               <View style={styles.modalHeader}>
+                <View style={{ width: 40 }} />
                 <Text style={styles.modalTitle}>Bakım Planı Detayı</Text>
-                <TouchableOpacity onPress={() => setSelectedPlan(null)}>
-                  <Text style={styles.closeBtnText}>Kapat</Text>
+                <TouchableOpacity onPress={() => setSelectedPlan(null)} style={styles.closeButton}>
+                  <Ionicons name="close" size={22} color={colors.danger} />
                 </TouchableOpacity>
               </View>
               <ScrollView contentContainerStyle={styles.modalScroll}>
@@ -834,11 +836,15 @@ export const BakimScreen = () => {
       </Modal>
 
       {/* NEW PLAN MODAL */}
-      <Modal visible={isNewPlanOpen} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={isNewPlanOpen} animationType="slide" onRequestClose={() => setIsNewPlanOpen(false)}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContentWrapper}>
             <View style={styles.modalHeader}>
+              <View style={{ width: 40 }} />
               <Text style={styles.modalTitle}>Yeni Bakım Planı</Text>
+              <TouchableOpacity onPress={() => setIsNewPlanOpen(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={22} color={colors.danger} />
+              </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalScroll}>
               <View style={styles.formGroup}>
@@ -909,14 +915,15 @@ export const BakimScreen = () => {
       </Modal>
 
       {/* PERIODIC CONTROL DETAILS MODAL */}
-      <Modal visible={selectedCtrl !== null} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={selectedCtrl !== null} animationType="slide" onRequestClose={() => setSelectedCtrl(null)}>
         {selectedCtrl && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
               <View style={styles.modalHeader}>
+                <View style={{ width: 40 }} />
                 <Text style={styles.modalTitle}>Kontrol Detayı</Text>
-                <TouchableOpacity onPress={() => setSelectedCtrl(null)}>
-                  <Text style={styles.closeBtnText}>Kapat</Text>
+                <TouchableOpacity onPress={() => setSelectedCtrl(null)} style={styles.closeButton}>
+                  <Ionicons name="close" size={22} color={colors.danger} />
                 </TouchableOpacity>
               </View>
               <ScrollView contentContainerStyle={styles.modalScroll}>
@@ -1116,11 +1123,15 @@ export const BakimScreen = () => {
       </Modal>
 
       {/* NEW PERIODIC CONTROL MODAL */}
-      <Modal visible={isNewCtrlOpen} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={isNewCtrlOpen} animationType="slide" onRequestClose={() => setIsNewCtrlOpen(false)}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContentWrapper}>
             <View style={styles.modalHeader}>
+              <View style={{ width: 40 }} />
               <Text style={styles.modalTitle}>Yeni Periyodik Kontrol</Text>
+              <TouchableOpacity onPress={() => setIsNewCtrlOpen(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={22} color={colors.danger} />
+              </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalScroll}>
               <View style={styles.formGroup}>
@@ -1435,7 +1446,7 @@ export const BakimScreen = () => {
 };
 
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1605,10 +1616,21 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
+    paddingTop: Platform.OS === 'android' ? 12 : 12,
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: theme === 'light' ? '#fee2e2' : '#2d1e1e', // Light red background in light theme, dark red in dark theme
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 16,
