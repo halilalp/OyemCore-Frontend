@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "910311504903",
+    "project_id": "webportal-space",
+    "storage_bucket": "webportal-space.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:910311504903:android:eb7a06c8efa745263f3ea2",
+        "android_client_info": {
+          "package_name": "com.oyemsoft.webportal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAybszxMxG81AGuVEOxfY_plmm8TScyv9Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
