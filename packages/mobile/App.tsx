@@ -2,10 +2,27 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import * as Notifications from 'expo-notifications';
+let Notifications: any = {
+  setNotificationHandler: () => {},
+  addNotificationReceivedListener: () => ({ remove: () => {} }),
+  addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+  getPermissionsAsync: async () => ({ status: 'denied' }),
+  requestPermissionsAsync: async () => ({ status: 'denied' }),
+  getExpoPushTokenAsync: async () => ({ data: '' }),
+  setNotificationChannelAsync: async () => {},
+  AndroidImportance: { MAX: 4 },
+};
+
+// try {
+//   Notifications = require('expo-notifications');
+// } catch (e) {
+//   console.warn('expo-notifications could not be loaded in Expo Go:', e);
+// }
+
 import * as Device from 'expo-device';
-import { Platform, Alert, View, ActivityIndicator } from 'react-native';
-import { api } from '@webportal/shared';
+import { Platform, Alert, View, ActivityIndicator, LogBox } from 'react-native';
+LogBox.ignoreAllLogs();
+import { api } from '@oyemcore/shared';
 
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useThemeStore } from './src/store/useThemeStore';
@@ -13,7 +30,9 @@ import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { HomeScreen } from './src/features/home/screens/HomeScreen';
 import { TicketScreen } from './src/features/ticket/screens/TicketScreen';
 import { IzinScreen } from './src/features/izin/screens/IzinScreen';
-import { TalepScreen } from './src/features/helpdesk/screens/TalepScreen';
+import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScreen';
+import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
+import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
 import { BakimScreen } from './src/features/bakim_yonetim/screens/BakimScreen';
 import { ProfilScreen } from './src/features/profile/screens/ProfilScreen';
 import { PerformansScreen } from './src/features/profile/screens/PerformansScreen';
@@ -26,6 +45,12 @@ import { AdminKullaniciScreen } from './src/features/admin/screens/AdminKullanic
 import { AdminHelpDeskScreen } from './src/features/admin/screens/AdminHelpDeskScreen';
 import { AdminLogsScreen } from './src/features/admin/screens/AdminLogsScreen';
 import { AdminTarihceScreen } from './src/features/admin/screens/AdminTarihceScreen';
+import { CalendarScreen } from './src/features/home/screens/CalendarScreen';
+import { TrainingScreen } from './src/features/home/screens/TrainingScreen';
+import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScreen';
+import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
+import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
+import { SasDetailScreen } from './src/features/satsas/screens/SasDetailScreen';
 import { AlertModal } from './src/components/AlertModal';
 import { useAlertStore } from './src/store/useAlertStore';
 
@@ -72,15 +97,19 @@ Alert.alert = (title?: string, message?: string, buttons?: any[], options?: any)
 };
 
 // Configure how notifications are displayed when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  console.warn('setNotificationHandler failed:', e);
+}
 
 async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'web') return null;
@@ -108,7 +137,7 @@ async function registerForPushNotificationsAsync() {
       name: 'default',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#009ef7',
+      lightColor: '#2F5FE8',
     });
   }
 
@@ -159,47 +188,62 @@ export default function App() {
   React.useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Listen for notifications received while the app is in the foreground
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Received notification in foreground:', notification);
-    });
+    let notificationListener: any;
+    let responseListener: any;
 
-    // Listen for notification clicks/taps
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data;
-      console.log('Notification response received:', data);
+    try {
+      // Listen for notifications received while the app is in the foreground
+      notificationListener = Notifications.addNotificationReceivedListener(notification => {
+        console.log('Received notification in foreground:', notification);
+      });
 
-      if (data && data.screen) {
-        if (navigationRef.isReady()) {
-          // Normalize screen name if it ends with "Screen"
-          let targetScreen = data.screen;
-          if (targetScreen === 'IzinScreen') targetScreen = 'Izin';
-          if (targetScreen === 'TalepScreen') targetScreen = 'Talepler';
-          if (targetScreen === 'BakimScreen') targetScreen = 'Bakim';
-          if (targetScreen === 'TicketScreen') targetScreen = 'Ticket';
-          if (targetScreen === 'HomeScreen') targetScreen = 'Home';
-          if (targetScreen === 'ZimmetScreen' || targetScreen === 'Zimmet') targetScreen = 'Zimmetlerim';
-          if (targetScreen === 'TedarikciScreen') targetScreen = 'Tedarikci';
+      // Listen for notification clicks/taps
+      responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+        const data = response.notification.request.content.data;
+        console.log('Notification response received:', data);
 
-          (navigationRef as any).navigate(targetScreen, {
-            code: data.code,
-            id: data.id,
-            type: data.type
-          });
+        if (data && data.screen) {
+          if (navigationRef.isReady()) {
+            // Normalize screen name if it ends with "Screen"
+            let targetScreen = data.screen;
+            if (targetScreen === 'IzinScreen') targetScreen = 'Izin';
+            if (targetScreen === 'TalepScreen' || targetScreen === 'Talepler') {
+              if (data.type === 'ERP') targetScreen = 'ERPHelpDesk';
+              else if (data.type === 'BAKIM') targetScreen = 'BakimHelpDesk';
+              else targetScreen = 'ITHelpDesk';
+            }
+            if (targetScreen === 'BakimScreen') targetScreen = 'Bakim';
+            if (targetScreen === 'TicketScreen') targetScreen = 'Ticket';
+            if (targetScreen === 'HomeScreen') targetScreen = 'Home';
+            if (targetScreen === 'ZimmetScreen' || targetScreen === 'Zimmet') targetScreen = 'Zimmetlerim';
+            if (targetScreen === 'TedarikciScreen') targetScreen = 'Tedarikci';
+
+            (navigationRef as any).navigate(targetScreen, {
+              code: data.code,
+              id: data.id,
+              type: data.type
+            });
+          }
         }
-      }
-    });
+      });
+    } catch (e) {
+      console.warn('Failed to register notification listeners in Expo Go:', e);
+    }
 
     return () => {
-      notificationListener.remove();
-      responseListener.remove();
+      try {
+        if (notificationListener) notificationListener.remove();
+        if (responseListener) responseListener.remove();
+      } catch (e) {
+        console.warn('Failed to remove notification listeners:', e);
+      }
     };
   }, [isAuthenticated]);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-        <ActivityIndicator size="large" color="#009ef7" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -215,46 +259,35 @@ export default function App() {
             <Stack.Screen 
               name="Ticket" 
               component={TicketScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'Bilet Yönetimi', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen 
               name="Izin" 
               component={IzinScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'İzin İşlemleri', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen 
               name="IzinScreen" 
               component={IzinScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'İzin İşlemleri', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen 
-              name="Talepler" 
-              component={TalepScreen} 
+              name="ITHelpDesk" 
+              component={ITHelpDeskScreen} 
               options={{ 
                 headerShown: false
               }} 
             />
             <Stack.Screen 
-              name="Talep" 
-              component={TalepScreen} 
+              name="ERPHelpDesk" 
+              component={ERPHelpDeskScreen} 
+              options={{ 
+                headerShown: false
+              }} 
+            />
+            <Stack.Screen 
+              name="BakimHelpDesk" 
+              component={BakimHelpDeskScreen} 
               options={{ 
                 headerShown: false
               }} 
@@ -262,35 +295,17 @@ export default function App() {
             <Stack.Screen 
               name="Bakim" 
               component={BakimScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'Bakım Yönetimi', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen 
               name="Performans" 
               component={PerformansScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'Performans Analizi', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen 
               name="Profil" 
               component={ProfilScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'Profil Ayarları', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen 
               name="Zimmetlerim" 
@@ -310,19 +325,19 @@ export default function App() {
             <Stack.Screen 
               name="Tedarikci" 
               component={TedarikciScreen} 
-              options={{ 
-                headerShown: true, 
-                title: 'Tedarikçi Değerlendirme', 
-                headerStyle: { backgroundColor: colors.navbarBg }, 
-                headerTintColor: colors.navbarTint,
-                headerTitleStyle: { fontWeight: '800' }
-              }} 
+              options={{ headerShown: false }} 
             />
             <Stack.Screen name="AdminAyarlar" component={AdminAyarlarScreen} />
             <Stack.Screen name="AdminKullanici" component={AdminKullaniciScreen} />
             <Stack.Screen name="AdminHelpDesk" component={AdminHelpDeskScreen} />
             <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
             <Stack.Screen name="AdminTarihce" component={AdminTarihceScreen} />
+            <Stack.Screen name="Calendar" component={CalendarScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Training" component={TrainingScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Announcement" component={AnnouncementScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="SatSas" component={SatSasScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="SatDetail" component={SatDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="SasDetail" component={SasDetailScreen} options={{ headerShown: false }} />
           </>
         )}
       </Stack.Navigator>
@@ -330,5 +345,6 @@ export default function App() {
       <AlertModal />
     </NavigationContainer>
   );
-}
 
+
+}

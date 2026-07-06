@@ -1,4 +1,4 @@
-import { api, IzinOnay } from '@webportal/shared';
+import { api, IzinOnay } from '@oyemcore/shared';
 
 export const izinService = {
   getLeaveData: async (): Promise<{ requests: IzinOnay[]; balance: number }> => {

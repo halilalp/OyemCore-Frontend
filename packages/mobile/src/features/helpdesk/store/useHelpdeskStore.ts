@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Talep, TalepKategori, TalepGelisme, TalepHistory, Personel, TalepDetailResponse } from '@webportal/shared';
+import { Talep, TalepKategori, TalepGelisme, TalepHistory, Personel, TalepDetailResponse } from '@oyemcore/shared';
 import { helpdeskService } from '../services/helpdeskService';
 
 interface HelpdeskState {
@@ -19,7 +19,7 @@ interface HelpdeskState {
   createRequest: (request: { talep: Partial<Talep>; bakim?: any }) => Promise<{ success: boolean; code: string; message: string }>;
   updateRequestStatus: (id: number, status: string) => Promise<void>;
   assignRequestPersonnel: (id: number, sicilNo: string) => Promise<void>;
-  addRequestComment: (id: number, comment: string) => Promise<void>;
+  addRequestComment: (id: number, comment: string, dosyaUrl?: string) => Promise<void>;
   setSelectedRequest: (request: Talep | null) => void;
   
   toggleLock: (id: number) => Promise<void>;
@@ -137,10 +137,10 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
     }
   },
 
-  addRequestComment: async (id, comment) => {
+  addRequestComment: async (id, comment, dosyaUrl) => {
     set({ isSubmitting: true });
     try {
-      const res = await helpdeskService.addComment(id, comment);
+      const res = await helpdeskService.addComment(id, comment, dosyaUrl);
       if (res.success) {
         // Refresh details list
         await get().loadRequestDetails(id);

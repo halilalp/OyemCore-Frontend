@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Act
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { BottomNavBar } from '../../../components/BottomNavBar';
-import { api } from '@webportal/shared/src/api';
+import { ListHeader } from '../../../components/ListHeader';
+import { api } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
 
 export const AdminAyarlarScreen = () => {
@@ -52,12 +53,18 @@ export const AdminAyarlarScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <ListHeader
+        title="Yönetici Ayarları"
+        subtitle="Sistem Yönetimi & Raporlar"
+        searchValue=""
+        onSearchChange={() => {}}
+        searchPlaceholder=""
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Yönetici Ayarları</Text>
-          <Text style={styles.headerSubtitle}>Sistem Yönetimi & Raporlar</Text>
-        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 30 }} />
@@ -146,8 +153,8 @@ export const AdminAyarlarScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      <BottomNavBar />
-    </SafeAreaView>
+      <BottomNavBar currentScreen="Admin" />
+    </View>
   );
 };
 
@@ -192,18 +199,10 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
-  header: {
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  headerSubtitle: {
+  backButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
     fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
   },
   statsGrid: {
     flexDirection: 'row',

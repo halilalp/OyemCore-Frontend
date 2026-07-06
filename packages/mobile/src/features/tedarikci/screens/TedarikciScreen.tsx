@@ -3,11 +3,14 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused } from '@react-navigation/native';
-import { api } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { ListHeader } from '../../../components/ListHeader';
+import { ScrollToTopFAB } from '../../../components/ScrollToTopFAB';
 import { Ionicons } from '@expo/vector-icons';
+import { CreateModalHeader } from '../../../components/CreateModalHeader';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
   Alert.alert(title, message, [
@@ -82,6 +85,18 @@ export const TedarikciScreen = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const flatListRef = React.useRef<FlatList>(null);
+  
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollToTop(offsetY > 200);
+  };
+
+  const handleScrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
   
   // Lists
   const [listData, setListData] = useState<any[]>([]);
@@ -366,42 +381,25 @@ export const TedarikciScreen = () => {
     return colors.warning;
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.contentWrapper}>
-        
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBarWrapper}>
-            <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInputPremium}
-              placeholder="Belge no, tedarikçi veya faaliyet alanı..."
-              placeholderTextColor={colors.placeholder}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-            />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); handleSearch(); }}>
-                <Ionicons name="close-circle" size={18} color={colors.placeholder} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-          <TouchableOpacity 
-            style={styles.createBtn} 
-            onPress={() => {
-              const today = new Date();
-              const todayStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth()+1).toString().padStart(2, '0')}.${today.getFullYear()}`;
-              setNewKayitTar(todayStr);
-              setIsNewRecordOpen(true);
-            }}
-          >
-            <Text style={styles.createBtnText}>+ Yeni</Text>
-          </TouchableOpacity>
-        </View>
+  const handleCreateNew = () => {
+    const today = new Date();
+    const todayStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth()+1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+    setNewKayitTar(todayStr);
+    setIsNewRecordOpen(true);
+  };
 
-        {/* Collapsible Filter Panel */}
+  return (
+    <View style={styles.container}>
+      <ListHeader
+        title="Tedarikçi Değerlendirme"
+        subtitle={`${totalCount} Kayıt`}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Belge no, tedarikçi veya faaliyet alanı..."
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
           <View style={styles.filterChipContainer}>
             {/* Supplier Filter */}
@@ -480,12 +478,17 @@ export const TedarikciScreen = () => {
             </TouchableOpacity>
           </View>
         </ScrollView>
+      </ListHeader>
 
+      <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         {/* List evaluations */}
         {isLoading ? (
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
         ) : (
           <FlatList
+            ref={flatListRef}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             data={listData}
             keyExtractor={(item) => item.tedDegID.toString()}
             contentContainerStyle={styles.listContainer}
@@ -539,18 +542,30 @@ export const TedarikciScreen = () => {
         )}
       </View>
 
+      <BottomNavBar 
+        currentScreen="Tedarikci" 
+        customAction={{
+          icon: 'add-outline',
+          label: 'Yeni Kayıt',
+          onPress: handleCreateNew
+        }} 
+      />
+
+      <ScrollToTopFAB visible={showScrollToTop} onPress={handleScrollToTop} />
+
       {/* NEW EVALUATION RECORD MODAL */}
-      <Modal visible={isNewRecordOpen} animationType="slide" onRequestClose={() => setIsNewRecordOpen(false)}>
-        <SafeAreaView style={styles.modalContainer}>
+      <Modal 
+        visible={isNewRecordOpen} 
+        animationType="slide" 
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsNewRecordOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <CreateModalHeader
+            title="Yeni Değerlendirme"
+            onClose={() => setIsNewRecordOpen(false)}
+          />
           <View style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <View style={{ width: 40 }} />
-              <Text style={styles.modalTitle}>Yeni Değerlendirme Kaydı</Text>
-              <TouchableOpacity onPress={() => setIsNewRecordOpen(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={22} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
-            
             <ScrollView contentContainerStyle={styles.modalScroll}>
               {/* Supplier Selection */}
               <View style={styles.formGroup}>
@@ -627,7 +642,7 @@ export const TedarikciScreen = () => {
               </View>
             </ScrollView>
           </View>
-        </SafeAreaView>
+        </View>
 
         {/* Suppliers Selector */}
         <SearchableSelectorModal
@@ -673,18 +688,19 @@ export const TedarikciScreen = () => {
       </Modal>
 
       {/* DETAIL VIEW MODAL */}
-      <Modal visible={isDetailOpen} animationType="slide" onRequestClose={() => setIsDetailOpen(false)}>
+      <Modal 
+        visible={isDetailOpen} 
+        animationType="slide" 
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsDetailOpen(false)}
+      >
         {detailData && (
-          <SafeAreaView style={styles.modalContainer}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <CreateModalHeader
+              title="Değerlendirme Detayı"
+              onClose={() => setIsDetailOpen(false)}
+            />
             <View style={styles.modalContentWrapper}>
-              <View style={styles.modalHeader}>
-                <View style={{ width: 40 }} />
-                <Text style={styles.modalTitle}>Değerlendirme Detayı</Text>
-                <TouchableOpacity onPress={() => setIsDetailOpen(false)} style={styles.closeButton}>
-                  <Ionicons name="close" size={22} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
-              
               <ScrollView contentContainerStyle={styles.modalScroll}>
                 
                 {/* Header Information card */}
@@ -875,7 +891,7 @@ export const TedarikciScreen = () => {
                   {isHistoryExpanded && (
                     <View style={{ marginTop: 12 }}>
                       {history.length === 0 ? (
-                        <Text style={styles.noHistoryText}>Herhangi bir işlem kaydı bulunmamaktadır.</Text>
+                        <Text style={styles.noHistoryText}>Herhangi bir işlem kaydı bulunamadı.</Text>
                       ) : (
                         history.map((log) => (
                           <View key={log.belgeTarihceID.toString()} style={styles.historyTimelineItem}>
@@ -968,7 +984,7 @@ export const TedarikciScreen = () => {
               onSelectDate={setFormGercekTar}
               title="Gerçekleşen Teslim Tarihi Seçin"
             />
-          </SafeAreaView>
+          </View>
         )}
       </Modal>
 
@@ -1030,15 +1046,14 @@ export const TedarikciScreen = () => {
         title="Bitiş Tarihi Seçin"
       />
 
-      <BottomNavBar currentScreen="Tedarikci" />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8fafc',
   },
   contentWrapper: {
     flex: 1,
@@ -1621,14 +1636,12 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontWeight: '700',
   },
   filtersScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
   },
   filtersScrollView: {
     flexGrow: 0,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'transparent',
   },
   filterChipContainer: {
     flexDirection: 'row',
@@ -1636,22 +1649,23 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   filterChip: {
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   activeFilterChip: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
   },
   filterChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   activeFilterChipText: {
     color: '#fff',
+    fontWeight: '700',
   }
 });

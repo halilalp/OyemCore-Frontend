@@ -1,0 +1,94 @@
+﻿# OyemCore Frontend — Cursor Rules (Slate Enterprise Edition)
+
+## MİMARİ KURALLAR
+
+### Paket Yapısı
+- Monorepo: `packages/mobile` (Expo RN), `packages/shared`, `packages/web`
+- `packages/shared` hiçbir dış bağımsız kütüphaneden import edemez; yalnızca saf TypeScript/JS
+- Mobile ve web tüm API çağrılarını ve tip tanımlarını `@oyemcore/shared` üzerinden import eder
+- Ortak tipler `packages/shared/src/types.ts` dosyasında tutulur
+
+### Bileşen Mimarisi
+- `LoadingIndicator` bileşeni tüm yükleme durumları için kullanılır; inline spinner yazılmaz
+- `ScreenLayout` bileşeni tüm ekranları sarar; kendi SafeAreaView/ScrollView yazılmaz
+- `CustomIcon` bileşeni ikon render için kullanılır; Ionicons doğrudan kullanılmaz (BottomNavBar hariç)
+- `UserAvatar` bileşeni kullanıcı fotoğrafı gösterimi için kullanılır
+- Bileşenler `src/components/` klasöründe tutulur
+- Ekran bileşenleri `src/features/<feature>/screens/` klasöründe tutulur
+
+### State Yönetimi
+- Tema state'i `useThemeStore` üzerinden yönetilir; hardcoded renk kullanılmaz
+- Auth state'i `useAuthStore` üzerinden yönetilir
+- Alert/toast state'i `useAlertStore` üzerinden yönetilir
+
+---
+
+## TEMA: Slate Enterprise
+
+### Genel Kural
+- Tüm renkler `packages/shared/src/theme.ts` içindeki `slateTokens` sabitinden gelir
+- `useThemeStore` bu token'ları `ThemeColors` arayüzüne bağlar
+- **Hardcoded hex değeri KULLANILMAZ** — istisnasız
+
+### Renk Token Tablosu (slateTokens)
+
+| Token        | Değer                       | Kullanım                                       |
+|--------------|-----------------------------|------------------------------------------------|
+| bgPage       | #F4F5F7                     | Sayfa arka planı (ScrollView zemin)            |
+| surface      | #FFFFFF                     | Kartlar, inputlar                              |
+| surfaceRaised| #1E293B                     | Koyu yükseltilmiş kart (kullanıcı kartı)       |
+| headerBg     | #0F172A                     | Header arka planı                              |
+| brandPrimary | #0F172A                     | Aktif nav, today dairesi, ana eylem            |
+| brandPurple  | #7C3AED                     | Yalnızca logo ikon bg + küçük aksan            |
+| brandGold    | #C97D0A                     | Avatar bg, ID badge, aktif nav nokta, "+" btn  |
+| brandGoldLt  | #F59E0B                     | Altın ton açık varyant                         |
+| textOnDark   | #F1F5F9                     | Koyu zemin üzeri ana metin                     |
+| textBody     | #0F172A                     | Açık zemin üzeri ana metin                     |
+| textSecondary| #64748B                     | İkincil metin, etiket                          |
+| textMuted    | #94A3B8                     | Soluk metin, pasif nav                         |
+| danger       | #F87171                     | Hata, borç                                     |
+| warning      | #F59E0B                     | Uyarı                                          |
+| success      | #1A9E88                     | Başarı, yeşil durum                            |
+| border       | #E2E8F0                     | Açık zemin kenarlar                            |
+| borderOnDark | rgba(255,255,255,0.08)      | Koyu zemin kenarlar                            |
+
+### Tipografi
+- Font ağırlıkları yalnızca: 400 (regular), 500 (medium), 700 (bold)
+- 600 (semiBold) eski kodlarda kalabilir ama yeni yazılan kodda kullanılmaz
+
+### Aksiyon Düğmesi
+- "+" butonu ve birincil aksiyon rengi: brandGold (#C97D0A)
+- İkincil aksiyon: brandPrimary (#0F172A)
+
+---
+
+## KOD KALİTE KURALLARI
+
+### TypeScript
+- `any` tipi kullanımından kaçınılır; zorunluysa yorum eklenir
+- API response tipleri `@oyemcore/shared/types` üzerinden import edilir
+
+### React Native
+- Dokunma alanları minimum 44x44 piksel olmalıdır
+- `StyleSheet.create()` her zaman bileşen dışında veya fonksiyon içinde oluşturulur
+- Inline style yazılmaz; `StyleSheet.create` kullanılır (küçük override'lar hariç)
+
+### Performans
+- `FlatList` büyük listeler için tercih edilir; `ScrollView` içinde `map` ile liste render edilmez (kısa listeler hariç)
+- Görsel yükleme için `LoadingIndicator` bileşeni kullanılır
+
+---
+
+## NAVIGATION
+
+- React Navigation kullanılır
+- Screen isimleri: Home, Talepler, Izin, Bakim, Ticket, Profil, Zimmetlerim, DemirbasYonetim, Calendar, Training, Announcement, DemirbasSayim, Admin
+- `useNavigation<any>()` tip cast'i kabul edilir
+
+---
+
+## API & VERİ
+
+- Tüm API çağrıları `api` nesnesi üzerinden yapılır (`@oyemcore/shared` import)
+- Error handling: `try/catch` zorunlu, kullanıcıya Alert.alert veya `useAlertStore` ile bildirim
+- Loading state'leri her async işlem için yönetilir

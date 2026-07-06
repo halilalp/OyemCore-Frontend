@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-import { api } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -94,37 +95,18 @@ export const ZimmetlerimScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.contentWrapper}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Zimmetlerim</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBarWrapper}>
-            <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInputPremium}
-              placeholder="Tanım, barkod, seri no..."
-              placeholderTextColor={colors.placeholder}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-            />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); setTimeout(handleSearch, 0); }}>
-                <Ionicons name="close-circle" size={18} color={colors.placeholder} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
+    <View style={styles.container}>
+      <ListHeader
+        title="Zimmetlerim"
+        subtitle={`${myDebits.length} Zimmet`}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Tanım, barkod, seri no..."
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      />
+      <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
 
         {/* List Data */}
         {isLoading && !isRefreshing ? (
@@ -273,14 +255,14 @@ export const ZimmetlerimScreen = () => {
       </Modal>
 
       <BottomNavBar currentScreen="Zimmet" />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8fafc',
   },
   contentWrapper: {
     flex: 1,

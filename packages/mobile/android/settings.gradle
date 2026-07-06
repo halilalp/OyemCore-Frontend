@@ -37,3 +37,11 @@ expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
+
+// Map all child projects to the Z: drive to prevent different-root errors and long paths
+rootProject.children.each { child ->
+  def path = child.projectDir.absolutePath
+  if (path.startsWith("D:\\Solutions\\OyemCore\\OyemCoreSolution\\OyemCore-Frontend")) {
+    child.projectDir = new File(path.replace("D:\\Solutions\\OyemCore\\OyemCoreSolution\\OyemCore-Frontend", "Z:"))
+  }
+}

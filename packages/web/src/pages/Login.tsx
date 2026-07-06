@@ -107,7 +107,7 @@ export const Login: React.FC = () => {
               <div className="d-flex flex-center flex-column flex-column-fluid px-lg-10 pb-5">
                 <form className="form w-100" onSubmit={handleSubmit} id="login_form">
                   <div className="text-center mb-10">
-                    <img alt="WebPortal" src="/assets/media/logos/webportal.png" className="h-60px mb-5" style={{ objectFit: 'contain' }} />
+                    <img alt="OyemCore" src="/assets/media/logos/oyemcore.png" className="h-60px mb-5" style={{ objectFit: 'contain' }} />
                     <h1 className="text-white fw-bolder mb-3 fs-2x">
                       {isResetMode ? 'ŞİFRE SIFIRLAMA' : 'HOŞGELDİNİZ'}
                     </h1>

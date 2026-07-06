@@ -8,6 +8,7 @@ export interface User {
   yonetici?: boolean;
   zimmetSorumlusu?: boolean;
   kullaniciAdi?: string;
+  unvan?: string;
 }
 
 export interface AuthResponse {
@@ -129,10 +130,11 @@ export interface PeriyodikSarfiyat {
   malzemeKodu: string;
   malzemeAdi: string;
   miktar: number;
+  birim?: string;
   makineKodu: string;
   makineAdi: string;
-  kayitYapan: string;
-  sicilNo: string;
+  kayitSicil: string;
+  kayitTar?: string;
 }
 
 export interface Malzeme {
@@ -234,6 +236,7 @@ export interface TalepGelisme {
   eposta: string;
   kayitTarStr: string;
   adSoyad: string;
+  dosyaUrl?: string | null;
 }
 
 export interface TalepHistory {
@@ -247,10 +250,61 @@ export interface TalepDetailResponse {
   gelismeler: TalepGelisme[];
   tarihce: TalepHistory[];
   girisTur?: string;
+  bakim?: TalepBakim | null;
+  isEmriList?: IsEmri[];
   bilgiPersonelleri?: { talepBilgiID: number; bilgiSicil: string; adSoyad: string; eposta: string }[];
   onayBilgisi?: { talepAmirID: number; amirSicil: string; adSoyad: string; durum: boolean | null; kayitTarStr: string; islemTarStr: string } | null;
   soruBilgisi?: { talepSoruCevapID: number; sicil: string; adSoyad: string; eposta: string; cevapTalepGelismeID: number | null; isAnswered: boolean; soruMetni: string } | null;
 }
+
+export interface IsEmri {
+  talepIsEmriID: number;
+  isEmriTurID: number;
+  isEmriTuru: string;
+  aciklama: string;
+  terminTarStr: string;
+  sicil: string;
+  adSoyad: string;
+  kayitTarStr: string;
+  dosyaUrl?: string | null;
+  kapanmaTarStr: string;
+  sonAciklama?: string | null;
+  durum: boolean | null;
+}
+
+export interface IsEmriTur {
+  isEmriTurID: number;
+  tanim: string;
+}
+
+export interface Haber {
+  id: number;
+  konu: string;
+  aciklama?: string;
+  profilUrl: string;
+  kayitEposta: string;
+  tarih?: string;
+}
+export type Announcement = Haber;
+
+export interface Egitim {
+  id: number;
+  konu: string;
+  aciklama?: string;
+  dosyaUrl?: string;
+  kategoriID: number;
+  kayitEposta: string;
+  tarih?: string;
+  kategori?: string;
+  adSoyad?: string;
+}
+export type Training = Egitim;
+
+export interface EgitimKategori {
+  kategoriID: number;
+  tanim: string;
+}
+export type TrainingCategory = EgitimKategori;
 
 export interface TalepBakim {
   talepKodu?: string;

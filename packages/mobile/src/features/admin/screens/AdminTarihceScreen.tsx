@@ -10,8 +10,10 @@ import {
   FlatList,
 } from 'react-native';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { api } from '@webportal/shared/src/api';
+import { api } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 export const AdminTarihceScreen = () => {
@@ -90,48 +92,43 @@ export const AdminTarihceScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Belge Tarihçe Raporu</Text>
-        <Text style={styles.totalBadge}>{totalCount} Belge</Text>
-      </View>
-
-      {/* Filter Options */}
-      <View style={styles.filterSection}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="İçerik, konu ara..."
-          placeholderTextColor={colors.textSecondary}
-          value={search}
-          onChangeText={setSearch}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Belge Kodu (Örn: IT-)"
-          placeholderTextColor={colors.textSecondary}
-          value={docCode}
-          onChangeText={setDocCode}
-        />
-        <View style={styles.dateRow}>
+    <View style={styles.container}>
+      <ListHeader
+        title="Belge Tarihçe Raporu"
+        subtitle={`${totalCount} Belge`}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="İçerik, konu ara..."
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      >
+        <View style={{ gap: 8, marginTop: 10 }}>
           <TextInput
-            style={[styles.searchInput, styles.dateInput]}
-            placeholder="Başlangıç (YYYY-MM-DD)"
+            style={styles.searchInput}
+            placeholder="Belge Kodu (Örn: IT-)"
             placeholderTextColor={colors.textSecondary}
-            value={startDate}
-            onChangeText={setStartDate}
+            value={docCode}
+            onChangeText={setDocCode}
           />
-          <TextInput
-            style={[styles.searchInput, styles.dateInput]}
-            placeholder="Bitiş (YYYY-MM-DD)"
-            placeholderTextColor={colors.textSecondary}
-            value={endDate}
-            onChangeText={setEndDate}
-          />
+          <View style={styles.dateRow}>
+            <TextInput
+              style={[styles.searchInput, styles.dateInput]}
+              placeholder="Başlangıç (YYYY-MM-DD)"
+              placeholderTextColor={colors.textSecondary}
+              value={startDate}
+              onChangeText={setStartDate}
+            />
+            <TextInput
+              style={[styles.searchInput, styles.dateInput]}
+              placeholder="Bitiş (YYYY-MM-DD)"
+              placeholderTextColor={colors.textSecondary}
+              value={endDate}
+              onChangeText={setEndDate}
+            />
+          </View>
         </View>
-      </View>
+      </ListHeader>
 
       {loading ? (
         <View style={styles.loader}>
@@ -171,7 +168,8 @@ export const AdminTarihceScreen = () => {
           )}
         />
       )}
-    </SafeAreaView>
+      <BottomNavBar currentScreen="Admin" />
+    </View>
   );
 };
 
@@ -180,44 +178,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    padding: 16,
+  dateRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: theme === 'light' ? '#f5f5f5' : '#1e1e2d',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-    flex: 1,
-  },
-  totalBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-    backgroundColor: colors.primary + '15',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  filterSection: {
-    padding: 12,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     gap: 8,
   },
   searchInput: {
@@ -229,10 +191,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 12,
     color: colors.text,
     fontSize: 13,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: 8,
   },
   dateInput: {
     flex: 1,

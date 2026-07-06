@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, ScrollView, SafeAreaView, Dimensions, Touchable
 import { useThemeStore } from '../../../store/useThemeStore';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 
+import { ListHeader } from '../../../components/ListHeader';
 
 export const PerformansScreen = () => {
   const { colors } = useThemeStore();
@@ -36,13 +37,18 @@ export const PerformansScreen = () => {
   const maxVal = 100; // base for percentage calculations in bar chart
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <ListHeader
+        title="Performans Raporları"
+        subtitle="IT & ERP Süreç Analizleri"
+        searchValue=""
+        onSearchChange={() => {}}
+        searchPlaceholder=""
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Performans Raporları</Text>
-          <Text style={styles.headerSubtitle}>IT & ERP Süreç Analizleri</Text>
-        </View>
 
         {/* Filter controls */}
         <View style={styles.filterRow}>
@@ -156,7 +162,7 @@ export const PerformansScreen = () => {
         </View>
       </ScrollView>
       <BottomNavBar currentScreen="Performans" />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -172,19 +178,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
-  },
-  header: {
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
   },
   filterRow: {
     flexDirection: 'row',

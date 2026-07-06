@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-import { api } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -98,24 +99,25 @@ export const DemirbasSayimScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <ListHeader
+        title="Demirbaş Sayımı"
+        subtitle={`${sayimList.length} Sayılan Cihaz`}
+        searchValue={sayimSearch}
+        onSearchChange={setSayimSearch}
+        searchPlaceholder="Sayılan listesinde ara..."
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      />
       <View style={styles.contentWrapper}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Demirbaş Sayımı</Text>
-          <View style={{ width: 40 }} />
-        </View>
 
         {/* Input Scanning Bar */}
         <View style={[styles.searchContainer, { borderBottomWidth: 1, borderColor: colors.border }]}>
           <Text style={[styles.formLabel, { marginBottom: 8 }]}>Sayılan Demirbaş Barkodu / Seri No / Aygıt ID</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={[styles.searchBarWrapper, { flex: 1 }]}>
-              <Ionicons name="barcode-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
+              <Ionicons name="scan-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInputPremium}
                 placeholder="Kodu okutun veya manuel girin..."
@@ -136,25 +138,6 @@ export const DemirbasSayimScreen = () => {
           </View>
         </View>
 
-        {/* Search within Counted List */}
-        <View style={[styles.searchContainer, { backgroundColor: colors.card, paddingVertical: 8 }]}>
-          <View style={[styles.searchBarWrapper, { height: 38 }]}>
-            <Ionicons name="search-outline" size={16} color={colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInputPremium, { fontSize: 12 }]}
-              placeholder="Sayılan listesinde ara..."
-              placeholderTextColor={colors.placeholder}
-              value={sayimSearch}
-              onChangeText={setSayimSearch}
-              onSubmitEditing={handleSearch}
-            />
-            {sayimSearch ? (
-              <TouchableOpacity onPress={() => { setSayimSearch(''); setTimeout(fetchSayimList, 0); }}>
-                <Ionicons name="close-circle" size={16} color={colors.placeholder} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
 
         {/* Scanned Items List */}
         {isSayimLoading && sayimList.length === 0 ? (
@@ -204,7 +187,7 @@ export const DemirbasSayimScreen = () => {
       </View>
 
       <BottomNavBar currentScreen="Zimmet" />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -219,31 +202,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    paddingTop: Platform.OS === 'android' ? 12 : 12,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: theme === 'light' ? '#f5f5f5' : '#1e1e2d',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-    textAlign: 'center',
+  contentWrapper: {
+    flex: 1,
+    maxWidth: 800,
+    width: '100%',
+    alignSelf: 'center',
   },
   searchContainer: {
     paddingHorizontal: 16,

@@ -222,7 +222,7 @@ export const InnerPageLayout: React.FC<InnerPageLayoutProps> = ({ children }) =>
             <Link to="/">
               <img
                 alt="Logo"
-                src="/assets/media/logos/webportal_b.png"
+                src="/assets/media/logos/oyemcore_b.png"
                 className="h-30px h-lg-35px"
                 style={{ objectFit: 'contain' }}
               />
@@ -372,7 +372,7 @@ export const InnerPageLayout: React.FC<InnerPageLayoutProps> = ({ children }) =>
             <div className="text-gray-900 order-2 order-md-1">
               <span className="text-muted fw-semibold me-1">2026©</span>
               <a href="https://oyemsoft.com/" target="_blank" rel="noopener noreferrer" className="text-gray-800 text-hover-primary">
-                OyemSoft - WebPortal
+                OyemSoft - OyemCore
               </a>
             </div>
           </div>

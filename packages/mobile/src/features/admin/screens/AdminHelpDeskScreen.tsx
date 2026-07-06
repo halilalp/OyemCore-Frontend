@@ -14,8 +14,10 @@ import {
   FlatList,
 } from 'react-native';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { api } from '@webportal/shared/src/api';
+import { api } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 export const AdminHelpDeskScreen = () => {
@@ -297,51 +299,22 @@ export const AdminHelpDeskScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>HelpDesk Ayarları</Text>
-        </View>
-        <TouchableOpacity style={styles.newBtn} onPress={openNewCategory}>
-          <Text style={styles.newBtnText}>+ Yeni Kategori</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter panel */}
-      <View style={styles.filterRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Kategori ismi ara..."
-          placeholderTextColor={colors.textSecondary}
-          value={search}
-          onChangeText={setSearch}
-        />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterPills}>
-          <TouchableOpacity
-            style={[styles.filterPill, selectedType === '' && styles.filterPillActive]}
-            onPress={() => setSelectedType('')}>
-            <Text style={[styles.filterPillText, selectedType === '' && styles.filterPillTextActive]}>Tümü</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterPill, selectedType === 'IT' && styles.filterPillActive]}
-            onPress={() => setSelectedType('IT')}>
-            <Text style={[styles.filterPillText, selectedType === 'IT' && styles.filterPillTextActive]}>IT (Bilgi Tek.)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterPill, selectedType === 'ERP' && styles.filterPillActive]}
-            onPress={() => setSelectedType('ERP')}>
-            <Text style={[styles.filterPillText, selectedType === 'ERP' && styles.filterPillTextActive]}>ERP</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterPill, selectedType === 'BAKIM' && styles.filterPillActive]}
-            onPress={() => setSelectedType('BAKIM')}>
-            <Text style={[styles.filterPillText, selectedType === 'BAKIM' && styles.filterPillTextActive]}>Bakım Onarım</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+    <View style={styles.container}>
+      <ListHeader
+        title="HelpDesk Ayarları"
+        subtitle={`${categories.length} Kategori`}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Kategori ismi ara..."
+        activeFilter={selectedType}
+        onFilterChange={setSelectedType}
+        filters={[
+          { id: '', label: 'Tümü' },
+          { id: 'IT', label: 'IT (Bilgi Tek.)' },
+          { id: 'ERP', label: 'ERP' },
+          { id: 'BAKIM', label: 'Bakım Onarım' }
+        ]}
+      />
 
       {loading ? (
         <View style={styles.loader}>
@@ -559,7 +532,16 @@ export const AdminHelpDeskScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      <BottomNavBar 
+        currentScreen="Admin" 
+        customAction={{
+          icon: 'add-outline',
+          label: 'Yeni Kategori',
+          onPress: openNewCategory
+        }} 
+      />
+    </View>
   );
 };
 
@@ -568,82 +550,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: theme === 'light' ? '#f5f5f5' : '#1e1e2d',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  newBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  newBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  filterRow: {
-    padding: 12,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 10,
-  },
-  searchInput: {
+  container: {
+    flex: 1,
     backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    color: colors.text,
-    fontSize: 14,
-  },
-  filterPills: {
-    flexDirection: 'row',
-  },
-  filterPill: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: colors.border,
-    marginRight: 8,
-  },
-  filterPillActive: {
-    backgroundColor: colors.primary,
-  },
-  filterPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  filterPillTextActive: {
-    color: '#ffffff',
   },
   loader: {
     flex: 1,

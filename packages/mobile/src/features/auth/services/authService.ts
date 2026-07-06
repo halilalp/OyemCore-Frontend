@@ -1,4 +1,4 @@
-import { api, setAuthToken, User } from '@webportal/shared';
+import { api, setAuthToken, User } from '@oyemcore/shared';
 
 // Custom base64 decoder for React Native where window.atob is missing
 const base64Decode = (str: string): string => {
@@ -80,8 +80,8 @@ export const mapClaimsToUser = (claims: any): User | null => {
 };
 
 export const authService = {
-  login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
-    const res = await api.login(username, password);
+  login: async (username: string, password: string, sirketKodu?: string): Promise<{ token: string; user: User }> => {
+    const res = await api.login(username, password, sirketKodu);
     if (res && res.token) {
       const claims = parseJwt(res.token);
       const user = mapClaimsToUser(claims);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
 
 export const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);

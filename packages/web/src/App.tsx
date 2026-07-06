@@ -9,7 +9,7 @@ import { AdminUsers } from './pages/AdminUsers';
 import { AdminProjects } from './pages/AdminProjects';
 import { AdminPages } from './pages/AdminPages';
 import { InnerPageLayout } from './components/InnerPageLayout';
-import { api } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
 
 const AnnouncementsCarousel: React.FC = () => {
   const announcements = [
@@ -155,7 +155,7 @@ const Dashboard: React.FC = () => {
       {/* Welcome banner */}
       <div style={styles.welcomeBanner}>
         <h2>Hoş Geldin, {user?.adSoyad}!</h2>
-        <p>Oyemsoft WebPortal sistemine başarıyla giriş yaptınız. Aşağıdan sistem özetini görebilirsiniz.</p>
+        <p>Oyemsoft OyemCore sistemine başarıyla giriş yaptınız. Aşağıdan sistem özetini görebilirsiniz.</p>
       </div>
 
       {/* Grid: Stats Cards & Carousel */}

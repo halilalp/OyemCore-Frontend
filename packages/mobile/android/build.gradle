@@ -19,6 +19,10 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+  // Shorten build directory to prevent Windows MAX_PATH (260 char) errors in C++ compilation
+  if (project != rootProject) {
+    layout.buildDirectory.set(file("${rootDir}/../../../b/${project.name}"))
+  }
 }
 
 apply plugin: "expo-root-project"

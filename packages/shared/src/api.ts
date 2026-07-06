@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim } from './types';
 
 let token: string | null = null;
-let apiBaseUrl: string = 'http://localhost:5140/api'; // Default fallback, can be configured
+let apiBaseUrl: string = 'http://127.0.0.1:5140/api'; // Local loopback for ADB reversed emulator
 
 export const setAuthToken = (newToken: string | null) => {
   token = newToken;
@@ -11,6 +11,10 @@ export const setAuthToken = (newToken: string | null) => {
 export const setApiBaseUrl = (newUrl: string) => {
   apiBaseUrl = newUrl;
   apiClient.defaults.baseURL = newUrl;
+};
+
+export const setClientType = (type: 'mobile' | 'web') => {
+  apiClient.defaults.headers.common['X-Client-Type'] = type;
 };
 
 const apiClient: AxiosInstance = axios.create({
@@ -34,7 +38,7 @@ apiClient.interceptors.response.use((response) => {
 }, (error) => {
   if (error.response && error.response.status === 401) {
     setAuthToken(null);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       localStorage.removeItem('token');
       if (!window.location.pathname.endsWith('/login')) {
         window.location.href = '/login';
@@ -45,9 +49,139 @@ apiClient.interceptors.response.use((response) => {
 });
 
 export const api = {
+  getBaseUrl: () => {
+    return apiBaseUrl.replace('/api', '');
+  },
+
+  // Dashboard & Takvim Endpoints
+  getDashboardMenu: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Dashboard/menu');
+    return response.data;
+  },
+  getDashboardBirthdays: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Dashboard/birthdays');
+    return response.data;
+  },
+  getDashboardTrainings: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Dashboard/trainings');
+    return response.data;
+  },
+  getDashboardNews: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Dashboard/news');
+    return response.data;
+  },
+
+  // Takvim anasayfa (JSON tabanlı, hızlı — ±1 ay penceresi)
+  getTakvimHomeEvents: async (startDate?: string, endDate?: string): Promise<any[]> => {
+    let url = '/Takvim/home';
+    const params: string[] = [];
+    if (startDate) params.push(`startDate=${encodeURIComponent(startDate)}`);
+    if (endDate) params.push(`endDate=${encodeURIComponent(endDate)}`);
+    if (params.length) url += `?${params.join('&')}`;
+    const response = await apiClient.get<any[]>(url);
+    return response.data;
+  },
+
+  // Haber CRUD (kendi kayıtları)
+  getNewsList: async (search?: string, startDate?: string, endDate?: string): Promise<any[]> => {
+    const params: string[] = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (startDate) params.push(`startDate=${encodeURIComponent(startDate)}`);
+    if (endDate) params.push(`endDate=${encodeURIComponent(endDate)}`);
+    const url = '/Haber' + (params.length ? `?${params.join('&')}` : '');
+    const response = await apiClient.get<any[]>(url);
+    return response.data;
+  },
+  getNewsDetail: async (id: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/Haber/${id}`);
+    return response.data;
+  },
+  saveNews: async (payload: { konu: string; aciklama: string; profilUrl?: string }): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.post<{ success: boolean; message?: string }>('/Haber', payload);
+    return response.data;
+  },
+  updateNews: async (id: number, payload: { konu: string; aciklama: string; profilUrl?: string }): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.put<{ success: boolean; message?: string }>(`/Haber/${id}`, payload);
+    return response.data;
+  },
+  deleteNews: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.delete<{ success: boolean; message?: string }>(`/Haber/${id}`);
+    return response.data;
+  },
+
+  // Eğitim CRUD (kendi kayıtları)
+  getTrainings: async (search?: string): Promise<any[]> => {
+    const url = '/Egitim' + (search ? `?search=${encodeURIComponent(search)}` : '');
+    const response = await apiClient.get<any[]>(url);
+    return response.data;
+  },
+  getTrainingCategories: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Egitim/categories');
+    return response.data;
+  },
+  saveTraining: async (payload: { konu: string; aciklama?: string; kategoriID: number; dosyaUrl?: string }): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.post<{ success: boolean; message?: string }>('/Egitim', payload);
+    return response.data;
+  },
+  updateTraining: async (id: number, payload: { konu: string; aciklama?: string; kategoriID: number; dosyaUrl?: string }): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.put<{ success: boolean; message?: string }>(`/Egitim/${id}`, payload);
+    return response.data;
+  },
+  deleteTraining: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.delete<{ success: boolean; message?: string }>(`/Egitim/${id}`);
+    return response.data;
+  },
+
+  // Dosya yükleme (module bazlı)
+  uploadFile: async (fileData: { fileName: string; fileBase64: string }, module: string): Promise<{ success: boolean; filePath: string; relativePath: string; fileName: string; message?: string }> => {
+    const endpoint = module === 'HaberImg' ? '/Haber/upload-file' : '/Egitim/upload-file';
+    const response = await apiClient.post<{ success: boolean; filePath: string; fileName: string; message?: string }>(endpoint, { ...fileData, module });
+    return { ...response.data, relativePath: response.data.filePath };
+  },
+
+  // Dosya URL'i (görüntüleme için)
+  downloadFileUrl: (path: string, module?: string): string => {
+    if (path.startsWith('/')) {
+      return `${apiBaseUrl}/Files/download?relativePath=${encodeURIComponent(path)}&clientType=mobile&inline=true`;
+    }
+    const mod = module || 'HABERIMG';
+    return `${apiBaseUrl}/Files/download?module=${encodeURIComponent(mod)}&fileName=${encodeURIComponent(path)}&clientType=mobile&inline=true`;
+  },
+
+  getTakvimEvents: async (startDate?: string, endDate?: string): Promise<any[]> => {
+    let url = '/Takvim';
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (params.toString()) url += `?${params.toString()}`;
+    const response = await apiClient.get<any[]>(url);
+    return response.data;
+  },
+  createTakvimEvent: async (eventData: any): Promise<any> => {
+    const response = await apiClient.post<any>('/Takvim', eventData);
+    return response.data;
+  },
+  updateTakvimEvent: async (id: number, eventData: any): Promise<any> => {
+    const response = await apiClient.put<any>(`/Takvim/${id}`, eventData);
+    return response.data;
+  },
+  deleteTakvimEvent: async (id: number): Promise<any> => {
+    const response = await apiClient.delete<any>(`/Takvim/${id}`);
+    return response.data;
+  },
+  getTakvimCategories: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Takvim/categories');
+    return response.data;
+  },
+
   // Auth Endpoints
-  login: async (username: string, password: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', { username, password });
+  getTenantsList: async (): Promise<{ tenantId: string, unvan: string }[]> => {
+    const response = await apiClient.get<{ tenantId: string, unvan: string }[]>('/auth/sirketler');
+    return response.data;
+  },
+  login: async (username: string, password: string, sirketKodu?: string): Promise<AuthResponse> => {
+    const headers = sirketKodu ? { 'X-Tenant-Id': sirketKodu } : {};
+    const response = await apiClient.post<AuthResponse>('/auth/login', { username, password, sirketKodu }, { headers });
     return response.data;
   },
 
@@ -424,6 +558,30 @@ export const api = {
   },
 
   // Request (Talep) Endpoints
+  getIsEmriTurleri: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Talep/is-emri-turleri');
+    return response.data;
+  },
+
+  saveIsEmri: async (talepKodu: string, data: any): Promise<any> => {
+    const response = await apiClient.post<any>(`/Talep/${talepKodu}/is-emri-kaydet`, data);
+    return response.data;
+  },
+
+  closeIsEmri: async (isEmriID: number, data: { aciklama: string }): Promise<any> => {
+    const response = await apiClient.post<any>(`/Talep/is-emri-kapat/${isEmriID}`, data);
+    return response.data;
+  },
+
+  assignIsEmri: async (isEmriID: number, data: { sicil: string }): Promise<any> => {
+    const response = await apiClient.post<any>(`/Talep/is-emri-aksiyon/${isEmriID}`, data);
+    return response.data;
+  },
+
+  saveTalepKontrol: async (talepKodu: string, data: any): Promise<any> => {
+    const response = await apiClient.post<any>(`/Talep/${talepKodu}/kontrol-kaydet`, data);
+    return response.data;
+  },
   getTaleps: async (tur: string): Promise<Talep[]> => {
     const response = await apiClient.get<Talep[]>('/talep', { params: { tur } });
     return response.data;
@@ -459,8 +617,13 @@ export const api = {
     return response.data;
   },
 
-  addTalepGelisme: async (id: number, aciklama: string): Promise<{ success: boolean }> => {
-    const response = await apiClient.post<{ success: boolean }>(`/talep/${id}/gelisme`, { aciklama });
+  addTalepGelisme: async (id: number, aciklama: string, dosyaUrl?: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>(`/talep/${id}/gelisme`, { aciklama, dosyaUrl });
+    return response.data;
+  },
+
+  uploadHelpdeskFile: async (fileData: { fileName: string, fileBase64: string, module?: string }): Promise<{ success: boolean, filePath: string, fileName: string }> => {
+    const response = await apiClient.post<{ success: boolean, filePath: string, fileName: string }>('/talep/upload-file', fileData);
     return response.data;
   },
 

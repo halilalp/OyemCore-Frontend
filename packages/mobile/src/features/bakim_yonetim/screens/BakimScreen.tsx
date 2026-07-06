@@ -3,11 +3,14 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused } from '@react-navigation/native';
-import { api, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@webportal/shared';
+import { api, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { FilePickerSheet } from '../../../components/FilePickerSheet';
+import { AttachmentPreview } from '../../../components/AttachmentPreview';
 
 
 
@@ -63,6 +66,9 @@ export const BakimScreen = () => {
   const [ctrlSarfiyats, setCtrlSarfiyats] = useState<PeriyodikSarfiyat[]>([]);
   const [ctrlSubTab, setCtrlSubTab] = useState<'gelisme' | 'sarfiyat'>('gelisme');
   const [newCtrlNot, setNewCtrlNot] = useState('');
+  const [ctrlDosyaUrl, setCtrlDosyaUrl] = useState<string | null>(null);
+  const [ctrlDosyaName, setCtrlDosyaName] = useState<string | null>(null);
+  const [isCtrlFilePickerOpen, setIsCtrlFilePickerOpen] = useState(false);
 
   // Filters T2
   const [ctrlSirketFilter, setCtrlSirketFilter] = useState('');
@@ -274,8 +280,10 @@ export const BakimScreen = () => {
   const handleAddCtrlGelisme = async () => {
     if (!selectedCtrl || !newCtrlNot.trim()) return;
     try {
-      await api.savePeriyodikGelisme(selectedCtrl.kontrolKodu, { aciklama: newCtrlNot, dosyaUrl: '' });
+      await api.savePeriyodikGelisme(selectedCtrl.kontrolKodu, { aciklama: newCtrlNot, dosyaUrl: ctrlDosyaUrl || '' });
       setNewCtrlNot('');
+      setCtrlDosyaUrl(null);
+      setCtrlDosyaName(null);
       const gelismeler = await api.getPeriyodikGelismeler(selectedCtrl.kontrolKodu);
       setCtrlGelismeler(gelismeler || []);
       Alert.alert('Başarılı', 'Gelişme notu eklendi.');
@@ -421,69 +429,79 @@ export const BakimScreen = () => {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'plan' && styles.activeTab]}
-          onPress={() => setActiveTab('plan')}
-        >
-          <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>Planlı Bakım</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'periyodik' && styles.activeTab]}
-          onPress={() => setActiveTab('periyodik')}
-        >
-          <Text style={[styles.tabText, activeTab === 'periyodik' && styles.activeTabText]}>Periyodik Kontrol</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'rapor' && styles.activeTab]}
-          onPress={() => setActiveTab('rapor')}
-        >
-          <Text style={[styles.tabText, activeTab === 'rapor' && styles.activeTabText]}>Raporlar</Text>
-        </TouchableOpacity>
-      </View>
+  const getSearchValue = () => {
+    if (activeTab === 'plan') return searchPlanText;
+    if (activeTab === 'periyodik') return searchCtrlText;
+    return '';
+  };
 
-      <View style={styles.contentWrapper}>
+  const handleSearchChange = (text: string) => {
+    if (activeTab === 'plan') setSearchPlanText(text);
+    if (activeTab === 'periyodik') setSearchCtrlText(text);
+  };
+
+  return (
+    <View style={styles.container}>
+      <ListHeader
+        title="Bakım Yönetimi"
+        subtitle={activeTab === 'plan' ? `${plans.length} Planlı Bakım` : activeTab === 'periyodik' ? `${controls.length} Periyodik Kontrol` : 'Raporlar'}
+        searchValue={getSearchValue()}
+        onSearchChange={handleSearchChange}
+        searchPlaceholder={activeTab === 'plan' ? "Plan Kodu veya Hat Ara..." : "Kontrol Kodu veya Bölüm Ara..."}
+        activeFilter={activeTab}
+        onFilterChange={(id: string) => setActiveTab(id as any)}
+        filters={[
+          { id: 'plan', label: 'Planlı Bakım' },
+          { id: 'periyodik', label: 'Periyodik Kontrol' },
+          { id: 'rapor', label: 'Raporlar' }
+        ]}
+      >
+        {activeTab === 'plan' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
+            <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanSirketFltOpen(true)}>
+              <Text style={styles.filterChipText}>
+                🏢 Şirket: {dropdowns?.sirkets?.find((c: any) => c.sirketKodu === planSirketFilter)?.sirketAdi || 'Hepsi'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanBolumFltOpen(true)}>
+              <Text style={styles.filterChipText}>
+                ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === planBolumFilter)?.bolumAdi || 'Hepsi'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanDurumFltOpen(true)}>
+              <Text style={styles.filterChipText}>
+                📊 Durum: {planDurumFilter || 'Hepsi'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        {activeTab === 'periyodik' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
+            <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlSirketFltOpen(true)}>
+              <Text style={styles.filterChipText}>
+                🏢 Şirket: {dropdowns?.sirkets?.find((c: any) => c.sirketKodu === ctrlSirketFilter)?.sirketAdi || 'Hepsi'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlBolumFltOpen(true)}>
+              <Text style={styles.filterChipText}>
+                ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === ctrlBolumFilter)?.bolumAdi || 'Hepsi'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlDurumFltOpen(true)}>
+              <Text style={styles.filterChipText}>
+                📊 Durum: {ctrlDurumFilter || 'Hepsi'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+      </ListHeader>
+
+      <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         
         {/* --- PLANLI BAKIM TAB --- */}
         {activeTab === 'plan' && (
           <View style={{ flex: 1 }}>
-            {/* Filter Panel */}
-            <View style={styles.filterBar}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                <TouchableOpacity style={styles.filterBadge} onPress={() => setIsPlanSirketFltOpen(true)}>
-                  <Text style={styles.filterBadgeText}>
-                    🏢 Sirket: {dropdowns?.sirkets?.find((c: any) => c.sirketKodu === planSirketFilter)?.sirketAdi || 'Hepsi'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.filterBadge} onPress={() => setIsPlanBolumFltOpen(true)}>
-                  <Text style={styles.filterBadgeText}>
-                    ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === planBolumFilter)?.bolumAdi || 'Hepsi'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.filterBadge} onPress={() => setIsPlanDurumFltOpen(true)}>
-                  <Text style={styles.filterBadgeText}>
-                    📊 Durum: {planDurumFilter || 'Hepsi'}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-
-            <View style={styles.searchRow}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Plan Kodu veya Hat Ara..."
-                placeholderTextColor={colors.placeholder}
-                value={searchPlanText}
-                onChangeText={setSearchPlanText}
-                onSubmitEditing={loadPlans}
-              />
-              <TouchableOpacity style={styles.addBtn} onPress={() => setIsNewPlanOpen(true)}>
-                <Text style={styles.addBtnText}>+ Ekle</Text>
-              </TouchableOpacity>
-            </View>
 
             {isLoading ? (
               <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -520,40 +538,6 @@ export const BakimScreen = () => {
         {/* --- PERIYODIK KONTROL TAB --- */}
         {activeTab === 'periyodik' && (
           <View style={{ flex: 1 }}>
-            {/* Filter Panel */}
-            <View style={styles.filterBar}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                <TouchableOpacity style={styles.filterBadge} onPress={() => setIsCtrlSirketFltOpen(true)}>
-                  <Text style={styles.filterBadgeText}>
-                    🏢 Sirket: {dropdowns?.sirkets?.find((c: any) => c.sirketKodu === ctrlSirketFilter)?.sirketAdi || 'Hepsi'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.filterBadge} onPress={() => setIsCtrlBolumFltOpen(true)}>
-                  <Text style={styles.filterBadgeText}>
-                    ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === ctrlBolumFilter)?.bolumAdi || 'Hepsi'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.filterBadge} onPress={() => setIsCtrlDurumFltOpen(true)}>
-                  <Text style={styles.filterBadgeText}>
-                    📊 Durum: {ctrlDurumFilter || 'Hepsi'}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-
-            <View style={styles.searchRow}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Kontrol Kodu veya Bölüm Ara..."
-                placeholderTextColor={colors.placeholder}
-                value={searchCtrlText}
-                onChangeText={setSearchCtrlText}
-                onSubmitEditing={loadControls}
-              />
-              <TouchableOpacity style={styles.addBtn} onPress={() => setIsNewCtrlOpen(true)}>
-                <Text style={styles.addBtnText}>+ Ekle</Text>
-              </TouchableOpacity>
-            </View>
 
             {isLoading ? (
               <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -1009,10 +993,13 @@ export const BakimScreen = () => {
                       ctrlGelismeler.map(n => (
                         <View key={n.id} style={styles.logCard}>
                           <View style={styles.logHeader}>
-                            <Text style={styles.logUser}>👤 {n.kayitYapan}</Text>
-                            <Text style={styles.logTime}>{n.kayitTarihiStr}</Text>
+                            <Text style={styles.logUser}>👤 {n.personel}</Text>
+                            <Text style={styles.logTime}>{n.tarihStr}</Text>
                           </View>
                           <Text style={styles.logBody}>{n.aciklama}</Text>
+                          {n.dosyaUrl && (
+                            <AttachmentPreview dosyaUrl={n.dosyaUrl} module="BAKIM" />
+                          )}
                         </View>
                       ))
                     )}
@@ -1027,6 +1014,24 @@ export const BakimScreen = () => {
                           value={newCtrlNot}
                           onChangeText={setNewCtrlNot}
                         />
+                        {ctrlDosyaName && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
+                            <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
+                            <Text style={{ marginLeft: 6, color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                              {ctrlDosyaName}
+                            </Text>
+                            <TouchableOpacity onPress={() => { setCtrlDosyaUrl(null); setCtrlDosyaName(null); }}>
+                              <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, marginTop: 8 }}
+                          onPress={() => setIsCtrlFilePickerOpen(true)}
+                        >
+                          <Ionicons name="attach-outline" size={18} color={colors.primary} />
+                          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Dosya Ekle</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity style={styles.submitBtn} onPress={handleAddCtrlGelisme}>
                           <Text style={styles.submitBtnText}>Gelişme Ekle</Text>
                         </TouchableOpacity>
@@ -1043,7 +1048,7 @@ export const BakimScreen = () => {
                           <View style={styles.sarfiyatInfo}>
                             <Text style={styles.sarfName}>{s.malzemeAdi} ({s.malzemeKodu})</Text>
                             <Text style={styles.sarfDesc}>Miktar: {s.miktar} adet | Makine: {s.makineAdi || s.makineKodu}</Text>
-                            <Text style={styles.sarfUser}>👤 {s.kayitYapan}</Text>
+                            <Text style={styles.sarfUser}>👤 {s.kayitSicil}</Text>
                           </View>
                           <TouchableOpacity onPress={() => handleDeleteSarfiyat(s.id)} style={styles.deleteSarfBtn}>
                             <Text style={styles.deleteSarfText}>✕</Text>
@@ -1121,6 +1126,16 @@ export const BakimScreen = () => {
           </SafeAreaView>
         )}
       </Modal>
+
+      <FilePickerSheet
+        visible={isCtrlFilePickerOpen}
+        onClose={() => setIsCtrlFilePickerOpen(false)}
+        module="BAKIM"
+        onPicked={(file) => {
+          setCtrlDosyaUrl(file.filePath);
+          setCtrlDosyaName(file.fileName);
+        }}
+      />
 
       {/* NEW PERIODIC CONTROL MODAL */}
       <Modal visible={isNewCtrlOpen} animationType="slide" onRequestClose={() => setIsNewCtrlOpen(false)}>
@@ -1425,23 +1440,21 @@ export const BakimScreen = () => {
         onSelectDate={setFormCtrlBitis}
         title="Kontrol Hedef Bitiş Tarihi Seçin"
       />
-
       <BottomNavBar 
         currentScreen="Bakim" 
-
         customAction={
           activeTab === 'plan' ? {
-            icon: '📅',
+            icon: 'add-outline',
             label: 'Yeni Plan',
             onPress: () => setIsNewPlanOpen(true)
           } : activeTab === 'periyodik' ? {
-            icon: '🔍',
+            icon: 'add-outline',
             label: 'Yeni Kontrol',
             onPress: () => setIsNewCtrlOpen(true)
           } : undefined
         } 
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -1453,9 +1466,32 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
+  },
+  filterChipsScroll: {
+    paddingHorizontal: 0,
+    marginTop: 12,
+  },
+  filterChipsContainer: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
   },
   tabsContainer: {
     flexDirection: 'row',

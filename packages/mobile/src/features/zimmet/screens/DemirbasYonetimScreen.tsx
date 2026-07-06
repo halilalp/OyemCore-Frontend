@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-import { api } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -434,38 +435,17 @@ export const DemirbasYonetimScreen = () => {
 
   const renderListView = () => {
     return (
-      <>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Demirbaş Yönetimi</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBarWrapper}>
-            <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInputPremium}
-              placeholder="Tanım, barkod, seri/sicil no..."
-              placeholderTextColor={colors.placeholder}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-            />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); setTimeout(handleSearch, 0); }}>
-                <Ionicons name="close-circle" size={18} color={colors.placeholder} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Horizontal Filters */}
-        <View style={{ height: 50 }}>
+      <View style={{ flex: 1 }}>
+        <ListHeader
+          title="Demirbaş Yönetimi"
+          subtitle={`${totalAssetsCount} Kayıt`}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Tanım, barkod, seri/sicil no..."
+          activeFilter=""
+          onFilterChange={() => {}}
+          filters={[]}
+        >
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false} 
@@ -522,7 +502,7 @@ export const DemirbasYonetimScreen = () => {
               )}
             </TouchableOpacity>
           </ScrollView>
-        </View>
+        </ListHeader>
 
         {/* List data */}
         {isLoading && pageIndex === 1 ? (
@@ -599,12 +579,12 @@ export const DemirbasYonetimScreen = () => {
                 setCurrentView('create');
               }}
             >
-              <Ionicons name="add-outline" size={18} color="#fff" />
+              <Ionicons name="add-circle-outline" size={18} color="#fff" />
               <Text style={[styles.actionBtnLabel, { color: '#fff' }]}>+ Yeni</Text>
             </TouchableOpacity>
           </View>
         )}
-      </>
+      </View>
     );
   };
 
@@ -615,7 +595,7 @@ export const DemirbasYonetimScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => { setCurrentView('list'); setSelectedAsset(null); }} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Demirbaş Detayı</Text>
           {isAdmin ? (
@@ -761,7 +741,7 @@ export const DemirbasYonetimScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{editingAsset ? 'Demirbaş Güncelle' : 'Yeni Demirbaş Ekle'}</Text>
           <TouchableOpacity onPress={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }} style={styles.closeButton}>
@@ -888,7 +868,7 @@ export const DemirbasYonetimScreen = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setCurrentView('detail')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Zimmet Atama Formu</Text>
           <TouchableOpacity onPress={() => setCurrentView('detail')} style={styles.closeButton}>
@@ -940,15 +920,40 @@ export const DemirbasYonetimScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.contentWrapper}>
         {currentView === 'list' && renderListView()}
         {currentView === 'detail' && renderDetailView()}
         {currentView === 'create' && renderCreateView()}
         {currentView === 'assign' && renderAssignView()}
       </View>
+      
+      {currentView === 'list' && (
+        <BottomNavBar 
+          currentScreen="Zimmet" 
+          customAction={isAdmin ? {
+            icon: 'add-outline',
+            label: 'Yeni Demirbaş',
+            onPress: () => {
+              setEditingAsset(null);
+              setCreateTanim('');
+              setCreateSeriNo('');
+              setCreateAciklama('');
+              setCreateKategori(null);
+              setCreateMarka(null);
+              setCreateMiktar('1');
+              setCreateSorumluDepKod(null);
+              setCreateDemirbasKodu('');
+              setCreateKonum('');
+              setCreateMasrafMerkezi('');
+              setCurrentView('create');
+            }
+          } : undefined} 
+        />
+      )}
+
       {renderSelectorView()}
-    </SafeAreaView>
+    </View>
   );
 };
 

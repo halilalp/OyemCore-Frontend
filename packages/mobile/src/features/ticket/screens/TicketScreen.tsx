@@ -1,69 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Linking, Platform, StatusBar } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  StyleSheet, Text, View, ScrollView, TouchableOpacity,
+  ActivityIndicator, Modal, TextInput, SafeAreaView, Alert,
+  FlatList, Platform, StatusBar, Image, KeyboardAvoidingView
+} from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { api, Ticket, Company, Personel } from '@webportal/shared';
+import { api, Ticket, Company, Personel, slateTokens } from '@oyemcore/shared';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import { getBase64FromFileUri, buildFileDownloadUrl } from '../../../utils/fileUtils';
 import { BottomNavBar } from '../../../components/BottomNavBar';
+import { AttachmentPreview } from '../../../components/AttachmentPreview';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
+import { ListHeader } from '../../../components/ListHeader';
+import { TicketCard } from '../../../components/TicketCard';
+import { UserAvatar } from '../../../components/UserAvatar';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// ─── HTML Helpers ──────────────────────────────────────────────────────────────
 
-
-const confirmAction = (title: string, message: string, onConfirm: () => void) => {
-  Alert.alert(title, message, [
-    { text: 'İptal', style: 'cancel' },
-    { text: 'Evet', onPress: onConfirm }
-  ]);
+const extractImagesFromHtml = (html: string | null | undefined): string[] => {
+  if (!html) return [];
+  const regex = /<img[^>]+src="([^">]+)"/gi;
+  let matches;
+  const images: string[] = [];
+  while ((matches = regex.exec(html)) !== null) {
+    if (matches[1]) {
+      let src = matches[1];
+      if (src.startsWith('/')) {
+        src = buildFileDownloadUrl({ relativePath: src.substring(1) }, { inline: true });
+      }
+      images.push(src);
+    }
+  }
+  return images;
 };
 
-const showAlert = (title: string, message: string) => {
-  Alert.alert(title, message);
+const stripHtml = (html: string | null | undefined): string => {
+  if (!html) return '';
+  let safeHtml = html.replace(/src="data:image[^"]+"/gi, 'src=""');
+  return safeHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .trim();
 };
+
+// ─── Status / Priority Helpers ─────────────────────────────────────────────────
+
+const getStatusStyle = (durum: string) => {
+  const d = (durum || '').toUpperCase();
+  if (d === 'TAMAM') return { bg: '#dcfce7', text: '#15803d', label: 'TAMAM' };
+  if (d === 'TEST')  return { bg: '#dbeafe', text: '#1d4ed8', label: 'TEST' };
+  if (d === 'ISLEM') return { bg: '#fef9c3', text: '#a16207', label: 'İŞLEMDE' };
+  return { bg: '#ffedd5', text: '#c2410c', label: 'HAVUZ' };
+};
+
+const getPriorityStyle = (oncelik: string | null | undefined) => {
+  if (!oncelik) return { bg: slateTokens.pastelBlueBg, text: slateTokens.brandPrimary, label: 'Normal' };
+  const v = oncelik.toUpperCase();
+  if (v.includes('KRİ') || v.includes('YÜKS') || v.includes('HIGH') || v.includes('YUKSEK')) {
+    return { bg: '#fef2f2', text: slateTokens.danger, label: oncelik };
+  }
+  if (v === 'ORTA' || v === 'MEDIUM') {
+    return { bg: slateTokens.warningLt, text: slateTokens.warning, label: oncelik };
+  }
+  return { bg: slateTokens.pastelBlueBg, text: slateTokens.brandPrimary, label: oncelik };
+};
+
+// ─── Component ─────────────────────────────────────────────────────────────────
 
 export const TicketScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { user } = useAuthStore();
   const { colors } = useThemeStore();
   const styles = createStyles(colors);
 
+  // ── List state ────────────────────────────────────────────────────────────────
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [companies, setCompanies] = useState<Company[]>([]);
   const [personels, setPersonels] = useState<Personel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [selectedCol, setSelectedCol] = useState<'HAVUZ' | 'ISLEM' | 'TEST' | 'TAMAM' | 'TÜMÜ'>('HAVUZ');
+  const [activeTab, setActiveTab] = useState<'HAVUZ' | 'ISLEM' | 'TEST' | 'TAMAM'>('HAVUZ');
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [onlyMine, setOnlyMine] = useState<boolean>(false);
 
-  // Details Modal states
+  // ── Detail modal state ────────────────────────────────────────────────────────
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [details, setDetails] = useState<{ yorumlar: any[], dosyalar: any[], tarihce: any[] } | null>(null);
+  const [details, setDetails] = useState<{ ticket: Ticket | null; yorumlar: any[]; dosyalar: any[]; tarihce: any[] } | null>(null);
+  const [isCommentsExpanded, setIsCommentsExpanded] = useState(true);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+
+  // ── Comment modal state ───────────────────────────────────────────────────────
+  const [isAddCommentOpen, setIsAddCommentOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-  const [isAssignOpen, setIsAssignOpen] = useState(false);
-  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [commentDosyaUrl, setCommentDosyaUrl] = useState<string | null>(null);
+  const [commentDosyaName, setCommentDosyaName] = useState<string | null>(null);
 
-  // Create Modal states
+  // ── Actions menu state ────────────────────────────────────────────────────────
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+
+  // ── Create modal state ────────────────────────────────────────────────────────
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formBaslik, setFormBaslik] = useState('');
   const [formAciklama, setFormAciklama] = useState('');
   const [formSirket, setFormSirket] = useState('');
-  const [formTur, setFormTur] = useState('Hata'); // Hata, Istek, Soru
-  const [formOncelik, setFormOncelik] = useState('ORTA'); // Dusuk, Orta, Yuksek
+  const [formTur, setFormTur] = useState('Hata');
+  const [formOncelik, setFormOncelik] = useState('ORTA');
   const [formBitisTarihi, setFormBitisTarihi] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
-
-  // DatePicker visibility state
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
-
+  // ── Load data ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     loadTickets();
   }, [searchText, selectedCompany]);
@@ -72,17 +140,33 @@ export const TicketScreen = () => {
     loadDropdowns();
   }, []);
 
-  const loadTickets = async () => {
-    setIsLoading(true);
+  // Auto-open ticket detail if route parameter id is passed from notification
+  useEffect(() => {
+    if (isFocused && route.params?.id) {
+      const tktId = parseInt(route.params.id);
+      if (!isNaN(tktId) && selectedTicket?.id !== tktId) {
+        const found = tickets.find(t => t.id === tktId);
+        if (found) {
+          handleTicketPress(found);
+        } else {
+          handleTicketPress({ id: tktId } as Ticket);
+        }
+      }
+    }
+  }, [isFocused, route.params?.id, tickets]);
+
+  const loadTickets = async (refreshing = false) => {
+    if (refreshing) setIsRefreshing(true);
+    else setIsLoading(true);
     try {
       const data = await api.getTickets(selectedCompany, searchText, 1, 100);
       setTickets(data.tickets || []);
       setCounts(data.counts || {});
     } catch (err: any) {
-      console.error('Biletler yüklenemedi:', err);
-      showAlert('Hata', 'Bilet listesi yüklenirken hata oluştu.');
+      Alert.alert('Hata', 'Bilet listesi yüklenirken hata oluştu.');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -98,33 +182,19 @@ export const TicketScreen = () => {
         setFormSirket(compData[0].sirketKodu);
       }
     } catch (err: any) {
-      console.error('Dropdown verileri yüklenemedi:', err);
-      showAlert('Hata', 'Destek formu verileri (şirket/personel) yüklenemedi.');
+      Alert.alert('Hata', 'Destek formu verileri yüklenemedi.');
     }
   };
 
-  // Auto-open ticket detail if route parameter id is passed from notification click
-  useEffect(() => {
-    if (isFocused && route.params?.id) {
-      const tktId = parseInt(route.params.id);
-      if (!isNaN(tktId) && selectedTicket?.id !== tktId) {
-        const found = tickets.find(t => t.id === tktId);
-        if (found) {
-          handleTicketPress(found);
-        } else {
-          // If not in the list, construct a dummy ticket to trigger loading details
-          handleTicketPress({ id: tktId } as Ticket);
-        }
-      }
-    }
-  }, [isFocused, route.params?.id, tickets]);
-
   const handleTicketPress = async (ticket: Ticket) => {
     setSelectedTicket(ticket);
-    setIsDetailOpen(true);
+    setDetails(null);
+    setIsCommentsExpanded(true);
+    setIsHistoryExpanded(false);
     try {
       const detail = await api.getTicketDetail(ticket.id);
       setDetails({
+        ticket: detail.ticket || ticket,
         yorumlar: detail.yorumlar || [],
         dosyalar: detail.dosyalar || [],
         tarihce: detail.tarihce || []
@@ -135,49 +205,137 @@ export const TicketScreen = () => {
   };
 
   const handleCloseDetail = () => {
-    setIsDetailOpen(false);
     setSelectedTicket(null);
     setDetails(null);
     setNewComment('');
+    setCommentDosyaUrl(null);
+    setCommentDosyaName(null);
+    setIsCommentsExpanded(true);
     setIsHistoryExpanded(false);
     navigation.setParams({ id: undefined, code: undefined });
   };
 
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !selectedTicket) return;
+  const reloadDetails = async (id: number) => {
+    const detail = await api.getTicketDetail(id);
+    setDetails({
+      ticket: detail.ticket || selectedTicket,
+      yorumlar: detail.yorumlar || [],
+      dosyalar: detail.dosyalar || [],
+      tarihce: detail.tarihce || []
+    });
+  };
+
+  // ── Comment / File Upload ──────────────────────────────────────────────────────
+
+  const promptDocumentPicker = () => {
+    // transparent Modal içinden Alert kullanımı güvenli
+    Alert.alert(
+      'Dosya Kaynağı',
+      'Nasıl eklemek istersiniz?',
+      [
+        { text: 'Kamera', onPress: () => handlePickImage() },
+        { text: 'Dosya Seç', onPress: () => handlePickDocument() },
+        { text: 'İptal', style: 'cancel' },
+      ]
+    );
+  };
+
+  const processCommentFile = async (uri: string, name: string, preBase64?: string) => {
+    if (!selectedTicket) return;
+    setIsUploadingFile(true);
+    try {
+      const base64Data = preBase64 ?? await getBase64FromFileUri(uri);
+      const uploadRes = await api.uploadTicketFile(selectedTicket.id, {
+        fileName: name,
+        fileBase64: base64Data
+      });
+      if (uploadRes?.success) {
+        setCommentDosyaUrl(name);
+        setCommentDosyaName(name);
+        Alert.alert('Başarılı', 'Dosya başarıyla yüklendi.');
+      }
+    } catch (err: any) {
+      Alert.alert('Hata', `Dosya işlenirken hata oluştu: ${err?.message || ''}`);
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Hata', 'Kamera izni gereklidir.'); return; }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'] as any,
+        quality: 0.5,
+        base64: true,
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        const asset = result.assets[0];
+        const filename = asset.uri.split('/').pop() || 'photo.jpg';
+        await processCommentFile(asset.uri, filename, asset.base64 ?? undefined);
+      }
+    } catch (err) {
+      console.error('Kamera hatası:', err);
+    }
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: false
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        const asset = result.assets[0];
+        await processCommentFile(asset.uri, asset.name);
+      }
+    } catch (err) {
+      console.error('Seçme hatası:', err);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!selectedTicket || !newComment.trim()) return;
     setIsSubmittingComment(true);
     try {
       await api.saveTicketComment(selectedTicket.id, newComment);
       setNewComment('');
-      // Reload details
-      const detail = await api.getTicketDetail(selectedTicket.id);
-      setDetails({
-        yorumlar: detail.yorumlar || [],
-        dosyalar: detail.dosyalar || [],
-        tarihce: detail.tarihce || []
-      });
+      setCommentDosyaUrl(null);
+      setCommentDosyaName(null);
+      setIsAddCommentOpen(false);
+      await reloadDetails(selectedTicket.id);
     } catch (err) {
-      showAlert('Hata', 'Yorum eklenirken hata oluştu.');
+      Alert.alert('Hata', 'Yorum eklenirken hata oluştu.');
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
+  // ── Status / Assignment Actions ────────────────────────────────────────────────
+
   const handleUpdateStatus = async (status: string) => {
     if (!selectedTicket) return;
+    setIsActionsMenuOpen(false);
     try {
       await api.updateTicketStatus(selectedTicket.id, status);
       setSelectedTicket(prev => prev ? { ...prev, surecDurumu: status } : null);
       loadTickets();
-      // Reload detail history
-      const detail = await api.getTicketDetail(selectedTicket.id);
-      setDetails({
-        yorumlar: detail.yorumlar || [],
-        dosyalar: detail.dosyalar || [],
-        tarihce: detail.tarihce || []
-      });
+      await reloadDetails(selectedTicket.id);
     } catch (err) {
-      showAlert('Hata', 'Durum güncellenirken hata oluştu.');
+      Alert.alert('Hata', 'Durum güncellenirken hata oluştu.');
+    }
+  };
+
+  const handleCloseTicket = async () => {
+    if (!selectedTicket) return;
+    try {
+      await api.updateTicketStatus(selectedTicket.id, 'TAMAM');
+      setSelectedTicket(prev => prev ? { ...prev, surecDurumu: 'TAMAM' } : null);
+      loadTickets();
+      await reloadDetails(selectedTicket.id);
+    } catch (err) {
+      Alert.alert('Hata', 'Bilet kapatılamadı.');
     }
   };
 
@@ -187,36 +345,37 @@ export const TicketScreen = () => {
       await api.assignTicket(selectedTicket.id, sicilNo);
       setIsAssignOpen(false);
       const sorumlu = personels.find(p => p.sicilNo === sicilNo);
-      setSelectedTicket(prev => prev ? { ...prev, sorumluSicilNo: sicilNo, sorumluAd: sorumlu ? sorumlu.adSoyad : sicilNo } : null);
+      setSelectedTicket(prev =>
+        prev ? { ...prev, sorumluSicilNo: sicilNo, sorumluAd: sorumlu ? sorumlu.adSoyad : sicilNo } : null
+      );
       loadTickets();
-      // Reload details
-      const detail = await api.getTicketDetail(selectedTicket.id);
-      setDetails({
-        yorumlar: detail.yorumlar || [],
-        dosyalar: detail.dosyalar || [],
-        tarihce: detail.tarihce || []
-      });
+      await reloadDetails(selectedTicket.id);
     } catch (err) {
-      showAlert('Hata', 'Atama yapılamadı.');
+      Alert.alert('Hata', 'Atama yapılamadı.');
     }
   };
 
   const handleDeleteTicket = () => {
     if (!selectedTicket) return;
-    confirmAction('Bileti Sil', 'Bu destek biletini silmek istediğinize emin misiniz?', async () => {
-      try {
-        await api.deleteTicket(selectedTicket.id);
-        handleCloseDetail();
-        loadTickets();
-      } catch (err) {
-        showAlert('Hata', 'Bilet silinemedi.');
+    Alert.alert('Bileti Sil', 'Bu destek biletini silmek istediğinize emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil', style: 'destructive', onPress: async () => {
+          try {
+            await api.deleteTicket(selectedTicket.id);
+            handleCloseDetail();
+            loadTickets();
+          } catch (err) {
+            Alert.alert('Hata', 'Bilet silinemedi.');
+          }
+        }
       }
-    });
+    ]);
   };
 
   const handleCreateTicket = async () => {
     if (!formBaslik.trim() || !formAciklama.trim() || !formSirket) {
-      showAlert('Hata', 'Lütfen başlık, açıklama ve şirket alanlarını doldurun.');
+      Alert.alert('Hata', 'Lütfen başlık, açıklama ve şirket alanlarını doldurun.');
       return;
     }
     setIsSubmittingTicket(true);
@@ -234,399 +393,713 @@ export const TicketScreen = () => {
       setFormAciklama('');
       setFormBitisTarihi('');
       loadTickets();
-      showAlert('Başarılı', 'Destek talebi başarıyla oluşturuldu.');
+      Alert.alert('Başarılı', 'Destek talebi başarıyla oluşturuldu.');
     } catch (err) {
-      showAlert('Hata', 'Destek talebi oluşturulamadı.');
+      Alert.alert('Hata', 'Destek talebi oluşturulamadı.');
     } finally {
       setIsSubmittingTicket(false);
     }
   };
 
-  const handlePickDocument = async () => {
-    if (!selectedTicket) return;
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setIsUploadingFile(true);
-        try {
-          // Fetch document contents
-          const fileUri = asset.uri;
-          const response = await fetch(fileUri);
-          const blob = await response.blob();
-          
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            try {
-              const base64Data = (reader.result as string).split(',')[1];
-              await api.uploadTicketFile(selectedTicket.id, {
-                fileName: asset.name,
-                fileBase64: base64Data
-              });
-              
-              // Reload details
-              const detail = await api.getTicketDetail(selectedTicket.id);
-              setDetails({
-                yorumlar: detail.yorumlar || [],
-                dosyalar: detail.dosyalar || [],
-                tarihce: detail.tarihce || []
-              });
-              showAlert('Başarılı', 'Dosya başarıyla yüklendi.');
-            } catch (err) {
-              console.error('Yükleme hatası:', err);
-              showAlert('Hata', 'Dosya sunucuya gönderilirken hata oluştu.');
-            } finally {
-              setIsUploadingFile(false);
-            }
-          };
-          reader.readAsDataURL(blob);
-        } catch (err) {
-          console.error('Okuma hatası:', err);
-          showAlert('Hata', 'Dosya okunurken hata oluştu.');
-          setIsUploadingFile(false);
-        }
-      }
-    } catch (err) {
-      console.error('Seçme hatası:', err);
-    }
-  };
+  // ── Filtered list ──────────────────────────────────────────────────────────────
 
   const getFilteredTickets = () => {
     return tickets.filter(t => {
-      if (selectedCol !== 'TÜMÜ' && t.surecDurumu !== selectedCol) {
-        return false;
-      }
-      if (onlyMine && !t.isMine) {
-        return false;
-      }
+      if (t.surecDurumu !== activeTab) return false;
+      if (onlyMine && !t.isMine) return false;
       return true;
     });
   };
 
-  const renderTicketItem = ({ item }: { item: Ticket }) => (
-    <TouchableOpacity style={styles.ticketCard} onPress={() => handleTicketPress(item)}>
-      <View style={styles.ticketHeader}>
-        <Text style={styles.takipKodu}>{item.takipKodu}</Text>
-        <View style={[styles.priorityBadge, 
-          (item.oncelik?.toUpperCase() === 'YÜKSEK' || item.oncelik?.toUpperCase() === 'KRİTİK' || item.oncelik?.toUpperCase() === 'KRITIK') ? styles.priorityHigh : 
-          item.oncelik?.toUpperCase() === 'ORTA' ? styles.priorityMedium : styles.priorityLow
-        ]}>
-          <Text style={styles.priorityText}>{item.oncelik}</Text>
-        </View>
-      </View>
-      <Text style={styles.ticketTitle} numberOfLines={1}>{item.baslik}</Text>
-      <Text style={styles.ticketDesc} numberOfLines={2}>{item.aciklama}</Text>
-      <View style={styles.ticketFooter}>
-        <Text style={styles.ticketMeta}>👤 {item.kayitYapan}</Text>
-        <Text style={styles.ticketMeta}>🕒 {item.kayitTarihiStr}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  // ── Render helpers ─────────────────────────────────────────────────────────────
 
+  const surecDurumu = selectedTicket?.surecDurumu || '';
+  const isClosed = surecDurumu === 'TAMAM';
+
+  const renderListItem = ({ item }: { item: Ticket }) => {
+    const statStyle = getStatusStyle(item.surecDurumu);
+    const priStyle = getPriorityStyle(item.oncelik);
+
+    let iconName: any = 'laptop-outline';
+    let iconColor: string = slateTokens.brandPrimary;
+    let iconBg: string = slateTokens.pastelBlueBg;
+
+    const oncelikUp = (item.oncelik || '').toUpperCase();
+    if (oncelikUp.includes('KRİ') || oncelikUp.includes('YÜKS')) {
+      iconName = 'warning-outline';
+      iconColor = slateTokens.danger;
+      iconBg = '#fef2f2';
+    } else if (oncelikUp === 'ORTA') {
+      iconName = 'alert-circle-outline';
+      iconColor = slateTokens.warning;
+      iconBg = slateTokens.pastelOrangeBg;
+    } else {
+      iconName = 'information-circle-outline';
+      iconColor = slateTokens.success;
+      iconBg = slateTokens.pastelGreenBg;
+    }
+
+    return (
+      <TicketCard
+        id={item.id}
+        code={item.takipKodu}
+        title={item.baslik}
+        timeAgo={item.kayitTarihiStr || ''}
+        user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
+        priorityLabel={priStyle.label}
+        priorityColor={priStyle.text}
+        priorityBg={priStyle.bg}
+        statusLabel={statStyle.label}
+        statusColor={statStyle.text}
+        statusBg={statStyle.bg}
+        iconName={iconName}
+        iconColor={iconColor}
+        iconBg={iconBg}
+        lineColor={statStyle.text}
+        onPress={() => handleTicketPress(item)}
+      />
+    );
+  };
+
+  const filteredTickets = getFilteredTickets();
+
+  // ── TABS ───────────────────────────────────────────────────────────────────────
+  const TABS: { id: 'HAVUZ' | 'ISLEM' | 'TEST' | 'TAMAM'; label: string }[] = [
+    { id: 'HAVUZ', label: 'HAVUZ' },
+    { id: 'ISLEM', label: 'İŞLEM' },
+    { id: 'TEST',  label: 'TEST' },
+    { id: 'TAMAM', label: 'TAMAM' },
+  ];
+
+  // ─── MAIN RENDER ──────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.contentWrapper}>
-        {/* Search and Filters */}
-        <View style={styles.searchBarContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Takip kodu veya başlık ara..."
-            placeholderTextColor={colors.placeholder}
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
-            <TouchableOpacity 
-              style={[styles.companyChip, selectedCompany === '' && styles.companyChipActive]}
-              onPress={() => setSelectedCompany('')}
-            >
-              <Text style={[styles.companyChipText, selectedCompany === '' && styles.companyChipTextActive]}>
-                Tüm Şirketler
-              </Text>
-            </TouchableOpacity>
-            {companies.map(c => (
-              <TouchableOpacity 
-                key={c.sirketKodu} 
-                style={[styles.companyChip, selectedCompany === c.sirketKodu && styles.companyChipActive]}
-                onPress={() => setSelectedCompany(c.sirketKodu)}
-              >
-                <Text style={[styles.companyChipText, selectedCompany === c.sirketKodu && styles.companyChipTextActive]}>
-                  {c.sirketAdi || c.sirketKodu}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Sadece Benim Üzerimdekiler</Text>
-            <TouchableOpacity 
-              style={[styles.toggleSwitch, onlyMine && styles.toggleSwitchActive]}
-              onPress={() => setOnlyMine(!onlyMine)}
-            >
-              <View style={[styles.toggleCircle, onlyMine && styles.toggleCircleActive]} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Tabs */}
-        <View style={styles.tabContainer}>
-          {['HAVUZ', 'ISLEM', 'TEST', 'TAMAM', 'TÜMÜ'].map(col => {
-            const totalTicketsCount = (counts.HAVUZ || 0) + (counts.ISLEM || 0) + (counts.TEST || 0) + (counts.TAMAM || 0);
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <ListHeader
+        title="Bilet Yönetimi"
+        subtitle={`${filteredTickets.length} Bilet`}
+        searchValue={searchText}
+        onSearchChange={setSearchText}
+        searchPlaceholder="Takip kodu veya başlık ara..."
+        activeFilter={activeTab}
+        onFilterChange={(id: string) => setActiveTab(id as any)}
+        filters={[]}
+      >
+        {/* Durum Tabları */}
+        <View style={styles.tabsRow}>
+          {TABS.map(tab => {
+            const isActive = activeTab === tab.id;
+            const cnt = counts[tab.id] ?? 0;
             return (
               <TouchableOpacity
-                key={col}
-                style={[styles.tabButton, selectedCol === col && styles.activeTabButton]}
-                onPress={() => setSelectedCol(col as any)}
+                key={tab.id}
+                style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+                onPress={() => setActiveTab(tab.id)}
               >
-                <Text style={[styles.tabText, selectedCol === col && styles.activeTabText]}>
-                  {col === 'HAVUZ' ? `Havuz (${counts.HAVUZ || 0})` :
-                   col === 'ISLEM' ? `İşlemde (${counts.ISLEM || 0})` :
-                   col === 'TEST' ? `Test (${counts.TEST || 0})` :
-                   col === 'TAMAM' ? `Tamam (${counts.TAMAM || 0})` : `Tümü (${totalTicketsCount})`}
+                <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
+                  {tab.label}
                 </Text>
+                {cnt > 0 && (
+                  <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                      {cnt}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
         </View>
 
+        {/* Şirket Filtresi */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
+          <TouchableOpacity
+            style={[styles.companyChip, selectedCompany === '' && styles.companyChipActive]}
+            onPress={() => setSelectedCompany('')}
+          >
+            <Text style={[styles.companyChipText, selectedCompany === '' && styles.companyChipTextActive]}>
+              Tüm Şirketler
+            </Text>
+          </TouchableOpacity>
+          {companies.map(c => (
+            <TouchableOpacity
+              key={c.sirketKodu}
+              style={[styles.companyChip, selectedCompany === c.sirketKodu && styles.companyChipActive]}
+              onPress={() => setSelectedCompany(c.sirketKodu)}
+            >
+              <Text style={[styles.companyChipText, selectedCompany === c.sirketKodu && styles.companyChipTextActive]}>
+                {c.sirketAdi || c.sirketKodu}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Sadece Bende Toggle */}
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>Bana Atananlar</Text>
+          <TouchableOpacity
+            style={[styles.toggleSwitch, onlyMine && styles.toggleSwitchActive]}
+            onPress={() => setOnlyMine(!onlyMine)}
+          >
+            <View style={[styles.toggleCircle, onlyMine && styles.toggleCircleActive]} />
+          </TouchableOpacity>
+        </View>
+      </ListHeader>
+
+      {/* Ticket Listesi */}
+      <View style={styles.contentWrapper}>
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
         ) : (
           <FlatList
-            data={getFilteredTickets()}
+            data={filteredTickets}
             keyExtractor={item => item.id.toString()}
-            renderItem={renderTicketItem}
-            contentContainerStyle={styles.listContent}
+            renderItem={renderListItem}
+            contentContainerStyle={styles.listContainer}
+            refreshing={isRefreshing}
+            onRefresh={() => loadTickets(true)}
             ListEmptyComponent={
-              <Text style={styles.emptyText}>Bilet bulunamadı.</Text>
+              <View style={styles.emptyContainer}>
+                <Ionicons name="file-tray-outline" size={48} color={slateTokens.textMuted} />
+                <Text style={styles.emptyText}>Gösterilecek bilet bulunmamaktadır.</Text>
+              </View>
             }
           />
         )}
-
-        {/* Floating Action Button (FAB) for Creating Ticket */}
-        <TouchableOpacity style={styles.fab} onPress={() => setIsCreateOpen(true)}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Detail Modal */}
-      <Modal visible={isDetailOpen} animationType="slide" onRequestClose={handleCloseDetail}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedTicket?.takipKodu} Detayı</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                {selectedTicket && (user?.adminBelgeTur === 'ADMIN' || selectedTicket.kayitSicilNo === user?.sicilNo) && (
-                  <TouchableOpacity style={styles.deleteHeaderBtn} onPress={handleDeleteTicket}>
-                    <Text style={styles.deleteHeaderBtnText}>Sil</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.closeButton} onPress={handleCloseDetail}>
-                  <Text style={styles.closeButtonText}>Kapat</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+      <BottomNavBar
+        currentScreen="Ticket"
+        customAction={{
+          icon: 'add-outline',
+          label: 'Yeni Bilet',
+          onPress: () => setIsCreateOpen(true)
+        }}
+      />
 
-            {selectedTicket && (
-              <ScrollView style={styles.modalScroll}>
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailTitle}>{selectedTicket.baslik}</Text>
-                  <Text style={styles.detailDesc}>{selectedTicket.aciklama}</Text>
-                  
-                  <View style={styles.metaGrid}>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Oluşturan:</Text>
-                      <Text style={styles.metaValue}>{selectedTicket.kayitYapan}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Sorumlu:</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                        <Text style={styles.metaValue} numberOfLines={1}>{selectedTicket.sorumluAd || 'Atanmamış'}</Text>
-                        {selectedTicket.surecDurumu !== 'TAMAM' && (
-                          <TouchableOpacity style={styles.inlineAssignBtn} onPress={() => setIsAssignOpen(true)}>
-                            <Text style={styles.inlineAssignBtnText}>Ata</Text>
-                          </TouchableOpacity>
-                        )}
+      {/* ═══ DETAIL MODAL ═══════════════════════════════════════════════════════ */}
+      <Modal
+        visible={!!selectedTicket}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={true}
+        onRequestClose={handleCloseDetail}
+      >
+        {selectedTicket && (
+          <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
+            <KeyboardAvoidingView
+              behavior="padding"
+              enabled={Platform.OS === 'ios'}
+              style={{ flex: 1, backgroundColor: '#f8fafc' }}
+            >
+              {/* ── Gradient Header ─────────────────────────────────────────── */}
+              <LinearGradient
+                colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.newDetailHeader,
+                  {
+                    paddingTop: Platform.OS === 'ios'
+                      ? Math.max(insets.top, 40)
+                      : Math.max(insets.top, StatusBar.currentHeight || 24) + 12,
+                    paddingBottom: 16
+                  }
+                ]}
+              >
+                {/* Background Decorator */}
+                <View style={styles.bgCircleLarge} />
+                <View style={styles.bgCircleSmall} />
+
+                {/* Top row: back + status badge */}
+                <View style={styles.newDetailHeaderTopRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', zIndex: 2 }}>
+                    <TouchableOpacity onPress={handleCloseDetail} style={styles.newBackButton}>
+                      <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.newDetailTopTitle}>Bilet Detayı</Text>
+                  </View>
+
+                  {/* Status badge */}
+                  {(() => {
+                    const st = getStatusStyle(selectedTicket.surecDurumu);
+                    return (
+                      <View style={[styles.newStatusBadge, { backgroundColor: st.bg, zIndex: 2 }]}>
+                        <Text style={[styles.newStatusText, { color: st.text }]}>{st.label}</Text>
                       </View>
-                      {selectedTicket.surecDurumu !== 'TAMAM' && selectedTicket.sorumluSicilNo !== user?.sicilNo && (
-                        <TouchableOpacity style={[styles.inlineAssignBtn, { marginTop: 4, alignSelf: 'flex-start' }]} onPress={() => handleAssignTicket(user?.sicilNo || '')}>
-                          <Text style={styles.inlineAssignBtnText}>Kendime Ata</Text>
-                        </TouchableOpacity>
-                      )}
+                    );
+                  })()}
+                </View>
+
+                {/* Second row: code + assignee */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingHorizontal: 16, zIndex: 2 }}>
+                  <Text style={styles.newDetailCode}>{selectedTicket.takipKodu}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <UserAvatar sicilNo={selectedTicket.sorumluSicilNo} name={selectedTicket.sorumluAd} size={24} style={{ borderWidth: 0 }} />
+                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
+                      {selectedTicket.sorumluAd || 'Atanmadı'}
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
+
+              {/* ── Scrollable content ───────────────────────────────────────── */}
+              <View style={styles.modalContentWrapper}>
+                <ScrollView contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
+
+                  {/* Başlık / Açıklama */}
+                  <View style={[styles.detailCard, { marginTop: 8 }]}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+                      {selectedTicket.baslik}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+                      {stripHtml(selectedTicket.aciklama)}
+                    </Text>
+                    {(() => {
+                      const imgs = extractImagesFromHtml(selectedTicket.aciklama);
+                      if (!imgs.length) return null;
+                      return (
+                        <View style={{ marginTop: 6 }}>
+                          {imgs.map((src, idx) => (
+                            <Image
+                              key={idx}
+                              source={{ uri: src }}
+                              style={{ width: '100%', height: 160, borderRadius: 6, marginBottom: 4, resizeMode: 'contain', backgroundColor: '#f5f5f5' }}
+                            />
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+
+                  {/* Meta bilgi */}
+                  <View style={styles.detailCard}>
+                    {/* Kategori */}
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoRowLabel, { color: slateTokens.textBody, fontWeight: '700' }]}>Kategori</Text>
+                      <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary }]}>
+                        {selectedTicket.kategoriAd || (details?.ticket?.kategoriAd) || '-'}
+                      </Text>
                     </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Öncelik:</Text>
-                      <Text style={styles.metaValue}>{selectedTicket.oncelik}</Text>
+                    <View style={styles.detailDivider} />
+
+                    {/* Öncelik */}
+                    {(() => {
+                      const ps = getPriorityStyle(selectedTicket.oncelik);
+                      return (
+                        <View style={{ borderWidth: 1, borderColor: ps.text + '40', backgroundColor: ps.text + '0A', borderRadius: 6, paddingVertical: 10, alignItems: 'center', marginBottom: 12 }}>
+                          <Text style={{ fontSize: 10, color: slateTokens.textMuted, fontWeight: '600', marginBottom: 4 }}>ÖNCELİK</Text>
+                          <Text style={{ fontSize: 13, color: ps.text, fontWeight: '700', textTransform: 'uppercase' }}>{ps.label}</Text>
+                        </View>
+                      );
+                    })()}
+
+                    {/* Bitiş tarihi */}
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoRowLabel, { color: slateTokens.textBody, fontWeight: '700' }]}>Bitiş Tarihi</Text>
+                      <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary }]}>
+                        {selectedTicket.bitisTarihiStr || '-'}
+                      </Text>
                     </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Durum:</Text>
-                      <Text style={styles.metaValue}>{selectedTicket.surecDurumu}</Text>
+                    <View style={styles.detailDivider} />
+
+                    {/* Oluşturan */}
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoRowLabel, { color: slateTokens.textBody, fontWeight: '700' }]}>Oluşturan</Text>
+                      <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary }]}>
+                        {selectedTicket.kayitYapan || '-'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailDivider} />
+
+                    {/* Kayıt Tarihi */}
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoRowLabel, { color: slateTokens.textBody, fontWeight: '700' }]}>Kayıt Tarihi</Text>
+                      <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary }]}>
+                        {selectedTicket.kayitTarihiStr || '-'}
+                      </Text>
                     </View>
                   </View>
 
-                  {/* Status action buttons */}
-                  {selectedTicket.surecDurumu !== 'TAMAM' && (
-                    <View style={styles.actionRow}>
-                      {selectedTicket.surecDurumu === 'HAVUZ' && (
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleUpdateStatus('ISLEM')}>
-                          <Text style={styles.actionBtnText}>İşleme Al</Text>
-                        </TouchableOpacity>
-                      )}
-                      {selectedTicket.surecDurumu === 'ISLEM' && (
-                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => handleUpdateStatus('TEST')}>
-                          <Text style={styles.actionBtnText}>Test Aşamasına Al</Text>
-                        </TouchableOpacity>
-                      )}
-                      {selectedTicket.surecDurumu === 'TEST' && (
-                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#10b981' }]} onPress={() => handleUpdateStatus('TAMAM')}>
-                          <Text style={styles.actionBtnText}>Tamamlandı Olarak İşaretle</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.danger }]} onPress={() => handleUpdateStatus('TAMAM')}>
-                        <Text style={styles.actionBtnText}>Bileti Kapat</Text>
+                  {/* Dosyalar */}
+                  {details && (details.dosyalar.length > 0) && (
+                    <View style={styles.detailCard}>
+                      <Text style={styles.detailCardTitle}>
+                        Dosyalar ({details.dosyalar.length})
+                      </Text>
+                      {details.dosyalar.map(f => (
+                        <AttachmentPreview
+                          key={f.id}
+                          dosyaUrl={f.dosyaYolu}
+                          fileName={f.dosyaAdi}
+                          module="TICKET"
+                        />
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Gelişmeler (collapsible) */}
+                  <View style={styles.historySection}>
+                    <TouchableOpacity
+                      style={styles.historyHeader}
+                      onPress={() => setIsCommentsExpanded(!isCommentsExpanded)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.historyTitle}>Gelişmeler</Text>
+                        {(details?.yorumlar.length ?? 0) > 0 && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                            <Ionicons name="chatbubble-outline" size={11} color={colors.primary} />
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{details?.yorumlar.length}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Ionicons
+                        name={isCommentsExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={colors.text}
+                      />
+                    </TouchableOpacity>
+
+                    {isCommentsExpanded && (
+                      <View style={[styles.historyContainer, { paddingHorizontal: 12, paddingBottom: 12 }]}>
+                        {details?.yorumlar && details.yorumlar.length > 0 ? (
+                          <View style={styles.timelineContainer}>
+                            {details.yorumlar.map((c, i) => {
+                              const isLast = i === details.yorumlar.length - 1;
+                              const iconName: any = 'chatbubble-outline';
+                              const iconColor = '#6366f1';
+                              return (
+                                <View key={c.id ?? i} style={styles.timelineItemRow}>
+                                  <View style={styles.timelineLeftCol}>
+                                    <View style={[styles.timelineIconBg, { backgroundColor: iconColor + '1A' }]}>
+                                      <Ionicons name={iconName} size={14} color={iconColor} />
+                                    </View>
+                                    {!isLast && <View style={styles.timelineVerticalLine} />}
+                                  </View>
+                                  <View style={styles.timelineRightCol}>
+                                    <Text style={styles.timelineItemTitle}>{stripHtml(c.aciklama)}</Text>
+                                    <Text style={styles.timelineItemSub}>{c.yorumYapan} • {c.kayitTarihiStr}</Text>
+                                    {(() => {
+                                      const imgs = extractImagesFromHtml(c.aciklama);
+                                      if (!imgs.length) return null;
+                                      return imgs.map((src, idx) => (
+                                        <Image
+                                          key={idx}
+                                          source={{ uri: src }}
+                                          style={{ width: '100%', height: 120, borderRadius: 8, marginTop: 6, resizeMode: 'contain', backgroundColor: colors.background }}
+                                        />
+                                      ));
+                                    })()}
+                                  </View>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        ) : (
+                          <Text style={{ color: colors.textSecondary, fontSize: 12, paddingVertical: 8 }}>
+                            Henüz bir gelişme eklenmedi.
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Bilet Tarihçesi (collapsible) */}
+                  <View style={styles.historySection}>
+                    <TouchableOpacity
+                      style={styles.historyHeader}
+                      onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.historyTitle}>Bilet Tarihçesi</Text>
+                      <Ionicons
+                        name={isHistoryExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={colors.text}
+                      />
+                    </TouchableOpacity>
+
+                    {isHistoryExpanded && (
+                      <View style={styles.historyContainer}>
+                        {details?.tarihce && details.tarihce.length > 0 ? (
+                          details.tarihce.map((h, i) => (
+                            <View key={i} style={styles.historyItem}>
+                              <View style={styles.historyItemLeft}>
+                                <Text style={styles.historyItemTime}>{h.tarih}</Text>
+                              </View>
+                              <View style={styles.historyItemRight}>
+                                <Text style={styles.historyItemSubject}>{h.konu}</Text>
+                                <Text style={styles.historyItemContent}>{stripHtml(h.aciklama)}</Text>
+                              </View>
+                            </View>
+                          ))
+                        ) : (
+                          <Text style={styles.emptyHistoryText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                </ScrollView>
+
+                {/* ── Bottom Action Bar ─────────────────────────────────────── */}
+                {!isClosed && (
+                  <View style={[styles.fixedComposerWrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+                    <View style={styles.bottomTabBar}>
+                      {/* Yorum */}
+                      <TouchableOpacity style={styles.tabItem} onPress={() => setIsAddCommentOpen(true)}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
+                        <Text style={styles.tabLabel}>Yorum</Text>
+                      </TouchableOpacity>
+
+                      {/* İşlemler (center floating) */}
+                      <TouchableOpacity style={styles.centerTabItem} onPress={() => setIsActionsMenuOpen(true)}>
+                        <View style={styles.centerPlusCircle}>
+                          <Ionicons name="add" size={32} color="#FFF" />
+                        </View>
+                        <Text style={styles.centerTabLabel}>İşlemler</Text>
+                      </TouchableOpacity>
+
+                      {/* Kapat */}
+                      <TouchableOpacity
+                        style={styles.tabItem}
+                        onPress={handleCloseTicket}
+                        disabled={isClosed}
+                      >
+                        <Ionicons
+                          name="checkmark-circle-outline"
+                          size={24}
+                          color={isClosed ? '#94a3b8' : colors.success}
+                        />
+                        <Text style={[styles.tabLabel, { color: isClosed ? '#94a3b8' : colors.text }]}>Kapat</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </KeyboardAvoidingView>
+
+            {/* ── Atama Modal ──────────────────────────────────────────────── */}
+            <SearchableSelectorModal
+              visible={isAssignOpen}
+              onClose={() => setIsAssignOpen(false)}
+              onSelect={item => handleAssignTicket(item.sicilNo)}
+              data={personels}
+              keyExtractor={item => item.sicilNo}
+              labelExtractor={item => `${item.adSoyad} (${item.sicilNo})`}
+              title="Sorumlu Personel Seçin"
+            />
+
+            {/* ── İşlemler Bottom Sheet ──────────────────────────────────────── */}
+            <Modal
+              visible={isActionsMenuOpen}
+              transparent
+              animationType="slide"
+              onRequestClose={() => setIsActionsMenuOpen(false)}
+            >
+              <TouchableOpacity
+                style={styles.sheetOverlay}
+                activeOpacity={1}
+                onPress={() => setIsActionsMenuOpen(false)}
+              >
+                <View style={styles.sheetContent}>
+                  <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>Bileti Yönet</Text>
+                    <TouchableOpacity onPress={() => setIsActionsMenuOpen(false)}>
+                      <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* İşleme Al */}
+                  {surecDurumu !== 'ISLEM' && surecDurumu !== 'TAMAM' && (
+                    <TouchableOpacity
+                      style={[styles.sheetItem, { backgroundColor: colors.warningLight + '80', borderColor: colors.warning + '40' }]}
+                      onPress={() => handleUpdateStatus('ISLEM')}
+                    >
+                      <Ionicons name="play-outline" size={22} color={colors.warning} />
+                      <Text style={[styles.sheetItemText, { color: colors.warning, fontWeight: '700' }]}>İşleme Al</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Teste Al */}
+                  {surecDurumu !== 'TEST' && surecDurumu !== 'TAMAM' && (
+                    <TouchableOpacity
+                      style={[styles.sheetItem, { backgroundColor: colors.primaryLight + '80', borderColor: colors.primary + '40' }]}
+                      onPress={() => handleUpdateStatus('TEST')}
+                    >
+                      <Ionicons name="flask-outline" size={22} color={colors.primary} />
+                      <Text style={[styles.sheetItemText, { color: colors.primary, fontWeight: '700' }]}>Teste Al</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Tamamlandı */}
+                  {surecDurumu !== 'TAMAM' && (
+                    <TouchableOpacity
+                      style={[styles.sheetItem, { backgroundColor: colors.successLight + '80', borderColor: colors.success + '40' }]}
+                      onPress={() => handleUpdateStatus('TAMAM')}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={22} color={colors.success} />
+                      <Text style={[styles.sheetItemText, { color: colors.success, fontWeight: '700' }]}>Tamamlandı</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Personel Ata */}
+                  <TouchableOpacity
+                    style={styles.sheetItem}
+                    onPress={() => {
+                      setIsActionsMenuOpen(false);
+                      setIsAssignOpen(true);
+                    }}
+                  >
+                    <Ionicons name="people-outline" size={20} color={colors.text} />
+                    <Text style={styles.sheetItemText}>Personel Ata</Text>
+                  </TouchableOpacity>
+
+                  {/* Kendime Ata */}
+                  {selectedTicket.sorumluSicilNo !== user?.sicilNo && (
+                    <TouchableOpacity
+                      style={styles.sheetItem}
+                      onPress={() => {
+                        setIsActionsMenuOpen(false);
+                        handleAssignTicket(user?.sicilNo || '');
+                      }}
+                    >
+                      <Ionicons name="person-outline" size={20} color={colors.text} />
+                      <Text style={styles.sheetItemText}>Kendime Ata</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Sil — sadece admin veya bilet sahibi */}
+                  {(user?.adminBelgeTur === 'ADMIN' || selectedTicket.kayitSicilNo === user?.sicilNo) && (
+                    <TouchableOpacity
+                      style={[styles.sheetItem, { backgroundColor: colors.dangerLight + '80', borderColor: colors.danger + '40' }]}
+                      onPress={() => {
+                        setIsActionsMenuOpen(false);
+                        handleDeleteTicket();
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                      <Text style={[styles.sheetItemText, { color: colors.danger }]}>Bileti Sil</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity style={styles.sheetCancelBtn} onPress={() => setIsActionsMenuOpen(false)}>
+                    <Text style={styles.sheetCancelBtnText}>İptal</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+            {/* ── Yorum Modal (transparent, fade) ──────────────────────────── */}
+            <Modal
+              visible={isAddCommentOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setIsAddCommentOpen(false)}
+            >
+              <View style={styles.overlay}>
+                <View style={styles.overlayCard}>
+                  <Text style={styles.overlayTitle}>Gelişme Ekle</Text>
+
+                  <TextInput
+                    style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
+                    placeholder="Yorum/gelişme metnini yazın..."
+                    placeholderTextColor={colors.placeholder}
+                    multiline
+                    value={newComment}
+                    onChangeText={setNewComment}
+                  />
+
+                  {commentDosyaName && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
+                      <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
+                      <Text style={{ marginLeft: 6, color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                        {commentDosyaName}
+                      </Text>
+                      <TouchableOpacity onPress={() => { setCommentDosyaUrl(null); setCommentDosyaName(null); }}>
+                        <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
                       </TouchableOpacity>
                     </View>
                   )}
-                </View>
 
-                {/* Files Attachment Section */}
-                <View style={styles.filesSection}>
-                  <Text style={styles.sectionTitleHeader}>Dosyalar ({details?.dosyalar?.length || 0})</Text>
-                  {details?.dosyalar?.map(f => (
-                    <View key={f.id} style={styles.fileCard}>
-                      <Text style={styles.fileIcon}>📄</Text>
-                      <Text style={styles.fileName} numberOfLines={1}>{f.dosyaAdi}</Text>
-                      <TouchableOpacity 
-                        style={styles.fileDownloadBtn} 
-                        onPress={() => Linking.openURL(f.dosyaYolu)}
-                      >
-                        <Text style={styles.fileDownloadBtnText}>İndir</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-
-                  {selectedTicket.surecDurumu !== 'TAMAM' && (
-                    <TouchableOpacity 
-                      style={styles.uploadBtn} 
-                      onPress={handlePickDocument}
+                  {/* Dosya Ekle Butonu */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                      onPress={promptDocumentPicker}
                       disabled={isUploadingFile}
                     >
                       {isUploadingFile ? (
-                        <ActivityIndicator color={colors.primary} />
+                        <ActivityIndicator color={colors.primary} size="small" />
                       ) : (
-                        <Text style={styles.uploadBtnText}>📎 Dosya Yükle</Text>
+                        <>
+                          <Ionicons name="attach-outline" size={18} color={colors.primary} />
+                          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Dosya Ekle</Text>
+                        </>
                       )}
                     </TouchableOpacity>
-                  )}
-                </View>
+                  </View>
 
-                {/* Comments Section */}
-                <View style={styles.commentsSection}>
-                  <Text style={styles.sectionTitleHeader}>Yorumlar ({details?.yorumlar.length || 0})</Text>
-                  
-                  {details?.yorumlar.map(c => (
-                    <View key={c.id} style={styles.commentCard}>
-                      <View style={styles.commentHeader}>
-                        <Text style={styles.commentUser}>{c.yorumYapan}</Text>
-                        <Text style={styles.commentDate}>{c.kayitTarihiStr}</Text>
-                      </View>
-                      <Text style={styles.commentText}>{c.aciklama}</Text>
-                    </View>
-                  ))}
+                  {/* İptal / Gönder */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+                    <TouchableOpacity
+                      style={[styles.submitBtn, { flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
+                      onPress={() => {
+                        setIsAddCommentOpen(false);
+                        setNewComment('');
+                        setCommentDosyaUrl(null);
+                        setCommentDosyaName(null);
+                      }}
+                    >
+                      <Text style={[styles.submitBtnText, { color: colors.text }]}>İptal</Text>
+                    </TouchableOpacity>
 
-                  {/* Add Comment */}
-                  {selectedTicket.surecDurumu !== 'TAMAM' && (
-                    <View style={styles.addCommentContainer}>
-                      <TextInput
-                        style={styles.commentInput}
-                        placeholder="Yorum yazın..."
-                        placeholderTextColor={colors.placeholder}
-                        multiline
-                        value={newComment}
-                        onChangeText={setNewComment}
-                      />
-                      <TouchableOpacity
-                        style={styles.submitCommentBtn}
-                        onPress={handleAddComment}
-                        disabled={isSubmittingComment}
-                      >
-                        {isSubmittingComment ? (
-                          <ActivityIndicator color="#ffffff" />
-                        ) : (
-                          <Text style={styles.submitCommentText}>Gönder</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-
-                {/* History Section */}
-                <View style={styles.historySection}>
-                  <TouchableOpacity 
-                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}
-                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.sectionTitleHeader}>Bilet Tarihçesi</Text>
-                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.textSecondary }}>
-                      {isHistoryExpanded ? '▲' : '▼'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {isHistoryExpanded && (
-                    <View style={{ marginTop: 12, gap: 12 }}>
-                      {details?.tarihce && details.tarihce.length > 0 ? (
-                        details.tarihce.map((h, i) => (
-                          <View key={i} style={styles.historyCard}>
-                            <Text style={styles.historyTime}>{h.tarih}</Text>
-                            <Text style={styles.historySubject}>{h.konu}</Text>
-                            <Text style={styles.historyDesc}>{h.aciklama}</Text>
-                          </View>
-                        ))
+                    <TouchableOpacity
+                      style={[styles.submitBtn, { flex: 1, opacity: (isUploadingFile || isSubmittingComment) ? 0.6 : 1 }]}
+                      disabled={isUploadingFile || isSubmittingComment}
+                      onPress={handleSubmitComment}
+                    >
+                      {isSubmittingComment ? (
+                        <ActivityIndicator color="#FFF" size="small" />
                       ) : (
-                        <Text style={styles.emptyText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                        <Text style={styles.submitBtnText}>
+                          {isUploadingFile ? 'Yükleniyor...' : 'Gönder'}
+                        </Text>
                       )}
-                    </View>
-                  )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </ScrollView>
-            )}
+              </View>
+            </Modal>
+
           </View>
-        </SafeAreaView>
+        )}
       </Modal>
 
-      {/* Assignee Selection Modal */}
-      <SearchableSelectorModal
-        visible={isAssignOpen}
-        onClose={() => setIsAssignOpen(false)}
-        onSelect={item => handleAssignTicket(item.sicilNo)}
-        data={personels}
-        keyExtractor={item => item.sicilNo}
-        labelExtractor={item => `${item.adSoyad} (${item.sicilNo})`}
-        title="Sorumlu Personel Seçin"
-      />
-
-      {/* Create Ticket Modal */}
-      <Modal visible={isCreateOpen} animationType="slide" onRequestClose={() => setIsCreateOpen(false)}>
-        <SafeAreaView style={styles.modalContainer}>
+      {/* ═══ CREATE MODAL ══════════════════════════════════════════════════════ */}
+      <Modal
+        visible={isCreateOpen}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsCreateOpen(false)}
+      >
+        <View style={styles.modalContainer}>
+          <CreateModalHeader title="Yeni Bilet" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Yeni Bilet</Text>
-            </View>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
 
-            <ScrollView style={styles.modalScroll} contentContainerStyle={{ padding: 20 }}>
-              {/* Title */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Bilet Başlığı *</Text>
+              {/* Form Info Box */}
+              <View style={styles.formInfoBox}>
+                <Text style={styles.formInfoBoxTitle}>Bilet Oluşturma Formu</Text>
+                <Text style={styles.formInfoBoxText}>Lütfen aşağıdaki yıldızlı alanları doldurarak biletinizi oluşturunuz.</Text>
+              </View>
+
+              {/* Başlık */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Bilet Başlığı *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={styles.textInput}
                   placeholder="Örn: Sunucu Hatası Alıyorum"
                   placeholderTextColor={colors.placeholder}
                   value={formBaslik}
@@ -634,11 +1107,11 @@ export const TicketScreen = () => {
                 />
               </View>
 
-              {/* Description */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Açıklama *</Text>
+              {/* Açıklama */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Açıklama *</Text>
                 <TextInput
-                  style={[styles.input, { minHeight: 100, textAlignVertical: 'top' }]}
+                  style={[styles.textInput, styles.textArea]}
                   placeholder="Hata veya isteğin detaylarını buraya yazın..."
                   placeholderTextColor={colors.placeholder}
                   multiline
@@ -648,23 +1121,17 @@ export const TicketScreen = () => {
                 />
               </View>
 
-              {/* Company Selection */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Şirket *</Text>
+              {/* Şirket */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Şirket *</Text>
                 <View style={styles.selectorGrid}>
                   {companies.map(c => (
-                    <TouchableOpacity 
-                      key={c.sirketKodu} 
-                      style={[
-                        styles.selectorItem, 
-                        formSirket === c.sirketKodu && styles.selectorItemActive
-                      ]}
+                    <TouchableOpacity
+                      key={c.sirketKodu}
+                      style={[styles.selectorItem, formSirket === c.sirketKodu && styles.selectorItemActive]}
                       onPress={() => setFormSirket(c.sirketKodu)}
                     >
-                      <Text style={[
-                        styles.selectorItemText,
-                        formSirket === c.sirketKodu && styles.selectorItemTextActive
-                      ]}>
+                      <Text style={[styles.selectorItemText, formSirket === c.sirketKodu && styles.selectorItemTextActive]}>
                         {c.sirketAdi || c.sirketKodu}
                       </Text>
                     </TouchableOpacity>
@@ -672,61 +1139,49 @@ export const TicketScreen = () => {
                 </View>
               </View>
 
-              {/* Process Type */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>İşlem Türü</Text>
+              {/* İşlem Türü */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>İşlem Türü</Text>
                 <View style={styles.selectorGrid}>
                   {['Hata', 'İstek', 'Soru'].map(type => (
-                    <TouchableOpacity 
-                      key={type} 
-                      style={[
-                        styles.selectorItem, 
-                        formTur === type && styles.selectorItemActive
-                      ]}
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.selectorItem, formTur === type && styles.selectorItemActive]}
                       onPress={() => setFormTur(type)}
                     >
-                      <Text style={[
-                        styles.selectorItemText,
-                        formTur === type && styles.selectorItemTextActive
-                      ]}>
-                        {type === 'Hata' ? '🚨 Hata' : type === 'İstek' ? '💡 İstek' : '❓ Soru'}
+                      <Text style={[styles.selectorItemText, formTur === type && styles.selectorItemTextActive]}>
+                        {type}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Priority */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Öncelik</Text>
+              {/* Öncelik */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Öncelik</Text>
                 <View style={styles.selectorGrid}>
                   {['DÜŞÜK', 'ORTA', 'YÜKSEK'].map(priority => (
-                    <TouchableOpacity 
-                      key={priority} 
-                      style={[
-                        styles.selectorItem, 
-                        formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemActive
-                      ]}
+                    <TouchableOpacity
+                      key={priority}
+                      style={[styles.selectorItem, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemActive]}
                       onPress={() => setFormOncelik(priority)}
                     >
-                      <Text style={[
-                        styles.selectorItemText,
-                        formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemTextActive
-                      ]}>
-                        {priority === 'DÜŞÜK' ? '🔵 Düşük' : priority === 'ORTA' ? '🟡 Orta' : '🔴 Yüksek'}
+                      <Text style={[styles.selectorItemText, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemTextActive]}>
+                        {priority}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Target Date */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Bitiş Tarihi *</Text>
-                <TouchableOpacity 
+              {/* Bitiş Tarihi */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Bitiş Tarihi</Text>
+                <TouchableOpacity
                   onPress={() => setIsDatePickerOpen(true)}
                   activeOpacity={0.7}
-                  style={[styles.input, { justifyContent: 'center' }]}
+                  style={[styles.textInput, { justifyContent: 'center' }]}
                 >
                   <Text style={{ color: formBitisTarihi ? colors.text : colors.placeholder }}>
                     {formBitisTarihi || 'Tarih Seçiniz (YYYY-MM-DD)'}
@@ -734,28 +1189,29 @@ export const TicketScreen = () => {
                 </TouchableOpacity>
               </View>
 
-
-              {/* Form Actions Row */}
+              {/* Form Actions */}
               <View style={styles.formActionsRow}>
-                <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsCreateOpen(false)}>
-                  <Text style={styles.formCancelBtnText}>İptal</Text>
+                <TouchableOpacity style={styles.formCancelBtnBottom} onPress={() => setIsCreateOpen(false)}>
+                  <Text style={styles.formCancelBtnTextBottom}>İptal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.formSubmitBtn} 
+                <TouchableOpacity
+                  style={styles.formSubmitBtnBottom}
                   onPress={handleCreateTicket}
                   disabled={isSubmittingTicket}
                 >
                   {isSubmittingTicket ? (
                     <ActivityIndicator color="#ffffff" />
                   ) : (
-                    <Text style={styles.formSubmitBtnText}>Kaydet</Text>
+                    <Text style={styles.formSubmitBtnTextBottom}>Kaydet</Text>
                   )}
                 </TouchableOpacity>
               </View>
+
             </ScrollView>
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
+
       <DatePickerModal
         visible={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
@@ -763,51 +1219,88 @@ export const TicketScreen = () => {
         title="Bitiş Tarihi Seçin"
         outputFormat="yyyy-MM-dd"
       />
-
-      <BottomNavBar 
-        currentScreen="Ticket" 
-
-        customAction={{
-          icon: '🎫',
-          label: 'Yeni Bilet',
-          onPress: () => setIsCreateOpen(true)
-        }} 
-      />
-    </SafeAreaView>
+    </View>
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   contentWrapper: {
     flex: 1,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
   },
-  searchBarContainer: {
-    padding: 12,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-    gap: 10,
+  listContainer: {
+    padding: 16,
+    gap: 0,
+    paddingBottom: 32,
   },
-  searchInput: {
-    backgroundColor: colors.background,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    color: colors.text,
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 80,
+    gap: 12,
+  },
+  emptyText: {
+    color: colors.textSecondary,
     fontSize: 14,
+    fontWeight: '600',
   },
-  companyScroll: {
-    marginTop: 4,
+
+  // ── Tab bar ──────────────────────────────────────────────────────────────────
+  tabsRow: {
     flexDirection: 'row',
+    marginTop: 8,
+    gap: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  tabBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tabBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  tabBtnTextActive: {
+    color: '#FFF',
+  },
+  tabBadge: {
+    backgroundColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: 'center',
+  },
+  tabBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  tabBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  tabBadgeTextActive: {
+    color: '#FFF',
+  },
+
+  // ── Company chips ─────────────────────────────────────────────────────────────
+  companyScroll: {
+    marginTop: 8,
   },
   companyChip: {
     backgroundColor: colors.background,
@@ -830,16 +1323,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.accent,
     fontWeight: 'bold',
   },
+
+  // ── Toggle ─────────────────────────────────────────────────────────────────────
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 4,
-    paddingVertical: 4,
+    marginTop: 8,
   },
   toggleLabel: {
-    color: colors.textSecondary,
+    color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '600',
   },
   toggleSwitch: {
     width: 44,
@@ -862,107 +1357,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   toggleCircleActive: {
     transform: [{ translateX: 20 }],
   },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    padding: 6,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  activeTabButton: {
-    backgroundColor: colors.accentLight,
-    borderBottomWidth: 2,
-    borderColor: colors.accent,
-  },
-  tabText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  activeTabText: {
-    color: colors.accent,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listContent: {
-    padding: 16,
-    gap: 16,
-  },
-  ticketCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  ticketHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  takipKodu: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: colors.accent,
-  },
-  priorityBadge: {
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-  },
-  priorityHigh: {
-    backgroundColor: colors.dangerLight,
-  },
-  priorityMedium: {
-    backgroundColor: colors.warningLight,
-  },
-  priorityLow: {
-    backgroundColor: colors.infoLight,
-  },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  ticketTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  ticketDesc: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 12,
-  },
-  ticketFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  ticketMeta: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.textSecondary,
-    marginTop: 40,
-  },
+
+  // ── Detail Modal ──────────────────────────────────────────────────────────────
   modalContainer: {
     flex: 1,
     backgroundColor: colors.background,
@@ -973,342 +1369,447 @@ const createStyles = (colors: any) => StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  closeButton: {
-    padding: 6,
-  },
-  closeButtonText: {
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  modalScroll: {
-    flex: 1,
-  },
-  detailSection: {
-    backgroundColor: colors.card,
-    padding: 16,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  detailTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  detailDesc: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  metaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16,
-  },
-  metaItem: {
-    width: '45%',
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  metaValue: {
-    fontSize: 13,
-    color: colors.text,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  actionBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  commentsSection: {
-    padding: 16,
-  },
-  sectionTitleHeader: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  commentCard: {
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  commentUser: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: colors.accent,
-  },
-  commentDate: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  commentText: {
-    fontSize: 13,
-    color: colors.text,
-  },
-  addCommentContainer: {
-    marginTop: 12,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 10,
-    color: colors.text,
-    fontSize: 13,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: 40,
-  },
-  submitCommentBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitCommentText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  historySection: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-  },
-  historyCard: {
-    marginBottom: 12,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-    borderColor: colors.accent,
-  },
-  historyTime: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  historySubject: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: 2,
-  },
-  historyDesc: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    backgroundColor: colors.accent,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+  newDetailHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
     zIndex: 10,
   },
-  fabText: {
-    color: '#ffffff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    lineHeight: 30,
+  bgCircleLarge: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    top: -50,
+    right: -80,
   },
-  deleteHeaderBtn: {
-    backgroundColor: colors.dangerLight,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+  bgCircleSmall: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: 60,
+    right: 40,
   },
-  deleteHeaderBtnText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  inlineAssignBtn: {
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-  },
-  inlineAssignBtnText: {
-    color: colors.accent,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  filesSection: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-  },
-  fileCard: {
+  newDetailHeaderTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  fileIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  fileName: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 13,
-  },
-  fileDownloadBtn: {
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-  },
-  fileDownloadBtnText: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  uploadBtn: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingVertical: 12,
+  newBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+  },
+  newDetailTopTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  newDetailCode: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '600',
+  },
+  newStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  newStatusText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  // ── Detail content ────────────────────────────────────────────────────────────
+  detailScroll: {
+    padding: 16,
+    gap: 8,
+    paddingBottom: 120,
+  },
+  detailCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  detailCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  infoRowLabel: {
+    fontSize: 13,
+    color: slateTokens.textSecondary,
+  },
+  infoRowValue: {
+    fontSize: 13,
+    color: slateTokens.textBody,
+    fontWeight: '700',
+  },
+
+  // ── Timeline (Gelişmeler) ─────────────────────────────────────────────────────
+  timelineContainer: {
     marginTop: 8,
   },
-  uploadBtnText: {
-    color: colors.text,
-    fontWeight: 'bold',
-    fontSize: 13,
+  timelineItemRow: {
+    flexDirection: 'row',
+    minHeight: 40,
   },
-  modalOverlay: {
+  timelineLeftCol: {
+    width: 32,
+    alignItems: 'center',
+  },
+  timelineIconBg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  timelineVerticalLine: {
+    width: 1,
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: slateTokens.border,
+    marginTop: -2,
+    marginBottom: -2,
+  },
+  timelineRightCol: {
+    flex: 1,
+    paddingLeft: 8,
+    paddingBottom: 20,
+  },
+  timelineItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: slateTokens.textBody,
+    marginBottom: 2,
+  },
+  timelineItemSub: {
+    fontSize: 11,
+    color: slateTokens.textMuted,
+  },
+
+  // ── History section ───────────────────────────────────────────────────────────
+  historySection: {
+    marginTop: 8,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.card,
+  },
+  historyTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  historyContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: slateTokens.border,
+  },
+  historyItemLeft: {
+    width: 110,
+    paddingRight: 8,
+  },
+  historyItemRight: {
+    flex: 1,
+  },
+  historyItemTime: {
+    fontSize: 12,
+    color: slateTokens.textMuted,
+  },
+  historyItemSubject: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: slateTokens.textBody,
+    marginBottom: 2,
+  },
+  historyItemContent: {
+    fontSize: 11,
+    color: slateTokens.textMuted,
+  },
+  emptyHistoryText: {
+    fontSize: 12,
+    color: slateTokens.textMuted,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+
+  // ── Bottom action bar ─────────────────────────────────────────────────────────
+  fixedComposerWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 8,
+    elevation: 10,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  bottomTabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    height: 60,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: '100%',
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  centerTabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: 80,
+    marginTop: -36,
+  },
+  centerPlusCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  centerTabLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    marginTop: 2,
+  },
+
+  // ── Action sheet ──────────────────────────────────────────────────────────────
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheetContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  sheetItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  sheetCancelBtn: {
+    marginTop: 12,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  sheetCancelBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+
+  // ── Comment / overlay modal ────────────────────────────────────────────────────
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
-  assignModalContent: {
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '80%',
+  overlayCard: {
     backgroundColor: colors.card,
-    borderRadius: 14,
+    borderRadius: 20,
+    width: '100%',
+    maxHeight: '80%',
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  assignModalHeader: {
+  overlayTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  textInput: {
+    height: 48,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    color: colors.text,
+    fontSize: 13,
+  },
+  submitBtn: {
+    backgroundColor: colors.primary,
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+
+  // ── Create Form ───────────────────────────────────────────────────────────────
+  formHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  assignModalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  assignModalCloseText: {
-    color: colors.danger,
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  personelItem: {
+    paddingHorizontal: 16,
     paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
   },
-  personelName: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  formHeaderTitle: {
+    fontSize: 17,
+    fontWeight: '800',
     color: colors.text,
   },
-  personelSicil: {
+  formCancelBtnText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  formInfoBox: {
+    backgroundColor: (colors.primaryLight || colors.primary + '15') + '40',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '15',
+    marginBottom: 8,
+  },
+  formInfoBoxTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  formInfoBoxText: {
     fontSize: 11,
     color: colors.textSecondary,
-    marginTop: 2,
+    lineHeight: 16,
   },
-  itemSeparator: {
-    height: 1,
-    backgroundColor: colors.border,
+  formScroll: {
+    padding: 20,
+    gap: 16,
   },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: colors.text,
+  formGroup: {
     marginBottom: 6,
+    gap: 8,
   },
-  input: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    color: colors.text,
-    fontSize: 14,
+  formLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  textArea: {
+    height: 120,
+    paddingTop: 12,
+    textAlignVertical: 'top',
   },
   selectorGrid: {
     flexDirection: 'row',
@@ -1341,7 +1842,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  formCancelBtn: {
+  formCancelBtnBottom: {
     flex: 1,
     height: 48,
     borderRadius: 8,
@@ -1351,12 +1852,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  formCancelBtnText: {
+  formCancelBtnTextBottom: {
     color: colors.danger,
     fontWeight: '700',
     fontSize: 14,
   },
-  formSubmitBtn: {
+  formSubmitBtnBottom: {
     flex: 1,
     height: 48,
     borderRadius: 8,
@@ -1364,7 +1865,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  formSubmitBtnText: {
+  formSubmitBtnTextBottom: {
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 14,

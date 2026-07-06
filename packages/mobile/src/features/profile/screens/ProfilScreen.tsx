@@ -3,12 +3,33 @@ import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Dim
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { BottomNavBar } from '../../../components/BottomNavBar';
-
+import { UserAvatar } from '../../../components/UserAvatar';
+import { ListHeader } from '../../../components/ListHeader';
+import { Ionicons } from '@expo/vector-icons';
+import { api } from '@oyemcore/shared';
 
 export const ProfilScreen = () => {
   const { user, logout } = useAuthStore();
   const { colors, theme, toggleTheme } = useThemeStore();
   const styles = createStyles(colors);
+  const [sirketAdi, setSirketAdi] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const fetchCompany = async () => {
+      try {
+        if (user?.sirketKodu) {
+          const companies = await api.getCompanies();
+          const match = companies.find(c => c.sirketKodu === user.sirketKodu);
+          if (match) {
+            setSirketAdi(match.sirketAdi);
+          }
+        }
+      } catch (e) {
+        console.error("ProfilScreen fetchCompany error:", e);
+      }
+    };
+    fetchCompany();
+  }, [user?.sirketKodu]);
 
   const calculateKidem = (startDateStr: string | undefined) => {
     if (!startDateStr) return '7 Ay 7 Gün';
@@ -41,36 +62,30 @@ export const ProfilScreen = () => {
     }
   };
 
-  const getInitials = () => {
-    if (!user || !user.adSoyad) return 'US';
-    return user.adSoyad
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <ListHeader
+        title="Hesabım"
+        subtitle="Profil Bilgileri & Ayarlar"
+        searchValue=""
+        onSearchChange={undefined} // No search on profile screen
+        searchPlaceholder=""
+        activeFilter=""
+        onFilterChange={() => {}}
+        filters={[]}
+      />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hesabım</Text>
-          <Text style={styles.headerSubtitle}>Profil Bilgileri & Ayarlar</Text>
-        </View>
 
         {/* Profile Details Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials()}</Text>
-            </View>
+            <UserAvatar sicilNo={user?.sicilNo} name={user?.adSoyad} size={90} style={styles.avatarBorder} />
             <View style={styles.onlineBadge} />
           </View>
 
           <Text style={styles.profileName}>{user?.adSoyad || 'Halil Alp Çalışan'}</Text>
           <Text style={styles.profileTitle}>
-            {(user as any)?.unvan || user?.adminBelgeTur || 'BİLGİ İŞLEM MÖDÜRÜ'}
+            {(user as any)?.unvan || user?.adminBelgeTur || 'BİLGİ İŞLEM MÜDÜRÜ'}
           </Text>
 
           <View style={styles.divider} />
@@ -82,23 +97,29 @@ export const ProfilScreen = () => {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Sicil No</Text>
-            <Text style={styles.infoValue}>{user?.sicilNo ? `SG.${user.sicilNo}` : 'SG.0001-00'}</Text>
+            <Text style={styles.infoValue}>{user?.sicilNo || '0001-00'}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Şirket</Text>
-            <Text style={styles.infoValue}>{user?.sirketKodu || 'IŞIK TARIM'}</Text>
+            <Text style={styles.infoValue}>{sirketAdi || useAuthStore.getState().tenantUnvan || 'IŞIK TARIM'}</Text>
           </View>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { borderLeftColor: colors.accent }]}>
-            <Text style={styles.statLabel}>📅 KIDEM</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Ionicons name="calendar-outline" size={16} color={colors.accent} />
+              <Text style={styles.statLabel}>KIDEM</Text>
+            </View>
             <Text style={styles.statValue}>{calculateKidem((user as any)?.iseBasTar)}</Text>
           </View>
           <View style={[styles.statCard, { borderLeftColor: colors.primary }]}>
-            <Text style={styles.statLabel}>✈️ İZİN BAKİYESİ</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Ionicons name="airplane-outline" size={16} color={colors.primary} />
+              <Text style={styles.statLabel}>İZİN BAKİYESİ</Text>
+            </View>
             <Text style={styles.statValue}>{(user as any)?.yillikIzin || '9'} GÜN</Text>
           </View>
         </View>
@@ -109,7 +130,11 @@ export const ProfilScreen = () => {
 
           <TouchableOpacity style={styles.settingItem} onPress={toggleTheme}>
             <View style={styles.settingLeft}>
-              <Text style={styles.settingIcon}>{theme === 'light' ? '🌙' : '☀️'}</Text>
+              <Ionicons
+                name={theme === 'dark' ? "sunny-outline" : "moon-outline"}
+                size={20}
+                color={theme === 'dark' ? '#F59E0B' : colors.primary}
+              />
               <Text style={styles.settingLabelText}>Koyu Tema</Text>
             </View>
             <View style={[styles.switchTrack, theme === 'dark' ? styles.switchOn : styles.switchOff]}>
@@ -117,13 +142,14 @@ export const ProfilScreen = () => {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.logoutBtnText}>🚪 Oturumu Kapat</Text>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
+            <Ionicons name="log-out-outline" size={20} color={colors.danger} style={{ marginRight: 8 }} />
+            <Text style={styles.logoutBtnText}>Oturumu Kapat</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
       <BottomNavBar currentScreen="Profil" />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -139,19 +165,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
-  },
-  header: {
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
   },
   profileCard: {
     backgroundColor: colors.card,
@@ -171,20 +184,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
   },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatarBorder: {
     borderWidth: 3,
     borderColor: colors.primary,
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.primary,
   },
   onlineBadge: {
     position: 'absolute',
@@ -333,6 +335,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.danger + '20',
     borderRadius: 14,
     height: 52, // Ergonomic
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,

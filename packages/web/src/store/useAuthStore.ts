@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, setAuthToken, User } from '@webportal/shared';
+import { api, setAuthToken, User } from '@oyemcore/shared';
 
 interface AuthState {
   token: string | null;

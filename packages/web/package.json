@@ -12,7 +12,7 @@
   "dependencies": {
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "@webportal/shared": "*",
+    "@oyemcore/shared": "*",
     "react-router-dom": "^6.22.3",
     "zustand": "^4.5.2",
     "lucide-react": "^0.363.0"

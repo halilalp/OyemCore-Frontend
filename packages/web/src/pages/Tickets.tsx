@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '@webportal/shared';
-import type { Ticket, Company, Personel, TicketComment, TicketFile, TicketHistory } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
+import type { Ticket, Company, Personel, TicketComment, TicketFile, TicketHistory } from '@oyemcore/shared';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const Tickets: React.FC = () => {

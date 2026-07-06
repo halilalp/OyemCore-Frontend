@@ -1,787 +1,1324 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Dimensions, Animated, TextInput, Platform, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  Image,
+  Modal,
+  TextInput,
+  Linking,
+  Alert
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { api } from '@webportal/shared';
-import { Ionicons } from '@expo/vector-icons';
+import { useAppStore } from '../../../store/useAppStore';
+import { mapKeenIconToIonicons } from '../../../utils/iconMapper';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { api, slateTokens } from '@oyemcore/shared';
+import { UserAvatar } from '../../../components/UserAvatar';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
+
+LocaleConfig.locales['tr'] = {
+  monthNames: [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ],
+  monthNamesShort: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+  dayNames: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
+  dayNamesShort: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'],
+  today: 'Bugün'
+};
+LocaleConfig.defaultLocale = 'tr';
+
+const stripHtml = (html: string | null | undefined): string => {
+  if (!html) return '';
+  let safeHtml = html.replace(/src="data:image[^"]+"/gi, 'src=""');
+  return safeHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .trim();
+};
+
+// ─── Bileşen ─────────────────────────────────────────────────────────────────
 
 export const HomeScreen = () => {
-  const { user, logout } = useAuthStore();
-  const { colors, theme } = useThemeStore();
-  const styles = createStyles(colors);
+  const { user } = useAuthStore();
+  const { colors } = useThemeStore();
+  const { menuItems, setMenuItems } = useAppStore();
   const navigation = useNavigation<any>();
-  const isFocused = useIsFocused();
+  const route = useRoute<any>();
+  const [activeCategory, setActiveCategory] = useState<string>('Tümü');
+  const [isModulesModalVisible, setIsModulesModalVisible] = useState(false);
+  const [moduleSearch, setModuleSearch] = useState('');
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{
+    type: 'news' | 'training';
+    title: string;
+    description: string;
+    date: string;
+    categoryOrAuthor?: string;
+    fileUrl?: string;
+    module?: string;
+  } | null>(null);
 
-  const [stats, setStats] = useState({
-    activeTickets: 0,
-    maintenancePlans: 0,
-    totalUsers: 0,
-    smsCount: 0
-  });
-  const [badges, setBadges] = useState({
-    helpdesk: 0,
-    izin: 0,
-    tedarikci: 0,
-    zimmet: 0
-  });
-  const [isStatsLoading, setIsStatsLoading] = useState(false);
-  const [userPermissions, setUserPermissions] = useState<number[]>([]);
-  const [hasLoadedPermissions, setHasLoadedPermissions] = useState(false);
+  React.useEffect(() => {
+    if (route.params?.activeCategory) {
+      setActiveCategory(route.params.activeCategory);
+      navigation.setParams({ activeCategory: undefined });
+    }
+  }, [route.params?.activeCategory]);
 
-  useEffect(() => {
-    const loadStats = async () => {
-      if (!isFocused) return;
-      setIsStatsLoading(true);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [newsItems, setNewsItems] = useState<any[]>([]);
+  const [trainingItems, setTrainingItems] = useState<any[]>([]);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+    const dd = today.getDate().toString().padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+
+  React.useEffect(() => {
+    const fetchData = async () => {
       try {
-        const dashboardStats = await api.getDashboardStats();
-        setStats({
-          activeTickets: dashboardStats.activeTickets || 0,
-          maintenancePlans: dashboardStats.maintenancePlans || 0,
-          totalUsers: dashboardStats.totalUsers || 0,
-          smsCount: dashboardStats.smsCount || 0
-        });
+        const now = new Date();
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
 
-        // Fetch User Permissions
-        if (user?.kullaniciID) {
-          try {
-            const permissions = await api.adminGetPermissions(user.kullaniciID);
-            setUserPermissions(permissions || []);
-          } catch (pe) {
-            console.log('Failed fetching user permissions:', pe);
-          }
-        }
-        setHasLoadedPermissions(true);
+        const [menuRes, takvimRes, talepRes, statsRes, newsRes, trainingRes] = await Promise.all([
+          api.getDashboardMenu().catch(() => []),
+          api.getTakvimEvents(prevMonth, nextMonth).catch(() => []), // JSON henüz oluşturulmamışsa DB'den doğrudan al
+          api.getTaleps('').catch(() => []),
+          api.getDashboardStats().catch(() => null),
+          api.getDashboardNews().catch(() => []),
+          api.getDashboardTrainings().catch(() => []),
+        ]);
 
-        let izinCount = 0;
-        try {
-          const approvals = await api.getIzinApprovals();
-          izinCount = approvals.length;
-        } catch (e) {
-          console.log('Failed fetching izin approvals for badge:', e);
-        }
+        setMenuItems(menuRes || []);
+        setCalendarEvents(takvimRes || []);
+        setNewsItems((newsRes || []).slice(0, 5));
+        setTrainingItems((trainingRes || []).slice(0, 5));
 
-        let tedCount = 0;
-        try {
-          const tedRes = await api.getTedarikciList({ Durum: 'BEKLEMEDE', PageSize: 1 });
-          tedCount = tedRes.totalCount || 0;
-        } catch (e) {
-          console.log('Failed fetching tedarikci list for badge:', e);
-        }
+        const activeTalepler = (talepRes || []).filter((t: any) => t.durum !== 'Kapalı' && t.durum !== 'İptal').slice(0, 5);
+        setTasks(activeTalepler.map((t: any) => ({
+          id: t.talepID,
+          title: t.konu || 'Konusuz Talep',
+          sub: t.talepTurKodu || 'Talep',
+          dot: slateTokens.brandPrimary
+        })));
 
-        let zimmetCount = 0;
-        try {
-          const myDebits = await api.getMyDebits();
-          zimmetCount = myDebits.filter((d: any) => d.hataBildir === true).length;
-        } catch (e) {
-          console.log('Failed fetching my debits for badge:', e);
-        }
-
-        setBadges({
-          helpdesk: dashboardStats.activeTickets || 0,
-          izin: izinCount,
-          tedarikci: tedCount,
-          zimmet: zimmetCount
-        });
-
+        console.log("DASHBOARD_STATS_DEBUG:", statsRes);
+        setStats(statsRes);
       } catch (err) {
-        console.error('İstatistikler yüklenemedi:', err);
-      } finally {
-        setIsStatsLoading(false);
+        console.error("Dashboard data fetch error:", err);
       }
     };
-    loadStats();
-  }, [isFocused]);
+    fetchData();
+  }, []);
 
-  const getInitials = () => {
-    if (!user || !user.adSoyad) return 'US';
-    return user.adSoyad
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
+  const styles = createStyles(colors);
 
-  const [moduleSearch, setModuleSearch] = useState('');
-  const [showAllModules, setShowAllModules] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'talepler' | 'envanter' | 'diger'>('all');
-
-  const windowWidth = Dimensions.get('window').width;
-  const containerWidth = windowWidth > 800 ? 800 : windowWidth;
-  const numColumns = windowWidth > 800 ? 4 : (windowWidth > 600 ? 3 : 2);
-  const gap = 12;
-  const padding = 16;
-  const cardWidth = (containerWidth - padding * 2 - (numColumns - 1) * gap) / numColumns;
-
-  const modules = [
-    { id: 'helpdesk_it', title: 'HelpDesk IT', icon: 'laptop-outline', screen: 'Talepler', params: { type: 'IT' }, badge: badges.helpdesk > 0 ? `${badges.helpdesk}` : undefined, color: '#3b82f6', category: 'talepler', requiredPages: [1082] },
-    { id: 'helpdesk_erp', title: 'HelpDesk ERP', icon: 'analytics-outline', screen: 'Talepler', params: { type: 'ERP' }, color: '#10b981', category: 'talepler', requiredPages: [1082] },
-    { id: 'helpdesk_bakim', title: 'HelpDesk Bakım', icon: 'construct-outline', screen: 'Talepler', params: { type: 'BAKIM' }, color: '#f59e0b', category: 'talepler', requiredPages: [1082] },
-    { id: 'bakim_yonetim', title: 'Bakım Yönetimi', icon: 'settings-outline', screen: 'Bakim', color: '#8e44ad', category: 'talepler', requiredPages: [1139, 1140, 1195, 1087] },
-    { id: 'izin', title: 'İzin İşlemleri', icon: 'airplane-outline', screen: 'Izin', badge: badges.izin > 0 ? `${badges.izin}` : undefined, color: '#ef4444', category: 'diger', requiredPages: [1091, 1092] },
-    { id: 'ticket', title: 'Ticket-Oyemsoft', icon: 'ticket-outline', screen: 'Ticket', color: '#009ef7', category: 'talepler' },
-    { id: 'm_zimmetlerim', title: 'Zimmetlerim', icon: 'cube-outline', screen: 'Zimmetlerim', badge: badges.zimmet > 0 ? `${badges.zimmet}` : undefined, color: '#fd7e14', category: 'envanter' },
-    { id: 'm_demirbas_yonetim', title: 'Demirbaş Yönetimi', icon: 'settings-outline', screen: 'DemirbasYonetim', color: '#9c27b0', category: 'envanter', requiredPages: [29, 30] },
-    { id: 'm_sayim', title: 'Demirbaş Sayımı', icon: 'barcode-outline', screen: 'DemirbasSayim', color: '#4caf50', category: 'envanter', requiredPages: [29, 30] },
-    { id: 'm_tedarikci', title: 'Tedarikçi Değerlendirme', icon: 'shield-checkmark-outline', screen: 'Tedarikci', badge: badges.tedarikci > 0 ? `${badges.tedarikci}` : undefined, color: '#dc3545', category: 'envanter', requiredPages: [1102] },
-    { id: 'admin_settings', title: 'Yönetici Ayarları', icon: 'settings-outline', screen: 'AdminAyarlar', color: '#009ef7', category: 'diger' },
-  ];
-
-  const permittedModules = modules.filter(m => {
-    if (m.id === 'admin_settings') {
-      return user?.yonetici || user?.zimmetSorumlusu || user?.kullaniciAdi === 'admin';
+  // Sadece mobilde gosterilecek olanlari sec
+  const rawMobilePages = menuItems.filter(m => m.mobilGoster === true);
+  
+  const mobilePages: typeof rawMobilePages = [];
+  rawMobilePages.forEach(m => {
+    if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
+      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
+    } else {
+      mobilePages.push(m);
     }
-    if (m.requiredPages) {
-      return hasLoadedPermissions && m.requiredPages.some(pageId => userPermissions.includes(pageId));
-    }
-    return true; // public or fallback
+  });
+  
+  // Modulleri Projeye gore grupla (Modal icin)
+  const groupedModules = mobilePages.reduce((acc, m) => {
+    const proj = m.projeAdi || 'Diğer';
+    if (!acc[proj]) acc[proj] = [];
+    acc[proj].push(m);
+    return acc;
+  }, {} as Record<string, typeof mobilePages>);
+
+  // Map backend menu items to UI modules format
+  const dynamicModules = mobilePages.map((m, index) => {
+    const pastelBgs = [slateTokens.pastelBlueBg, slateTokens.pastelOrangeBg, slateTokens.pastelGreenBg, slateTokens.pastelPurpleBg];
+    const pastelIcons = [slateTokens.pastelBlueIcon, slateTokens.pastelOrangeIcon, slateTokens.pastelGreenIcon, slateTokens.pastelPurpleIcon];
+    const colorIndex = index % 4;
+
+    return {
+      id: m.sayfaUrl || String(index),
+      title: m.sayfaAdi as string,
+      icon: (m.mobilIcon || m.ikon || 'cube-outline') as any,
+      screen: m.mobilUrl || 'Home',
+      bg: pastelBgs[colorIndex],
+      color: pastelIcons[colorIndex],
+      projeAdi: m.projeAdi || 'Genel'
+    };
   });
 
-  const filteredModules = permittedModules.filter(m => {
-    const matchesSearch = m.title.toLocaleLowerCase('tr').includes(moduleSearch.toLocaleLowerCase('tr'));
-    const matchesCategory = activeCategory === 'all' || m.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const markedDates = React.useMemo(() => {
+    const marks: any = {};
+    
+    calendarEvents.forEach((e: any) => {
+      const d = new Date(e.basTar || e.BasTar || '');
+      if (!isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+        const dd = d.getDate().toString().padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        
+        marks[dateStr] = {
+          marked: true,
+          dotColor: e.bgColor || e.BgColor || '#3445C5',
+        };
+      }
+    });
 
-  const displayedModules = moduleSearch.trim() !== '' || activeCategory !== 'all'
-    ? filteredModules
-    : (showAllModules ? permittedModules : permittedModules.slice(0, 8));
+    marks[selectedCalendarDate] = {
+      ...marks[selectedCalendarDate],
+      selected: true,
+      selectedColor: '#3445C5',
+      selectedTextColor: '#FFFFFF',
+    };
 
-  // Weekly calendar mock with status codes corresponding to reference web interface
-  const weeklyAgenda = [
-    { day: 'Pzt', date: 15, status: 'normal', color: colors.border },
-    { day: 'Sal', date: 16, status: 'normal', color: colors.border },
-    { day: 'Çar', date: 17, status: 'izin', statusLabel: 'İzin Çıkış', color: colors.warning },
-    { day: 'Per', date: 18, status: 'bugün', statusLabel: 'İş Başı', color: colors.primary },
-    { day: 'Cum', date: 19, status: 'normal', color: colors.border },
-    { day: 'Cmt', date: 20, status: 'tatil', statusLabel: 'Hafta Sonu', color: colors.textSecondary },
-    { day: 'Paz', date: 21, status: 'tatil', statusLabel: 'Hafta Sonu', color: colors.textSecondary }
-  ];
+    return marks;
+  }, [calendarEvents, selectedCalendarDate]);
 
-  // Market trends mock
-  const marketData = [
-    { name: 'USD ($)', value: '32.84 ₺', change: '+0.12%', up: true },
-    { name: 'EUR (€)', value: '35.42 ₺', change: '+0.05%', up: true },
-    { name: 'GBP (£)', value: '41.88 ₺', change: '-0.15%', up: false }
-  ];
+  const formattedEventDate = React.useMemo(() => {
+    if (!selectedEvent) return '';
+    const d = new Date(selectedEvent.basTar || selectedEvent.BasTar || '');
+    if (isNaN(d.getTime())) return '';
+    const dd = d.getDate().toString().padStart(2, '0');
+    const mmList = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const mm = mmList[d.getMonth()];
+    const yyyy = d.getFullYear();
+    const startStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    
+    const dEnd = new Date(selectedEvent.bitTar || selectedEvent.BitTar || '');
+    let timeStr = startStr;
+    if (!isNaN(dEnd.getTime())) {
+      const endStr = `${dEnd.getHours().toString().padStart(2,'0')}:${dEnd.getMinutes().toString().padStart(2,'0')}`;
+      timeStr += ` - ${endStr}`;
+    }
+    return `${dd} ${mm} ${yyyy}, ${timeStr}`;
+  }, [selectedEvent]);
+
+  const userDisplayName = user?.adSoyad || 'Halil Alp Çalışan';
+  const userTitle       = (user as any)?.unvan || 'BİLGİ İŞLEM YÖNETİCİSİ';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.contentWrapper}>
-          
-          {/* Welcome Header with profile and logout buttons */}
-          <View style={styles.header}>
-            <View style={styles.headerWelcome}>
-              <Text style={styles.headerGreeting}>İyi Günler,</Text>
-              <Text style={styles.headerName}>{user?.adSoyad || 'Halil Alp Çalışan'}</Text>
-            </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.headerActionButton}
-                onPress={() => navigation.navigate('Profil')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="person-outline" size={18} color={colors.text} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
+      
+      {/* ── HEADER (Sabit Arka Plan) ────────────────────────── */}
+      <View style={styles.headerBackground}>
+        <LinearGradient
+          colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        
+        {/* Opticore tarzı devasa dairesel şekiller */}
+        <View style={styles.bgCircleLarge} />
+        <View style={styles.bgCircleSmall} />
+      </View>
+
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerContent}>
+          {/* Üst Logo ve İkonlar */}
+          <View style={styles.topRow}>
+            <Image 
+              source={require('../../../../assets/oyemcore-menu2.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain" 
+            />
+            
+            <View style={styles.topActions}>
+              <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8}>
+                <Ionicons name="notifications-outline" size={20} color="#fff" />
+                <View style={styles.bellDot} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerActionButton}
-                onPress={logout}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+              
+              <TouchableOpacity onPress={() => navigation.navigate('Profil')} activeOpacity={0.8}>
+                <UserAvatar sicilNo={user?.sicilNo} name={userDisplayName} size={40} style={{ borderWidth: 0 }} />
               </TouchableOpacity>
-              <View style={styles.headerAvatarContainer}>
-                <View style={styles.headerAvatar}>
-                  <Text style={styles.headerAvatarText}>{getInitials()}</Text>
-                </View>
-                <View style={styles.onlineBadge} />
-              </View>
             </View>
           </View>
 
-          {/* Quick Action Grid (Ergonomic layout) */}
+          {/* İsim ve Sicil */}
+          <View style={styles.greetingSection}>
+            <View style={styles.nameRow}>
+              <Text style={styles.nameText}>{userDisplayName}</Text>
+              {user?.sicilNo && (
+                <View style={styles.sicilBadge}>
+                  <Text style={styles.sicilText}>Sicil No: {user.sicilNo}</Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.roleBadge}>
+              <Ionicons name="business-outline" size={12} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.roleText}>{userTitle}</Text>
+            </View>
+          </View>
+
+          {/* Metrik Kartları */}
+          <View style={styles.metricsContainer}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>YILLIK İZİN</Text>
+              <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
+              <Text style={styles.metricSub}>gün borç</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>BU AY</Text>
+              <Text style={styles.metricValue}>
+                {calendarEvents ? calendarEvents.filter(ev => {
+                  const dStr = ev.basTar || ev.BasTar;
+                  if (!dStr) return false;
+                  const d = new Date(dStr);
+                  const now = new Date();
+                  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+                }).length : '-'}
+              </Text>
+              <Text style={styles.metricSub}>Etkinlik</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>AKTİF TALEP</Text>
+              <Text style={[styles.metricValue, { color: slateTokens.success }]}>{tasks.length}</Text>
+              <Text style={styles.metricSub}>bekleyen</Text>
+            </View>
+          </View>
+        </SafeAreaView>
+
+        {/* ── İÇERİK (Beyaz Overlap Alanı) ──────────────────── */}
+        <View style={styles.bodyContainer}>
+          
+          {/* Hızlı İşlemler */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
-              {modules.length > 8 && moduleSearch.trim() === '' && activeCategory === 'all' && (
-                <TouchableOpacity 
-                  onPress={() => setShowAllModules(!showAllModules)}
-                  style={styles.toggleContainer}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.toggleText}>
-                    {showAllModules ? 'Özet Gör' : `Tümünü Gör (${modules.length})`}
-                  </Text>
-                  <Ionicons 
-                    name={showAllModules ? "chevron-up" : "chevron-down"} 
-                    size={14} 
-                    color={colors.primary} 
-                    style={{ marginLeft: 4 }}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Search Input for Modules */}
-            <View style={styles.moduleSearchContainer}>
-              <Ionicons name="search-outline" size={15} color={colors.textSecondary} style={{ marginRight: 6 }} />
-              <TextInput
-                style={styles.moduleSearchInput}
-                placeholder="İşlem veya modül ara..."
-                placeholderTextColor={colors.placeholder}
-                value={moduleSearch}
-                onChangeText={setModuleSearch}
-                clearButtonMode="while-editing"
-              />
-              {moduleSearch.trim() !== '' && (
-                <TouchableOpacity onPress={() => setModuleSearch('')} style={styles.clearBtn}>
-                  <Text style={styles.clearBtnText}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Category Filter Tabs (Pills) */}
-            <View style={styles.categoryTabsContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryTabsScroll}>
-                <TouchableOpacity 
-                  style={[styles.categoryTab, activeCategory === 'all' && styles.activeCategoryTab]}
-                  onPress={() => setActiveCategory('all')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.categoryTabText, activeCategory === 'all' && styles.activeCategoryTabText]}>Tümü</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.categoryTab, activeCategory === 'talepler' && styles.activeCategoryTab]}
-                  onPress={() => setActiveCategory('talepler')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.categoryTabText, activeCategory === 'talepler' && styles.activeCategoryTabText]}>Destek & Talep</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.categoryTab, activeCategory === 'envanter' && styles.activeCategoryTab]}
-                  onPress={() => setActiveCategory('envanter')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.categoryTabText, activeCategory === 'envanter' && styles.activeCategoryTabText]}>Demirbaş & Varlık</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.categoryTab, activeCategory === 'diger' && styles.activeCategoryTab]}
-                  onPress={() => setActiveCategory('diger')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.categoryTabText, activeCategory === 'diger' && styles.activeCategoryTabText]}>İK & Diğer</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-
-            <View style={[styles.grid, { gap }]}>
-              {displayedModules.map((mod) => (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
                 <TouchableOpacity
-                  key={mod.id}
-                  style={[styles.gridCard, { width: cardWidth }]}
-                  activeOpacity={0.85}
                   onPress={() => {
-                    if (mod.screen === 'HomeScreen') {
-                      // Mock or home navigation
-                    } else {
-                      navigation.navigate(mod.screen, mod.params);
-                    }
+                    setIsSearchVisible(prev => {
+                      if (prev) setModuleSearch('');
+                      return !prev;
+                    });
                   }}
+                  style={{ marginLeft: 8 }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <View style={[styles.moduleIconContainer, { backgroundColor: mod.color + '15' }]}>
-                    <Ionicons name={mod.icon as any} size={18} color={mod.color} />
-                    {mod.badge && (
-                      <View style={styles.badgeContainer}>
-                        <Text style={styles.badgeText}>{mod.badge}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.moduleTitle} numberOfLines={1}>
-                    {mod.title}
+                  <Ionicons name="search-outline" size={20} color={isSearchVisible ? slateTokens.brandPrimary : slateTokens.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.seeAllBtn} onPress={() => setIsModulesModalVisible(true)}>
+                <Text style={styles.seeAllText}>Tümünü Gör ({mobilePages.length}) ⌄</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Category Tabs (Projeler) */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.categoryScrollContent}>
+              {['Tümü', ...Object.keys(groupedModules)].map((cat: string) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryTab,
+                    activeCategory === cat && styles.categoryTabActive
+                  ]}
+                  onPress={() => setActiveCategory(cat)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.categoryTabText,
+                    activeCategory === cat && styles.categoryTabTextActive
+                  ]}>
+                    {cat}
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.placeholder} style={styles.arrowIcon} />
                 </TouchableOpacity>
               ))}
-              {displayedModules.length === 0 && (
-                <View style={styles.noResultsBox}>
-                  <Text style={styles.noResultsText}>Eşleşen modül bulunamadı.</Text>
-                </View>
-              )}
-            </View>
-          </View>
+            </ScrollView>
 
-          {/* Weekly Agenda Widget */}
-          <View style={styles.widgetCard}>
-            <View style={styles.widgetHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                <Text style={styles.widgetTitle}>Haftalık Ajanda</Text>
+            {/* Hızlı Arama */}
+            {isSearchVisible && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.border, marginBottom: 10, paddingHorizontal: 10 }}>
+                <Ionicons name="search-outline" size={16} color={colors.textSecondary} />
+                <TextInput
+                  value={moduleSearch}
+                  onChangeText={setModuleSearch}
+                  placeholder="Modül ara..."
+                  placeholderTextColor={colors.textSecondary}
+                  style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 8, color: colors.text, fontSize: 14 }}
+                />
+                {moduleSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setModuleSearch('')}>
+                    <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
               </View>
-              <Text style={styles.widgetSubtitle}>Haziran 2026</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.agendaScroll}>
-              {weeklyAgenda.map((day, idx) => (
-                <View 
-                  key={idx} 
-                  style={[
-                    styles.agendaDayCard,
-                    day.status === 'bugün' && styles.agendaDayCardActive,
-                    day.status === 'izin' && styles.agendaDayCardIzin
-                  ]}
+            )}
+
+            {/* Modüller */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll} contentContainerStyle={styles.modulesScrollContent}>
+              {dynamicModules
+                .filter(mod =>
+                  (activeCategory === 'Tümü' || mod.projeAdi === activeCategory) &&
+                  (moduleSearch === '' || mod.title.toLowerCase().includes(moduleSearch.toLowerCase()))
+                )
+                .map((mod, idx) => (
+                <TouchableOpacity
+                  key={`${mod.id}-${idx}`}
+                  style={styles.moduleItemHoriz}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    let target = mod.screen;
+                    navigation.navigate(target);
+                  }}
                 >
-                  <Text style={[styles.agendaDayName, day.status === 'bugün' && styles.textWhite]}>{day.day}</Text>
-                  <Text style={[styles.agendaDateText, day.status === 'bugün' && styles.textWhite]}>{day.date}</Text>
-                  {day.statusLabel && (
-                    <View style={[
-                      styles.agendaStatusBadge,
-                      day.status === 'bugün' && { backgroundColor: '#ffffff' },
-                      day.status === 'izin' && { backgroundColor: colors.warningLight }
-                    ]}>
-                      <Text style={[
-                        styles.agendaStatusText,
-                        day.status === 'bugün' && { color: colors.primary },
-                        day.status === 'izin' && { color: colors.warning }
-                      ]}>{day.statusLabel}</Text>
-                    </View>
-                  )}
-                </View>
+                  <View style={[styles.moduleIconBox, { backgroundColor: mod.bg }]}>
+                    <Ionicons name={mod.icon} size={28} color={mod.color} />
+                  </View>
+                  <Text style={styles.moduleLabel}>{mod.title}</Text>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
-          {/* Market Data */}
-          <View style={styles.widgetCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-              <Ionicons name="trending-up-outline" size={16} color={colors.primary} />
-              <Text style={styles.widgetTitle}>Finansal Göstergeler</Text>
+          {/* Takvim — Etkinlikler (Calendar Önizlemeli) */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderIconRow}>
+              <Ionicons name="calendar-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>Takvim & Etkinlikler</Text>
             </View>
-            <View style={styles.marketRowContainer}>
-              {marketData.map((m, idx) => (
-                <View key={idx} style={styles.marketMiniCard}>
-                  <Text style={styles.marketLabel}>{m.name}</Text>
-                  <Text style={styles.marketVal}>{m.value}</Text>
-                  <Text style={m.up ? styles.marketUp : styles.marketDown}>
-                    {m.up ? '▲' : '▼'} {m.change}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            
+            <Calendar
+              current={selectedCalendarDate}
+              onDayPress={(day) => {
+                setSelectedCalendarDate(day.dateString);
+              }}
+              markedDates={markedDates}
+              dayComponent={({ date, state, marking }) => {
+                const dayStr = date?.day ? String(date.day) : '';
+                const dateStr = date?.dateString || '';
+                
+                // Get events for this date
+                const dayEvents = calendarEvents.filter((e: any) => {
+                  const d = new Date(e.basTar || e.BasTar || '');
+                  if (isNaN(d.getTime())) return false;
+                  const yyyy = d.getFullYear();
+                  const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                  const dd = d.getDate().toString().padStart(2, '0');
+                  return `${yyyy}-${mm}-${dd}` === dateStr;
+                });
+                
+                const isSelected = selectedCalendarDate === dateStr;
+                const isToday = state === 'today';
+                const isDisabled = state === 'disabled';
+                
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setSelectedCalendarDate(dateStr);
+                      if (dayEvents.length > 0) {
+                        setSelectedEvent(dayEvents[0]);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      minHeight: 52,
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      paddingTop: 4,
+                      borderRadius: 10,
+                      backgroundColor: isSelected ? 'rgba(52, 69, 197, 0.08)' : 'transparent',
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: isSelected ? '#3445C5' : (isToday ? 'rgba(52, 69, 197, 0.1)' : 'transparent'),
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: isSelected || isToday ? '700' : '500',
+                          color: isSelected ? '#FFFFFF' : (isToday ? '#3445C5' : (isDisabled ? '#CBD5E1' : '#1E293B')),
+                        }}
+                      >
+                        {dayStr}
+                      </Text>
+                    </View>
+                    
+                    {/* Event Preview Text directly in the cell */}
+                    <View style={{ width: '100%', paddingHorizontal: 2, marginTop: 2, gap: 1 }}>
+                      {dayEvents.slice(0, 2).map((e: any, idx: number) => (
+                        <View
+                          key={idx}
+                          style={{
+                            backgroundColor: e.bgColor || e.BgColor || '#3445C5',
+                            borderRadius: 3,
+                            paddingHorizontal: 2,
+                            paddingVertical: 1,
+                            width: '100%',
+                          }}
+                        >
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              fontSize: 7.5,
+                              color: '#FFFFFF',
+                              fontWeight: '700',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {e.konu || e.Konu}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              theme={{
+                calendarBackground: '#FFFFFF',
+                textSectionTitleColor: '#475569',
+                selectedDayBackgroundColor: '#3445C5',
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: '#3445C5',
+                dayTextColor: '#1E293B',
+                textDisabledColor: '#CBD5E1',
+                dotColor: '#3445C5',
+                selectedDotColor: '#ffffff',
+                arrowColor: '#3445C5',
+                monthTextColor: '#1E293B',
+                indicatorColor: '#3445C5',
+                textDayFontWeight: '500',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 14,
+                textMonthFontSize: 16,
+                textDayHeaderFontSize: 12,
+              }}
+              style={{
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                overflow: 'hidden',
+                marginBottom: 16,
+              }}
+            />
           </View>
 
-          {/* Announcements */}
-          <View style={styles.widgetCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-              <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
-              <Text style={styles.widgetTitle}>Kurumsal Duyurular</Text>
+          {/* Duyurular */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderIconRow}>
+              <Ionicons name="megaphone-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>Duyurular</Text>
             </View>
-            <View style={styles.announcementCard}>
-              <View style={styles.announcementIndicator} />
-              <View style={styles.announcementContent}>
-                <Text style={styles.announcementTitle}>IŞIK TARIM KPI Raporu</Text>
-                <Text style={styles.announcementBody}>Gıda Güvenliği Kültürü Ölçme ve İzleme Planı güncellenmiş olup, tüm departmanların hedeflerine uyum sağlaması rica olunur.</Text>
-                <Text style={styles.announcementDate}>18 Haziran 2026 - 11:30</Text>
+            {newsItems.length === 0 ? (
+              <View style={[styles.taskCard, { opacity: 0.5 }]}>
+                <Text style={[styles.taskSub, { fontStyle: 'italic' }]}>Henüz duyuru yok</Text>
               </View>
-            </View>
+            ) : newsItems.map((item: any, idx: number) => {
+              const hasFile = item.profilUrl && item.profilUrl !== 'duyuru.jpg';
+              return (
+                <TouchableOpacity
+                  key={item.id ?? item.ID ?? idx}
+                  style={styles.taskCard}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const cleanedDesc = stripHtml(item.aciklama || item.Aciklama);
+                    const imageUrl = item.profilUrl || item.ProfilUrl;
+                    const fullFileUrl = (imageUrl && imageUrl !== 'duyuru.jpg')
+                      ? api.downloadFileUrl(imageUrl, 'HABERIMG')
+                      : undefined;
+
+                    setSelectedItem({
+                      type: 'news',
+                      title: item.konu || item.Konu,
+                      description: cleanedDesc,
+                      date: item.tarih || item.Tarih,
+                      categoryOrAuthor: item.kayitEposta || item.KayitEposta,
+                      fileUrl: fullFileUrl,
+                      module: 'HABERIMG'
+                    });
+                  }}
+                >
+                  <Ionicons name="newspaper-outline" size={18} color={slateTokens.brandAccent} style={{ marginRight: 10 }} />
+                  <View style={styles.taskContent}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>{item.konu || item.Konu}</Text>
+                    <Text style={styles.taskSub}>{item.tarih || item.Tarih}</Text>
+                  </View>
+                  {hasFile ? (
+                    <View style={{ backgroundColor: slateTokens.brandAccent + '15', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, marginRight: 4 }}>
+                      <Text style={{ fontSize: 10, color: slateTokens.brandAccent, fontWeight: '700' }}>Göster</Text>
+                    </View>
+                  ) : null}
+                  <Ionicons name="chevron-forward" size={16} color={slateTokens.textMuted} />
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
+          {/* Eğitimler */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderIconRow}>
+              <Ionicons name="school-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>Eğitimler</Text>
+            </View>
+            {trainingItems.length === 0 ? (
+              <View style={[styles.taskCard, { opacity: 0.5 }]}>
+                <Text style={[styles.taskSub, { fontStyle: 'italic' }]}>Henüz eğitim yok</Text>
+              </View>
+            ) : trainingItems.map((item: any, idx: number) => {
+              const hasFile = !!(item.dosyaUrl || item.DosyaUrl);
+              return (
+                <TouchableOpacity
+                  key={item.id ?? item.ID ?? idx}
+                  style={styles.taskCard}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const cleanedDesc = stripHtml(item.aciklama || item.Aciklama);
+                    const fullFileUrl = item.dosyaUrl || item.DosyaUrl;
+
+                    setSelectedItem({
+                      type: 'training',
+                      title: item.konu || item.Konu,
+                      description: cleanedDesc,
+                      date: item.tarih || item.Tarih,
+                      categoryOrAuthor: item.kategori || item.Kategori || 'Genel',
+                      fileUrl: fullFileUrl,
+                      module: 'HABERDOCS'
+                    });
+                  }}
+                >
+                  <Ionicons name="book-outline" size={18} color={slateTokens.success} style={{ marginRight: 10 }} />
+                  <View style={styles.taskContent}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>{item.konu || item.Konu}</Text>
+                    <Text style={styles.taskSub}>{item.kategori || item.Kategori || 'Genel'} • {item.tarih || item.Tarih}</Text>
+                  </View>
+                  {hasFile ? (
+                    <View style={{ backgroundColor: slateTokens.success + '15', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, marginRight: 4 }}>
+                      <Text style={{ fontSize: 10, color: slateTokens.success, fontWeight: '700' }}>Göster</Text>
+                    </View>
+                  ) : null}
+                  <Ionicons name="chevron-forward" size={16} color={slateTokens.textMuted} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Bugünün Görevleri */}
+          <View style={[styles.section, { paddingBottom: 100 }]}>
+            <View style={styles.sectionHeaderIconRow}>
+              <Ionicons name="checkbox-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>Bugünün görevleri</Text>
+            </View>
+
+            {tasks.map(task => (
+              <TouchableOpacity key={task.id} style={styles.taskCard} activeOpacity={0.7}>
+                <View style={[styles.taskDot, { backgroundColor: task.dot }]} />
+                <View style={styles.taskContent}>
+                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={styles.taskSub}>{task.sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={slateTokens.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </View>
+          
         </View>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* ── ETKİNLİK DETAY MODAL ── */}
+      <Modal
+        visible={!!selectedEvent}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedEvent(null)}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedEvent(null)}>
+          <View style={styles.modalContent}>
+            <View style={[styles.modalHeader, { backgroundColor: selectedEvent?.bgColor || selectedEvent?.BgColor || '#3445C5' }]}>
+              <Ionicons name="calendar" size={24} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.modalDateText}>{formattedEventDate}</Text>
+            </View>
+            <View style={styles.modalBody}>
+              <Text style={styles.modalTitle}>{selectedEvent?.konu || selectedEvent?.Konu}</Text>
+              <Text style={styles.modalDesc}>
+                {selectedEvent ? (selectedEvent.aciklama || selectedEvent.Aciklama || 'Açıklama bulunmuyor.').replace(/<[^>]*>/g, '').trim() : ''}
+              </Text>
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedEvent(null)}>
+                <Text style={styles.modalCloseText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── DUYURU / EĞİTİM DETAY MODAL ── */}
+      <Modal
+        visible={!!selectedItem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedItem(null)}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedItem(null)}>
+          <View style={styles.modalContent}>
+            <View style={[styles.modalHeader, { backgroundColor: selectedItem?.type === 'news' ? slateTokens.brandAccent : slateTokens.success }]}>
+              <Ionicons name={selectedItem?.type === 'news' ? "megaphone" : "school"} size={24} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.modalDateText}>
+                {selectedItem?.type === 'news' ? 'Duyuru Detayı' : 'Eğitim Detayı'}
+              </Text>
+            </View>
+            <View style={styles.modalBody}>
+              <Text style={styles.modalTitle}>{selectedItem?.title}</Text>
+              
+              {selectedItem?.categoryOrAuthor ? (
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>
+                  {selectedItem.type === 'news' ? `Yayınlayan: ${selectedItem.categoryOrAuthor}` : `Kategori: ${selectedItem.categoryOrAuthor}`}
+                </Text>
+              ) : null}
+
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 12 }}>
+                {selectedItem?.date}
+              </Text>
+
+              <ScrollView style={{ maxHeight: 200, marginBottom: 16 }} showsVerticalScrollIndicator={true}>
+                <Text style={styles.modalDesc}>
+                  {selectedItem?.description || 'Açıklama bulunmuyor.'}
+                </Text>
+              </ScrollView>
+
+              {/* Attachment / File viewer - "GÖSTER" button */}
+              {selectedItem?.fileUrl ? (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: colors.primary,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    gap: 8
+                  }}
+                  onPress={() => {
+                    if (selectedItem.fileUrl) {
+                      Linking.openURL(selectedItem.fileUrl).catch(err => {
+                        console.error("Failed to open URL:", err);
+                        Alert.alert("Hata", "Dosya açılamadı.");
+                      });
+                    }
+                  }}
+                >
+                  <Ionicons name="document-text-outline" size={18} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>Dosyayı Göster</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedItem(null)}>
+                <Text style={styles.modalCloseText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── TÜM MODÜLLER MODALI (Bottom Sheet) ── */}
+      <Modal
+        visible={isModulesModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsModulesModalVisible(false)}
+      >
+        <View style={styles.bottomSheetOverlay}>
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Tüm Modüller</Text>
+              <TouchableOpacity onPress={() => setIsModulesModalVisible(false)} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+                <Ionicons name="close" size={24} color={slateTokens.textBody} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              {Object.keys(groupedModules).map(projeAdi => (
+                <View key={projeAdi} style={styles.bottomSheetGroup}>
+                  <Text style={styles.bottomSheetGroupTitle}>{projeAdi}</Text>
+                  <View style={styles.modulesGrid}>
+                    {groupedModules[projeAdi].map((m: any, idx: number) => {
+                      const pastelBgs = [slateTokens.pastelBlueBg, slateTokens.pastelOrangeBg, slateTokens.pastelGreenBg, slateTokens.pastelPurpleBg];
+                      const pastelIcons = [slateTokens.pastelBlueIcon, slateTokens.pastelOrangeIcon, slateTokens.pastelGreenIcon, slateTokens.pastelPurpleIcon];
+                      const colorIndex = idx % 4;
+                      return (
+                        <TouchableOpacity
+                          key={`${m.sayfaUrl}-${idx}`}
+                          style={styles.moduleItem}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            setIsModulesModalVisible(false);
+                            let target = m.mobilUrl || 'Home';
+                            navigation.navigate(target);
+                          }}
+                        >
+                          <View style={[styles.moduleIconBox, { backgroundColor: pastelBgs[colorIndex] }]}>
+                            <Ionicons name={(m.mobilIcon || m.ikon || 'cube-outline') as any} size={28} color={pastelIcons[colorIndex]} />
+                          </View>
+                          <Text style={styles.moduleLabel}>{m.sayfaAdi}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <BottomNavBar currentScreen="Home" />
+    </View>
   );
 };
 
-const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  scrollContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  contentWrapper: {
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  headerWelcome: {
-    flexDirection: 'column',
-    flex: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerActionIcon: {
-    fontSize: 16,
-  },
-  headerGreeting: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  headerName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 2,
-  },
-  headerAvatarContainer: {
-    position: 'relative',
-  },
-  headerAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  headerAvatarText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.card,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 14,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  gridCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
-    minHeight: 56,
-  },
-  moduleIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    marginRight: 10,
-  },
-  moduleIcon: {
-    fontSize: 16,
-  },
-  badgeContainer: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: colors.danger,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 8,
-    fontWeight: '800',
-  },
-  moduleTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
-    flex: 1,
-    textAlign: 'left',
-  },
-  arrowIcon: {
-    marginLeft: 4,
-  },
-  categoryTabsContainer: {
-    marginBottom: 16,
-  },
-  categoryTabsScroll: {
-    gap: 8,
-    paddingRight: 16,
-  },
-  categoryTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: 4,
-  },
-  activeCategoryTab: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  categoryTabText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  activeCategoryTabText: {
-    color: '#ffffff',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  toggleText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  moduleSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    height: 40,
-    marginBottom: 16,
-  },
-  searchIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  moduleSearchInput: {
-    flex: 1,
-    height: '100%',
-    color: colors.text,
-    fontSize: 13,
-    padding: 0,
-  },
-  clearBtn: {
-    padding: 4,
-  },
-  clearBtnText: {
-    color: colors.placeholder,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  noResultsBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-  },
-  noResultsText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  widgetCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2,
-    marginBottom: 16,
-  },
-  widgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  widgetTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  widgetSubtitle: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '700',
-  },
-  agendaScroll: {
-    gap: 10,
-    paddingRight: 16,
-  },
-  agendaDayCard: {
-    width: 80,
-    height: 94,
-    borderRadius: 14,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  agendaDayCardActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  agendaDayCardIzin: {
-    backgroundColor: colors.warningLight,
-    borderColor: colors.warning + '30',
-  },
-  agendaDayName: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  agendaDateText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 4,
-  },
-  agendaStatusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 6,
-  },
-  agendaStatusText: {
-    fontSize: 8,
-    fontWeight: '800',
-  },
-  textWhite: {
-    color: '#ffffff',
-  },
-  marketRowContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  marketMiniCard: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  marketLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  marketVal: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 4,
-  },
-  marketUp: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.primary,
-    marginTop: 2,
-  },
-  marketDown: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.danger,
-    marginTop: 2,
-  },
-  announcementCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 6,
-  },
-  announcementIndicator: {
-    width: 5,
-    backgroundColor: colors.primary,
-  },
-  announcementContent: {
-    flex: 1,
-    padding: 12,
-  },
-  announcementTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  announcementBody: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
-  announcementDate: {
-    fontSize: 9,
-    color: colors.placeholder,
-    marginTop: 8,
-    fontWeight: '700',
-  }
-});
+// ─── Stiller ──────────────────────────────────────────────────────────────────
+
+const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors']) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background || '#F8FAFC',
+    },
+    // HEADER BG
+    headerBackground: {
+      position: 'absolute',
+      top: 0, left: 0, right: 0,
+      height: 400, // Yeterince yüksek, body overlap edecek
+      overflow: 'hidden',
+    },
+    bgCircleLarge: {
+      position: 'absolute',
+      width: 500,
+      height: 500,
+      borderRadius: 250,
+      backgroundColor: 'rgba(255,255,255,0.05)',
+      top: -150,
+      right: -100,
+    },
+    bgCircleSmall: {
+      position: 'absolute',
+      width: 300,
+      height: 300,
+      borderRadius: 150,
+      backgroundColor: 'rgba(255,255,255,0.03)',
+      top: 100,
+      left: -100,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    headerContent: {
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      paddingBottom: 40, // overlap için alan
+    },
+    
+    // TOP ROW
+    topRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 30,
+    },
+    logoImage: {
+      width: 180,
+      height: 50,
+    },
+    topActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    bellBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    bellDot: {
+      position: 'absolute',
+      top: 10,
+      right: 11,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: slateTokens.brandAccent, // Turuncu
+      borderWidth: 1.5,
+      borderColor: slateTokens.brandPrimary, // Mavi border
+    },
+    // GREETING
+    greetingSection: {
+      marginBottom: 24,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    nameText: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: '#FFF',
+      flex: 1,
+    },
+    sicilBadge: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      marginLeft: 10,
+    },
+    sicilText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: '#FFF',
+    },
+    roleBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      alignSelf: 'flex-start',
+    },
+    roleText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#FFF',
+    },
+
+    // METRICS
+    metricsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    metricCard: {
+      flex: 1,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.15)',
+      paddingVertical: 16,
+      paddingHorizontal: 12,
+      alignItems: 'flex-start',
+    },
+    metricLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: 'rgba(255,255,255,0.7)',
+      marginBottom: 8,
+    },
+    metricValue: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: '#FFF',
+      marginBottom: 4,
+    },
+    metricSub: {
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.6)',
+      fontWeight: '500',
+    },
+
+    // ── BODY OVERLAP ──
+    bodyContainer: {
+      backgroundColor: colors.background || '#F8FAFC',
+      borderTopLeftRadius: 30,
+      borderTopRightRadius: 30,
+      marginTop: -20,
+      paddingHorizontal: 20,
+      paddingTop: 30,
+      minHeight: 500, // içeriği dolduracak kadar
+    },
+
+    // SECTION
+    section: {
+      marginBottom: 32,
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    sectionHeaderIconRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.text || '#0F172A',
+    },
+    seeAllBtn: {},
+    seeAllText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: slateTokens.brandPrimary,
+    },
+
+    // CHIPS
+    chipsRow: {
+      gap: 10,
+      marginBottom: 20,
+    },
+    chip: {
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 24,
+      backgroundColor: '#FFF',
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      justifyContent: 'center',
+    },
+    chipActive: {
+      backgroundColor: slateTokens.brandPrimary,
+      borderColor: slateTokens.brandPrimary,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: slateTokens.textSecondary,
+    },
+    chipTextActive: {
+      color: '#FFF',
+    },
+
+    // MODULES & CATEGORIES
+    categoryScroll: {
+      marginBottom: 16,
+    },
+    categoryScrollContent: {
+      paddingHorizontal: 20,
+      gap: 10,
+    },
+    categoryTab: {
+      backgroundColor: '#F8FAFC',
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 99,
+      borderWidth: 1.5,
+      borderColor: '#E2E8F0',
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 4,
+      elevation: 1,
+    },
+    categoryTabActive: {
+      backgroundColor: '#FFF8F5',
+      borderColor: slateTokens.brandPrimary,
+      shadowColor: slateTokens.brandPrimary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    categoryTabText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#64748B',
+    },
+    categoryTabTextActive: {
+      color: slateTokens.brandPrimary,
+    },
+    modulesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-start',
+      gap: 15,
+      rowGap: 20,
+    },
+    modulesScroll: {
+      marginHorizontal: -20,
+    },
+    modulesScrollContent: {
+      paddingHorizontal: 20,
+      paddingRight: 40,
+      gap: 20,
+    },
+    moduleItem: {
+      width: '21%',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    moduleItemHoriz: {
+      width: 72,
+      alignItems: 'center',
+    },
+    moduleIconBox: {
+      width: 64,
+      height: 64,
+      borderRadius: 20, // Yuvarlak hatlar
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    moduleLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.text,
+      textAlign: 'center',
+    },
+
+    // CALENDAR CARD
+    card: {
+      backgroundColor: '#FFF',
+      borderRadius: 20,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: '#F1F5F9',
+      marginTop: 12,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    cardHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    cardTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    cardNav: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    navIcon: {},
+    calDaysRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      borderBottomWidth: 1,
+      borderBottomColor: '#F1F5F9',
+      paddingBottom: 12,
+      marginBottom: 12,
+    },
+    calDayText: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+    },
+    calDatesRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    calCell: {
+      flex: 1,
+      minHeight: 60,
+      padding: 2,
+    },
+    calCellBorder: {
+      borderRightWidth: 1,
+      borderRightColor: '#F1F5F9',
+    },
+    calDateHeader: {
+      alignItems: 'flex-end',
+      marginBottom: 4,
+      paddingRight: 4,
+    },
+    calDateText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    calDateTextActive: {
+      color: slateTokens.brandPrimary,
+    },
+    calEvents: {
+      flexDirection: 'column',
+      gap: 2,
+    },
+    calEventPill: {
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginBottom: 2,
+    },
+    calEventText: {
+      fontSize: 8,
+      fontWeight: '700',
+      color: '#FFF',
+      textAlign: 'center',
+    },
+
+    // TASKS
+    taskCard: {
+      backgroundColor: '#FFF',
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#F1F5F9',
+      marginBottom: 12,
+    },
+    taskDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      marginRight: 16,
+    },
+    taskContent: {
+      flex: 1,
+      marginRight: 10,
+    },
+    taskTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    taskSub: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textMuted,
+    },
+
+    // MODAL
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      width: '100%',
+      backgroundColor: '#FFF',
+      borderRadius: 20,
+      overflow: 'hidden',
+      elevation: 10,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 20,
+      gap: 12,
+    },
+    modalDateText: {
+      color: '#FFF',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    modalBody: {
+      padding: 20,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.text || '#0F172A',
+      marginBottom: 10,
+    },
+    modalDesc: {
+      fontSize: 14,
+      color: colors.textSecondary || '#64748B',
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    modalCloseBtn: {
+      backgroundColor: '#F1F5F9',
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    modalCloseText: {
+      color: colors.text || '#0F172A',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    // BOTTOM SHEET MODAL
+    bottomSheetOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    bottomSheetContent: {
+      backgroundColor: colors.background || '#F8FAFC',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      height: '80%',
+      paddingTop: 24,
+    },
+    bottomSheetHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: slateTokens.border,
+      marginBottom: 16,
+    },
+    bottomSheetTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: slateTokens.textBody,
+    },
+    bottomSheetGroup: {
+      marginBottom: 24,
+    },
+    bottomSheetGroupTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: slateTokens.textSecondary,
+      paddingHorizontal: 20,
+      marginBottom: 12,
+    },
+  });

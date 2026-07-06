@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '@webportal/shared';
-import type { Makine, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme, Company, Bolum, Hat, Talep, TalepKategori, TalepGelisme } from '@webportal/shared';
+import { api } from '@oyemcore/shared';
+import type { Makine, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme, Company, Bolum, Hat, Talep, TalepKategori, TalepGelisme } from '@oyemcore/shared';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const Bakim: React.FC = () => {

@@ -1,4 +1,4 @@
-import { api, Talep, TalepKategori, TalepGelisme, TalepHistory, Personel, TalepDetailResponse } from '@webportal/shared';
+import { api, Talep, TalepKategori, TalepGelisme, TalepHistory, Personel, TalepDetailResponse } from '@oyemcore/shared';
 
 export const helpdeskService = {
   getRequests: async (type: string): Promise<Talep[]> => {
@@ -33,8 +33,8 @@ export const helpdeskService = {
     return await api.assignTalep(id, sicilNo);
   },
 
-  addComment: async (id: number, comment: string): Promise<{ success: boolean }> => {
-    return await api.addTalepGelisme(id, comment);
+  addComment: async (id: number, comment: string, dosyaUrl?: string): Promise<{ success: boolean }> => {
+    return await api.addTalepGelisme(id, comment, dosyaUrl);
   },
 
   toggleLock: async (id: number): Promise<{ success: boolean }> => {

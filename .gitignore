@@ -23,3 +23,29 @@ yarn-error.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Android & iOS Native Build Outputs & Caches
+.gradle/
+.gradle_home/
+.kotlin/
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/.kotlin/
+**/ios/build/
+
+# IDE/Tooling
+.vs/
+.idea/
+.vscode/
+
+# Temporary / Scratch Files
+*.patch
+*.patch2
+*.txt
+*.png
+repair_bakim.js
+apply_bakim_ui_pieces.js
+temp_frontend_diff*
+test.cs
+b/

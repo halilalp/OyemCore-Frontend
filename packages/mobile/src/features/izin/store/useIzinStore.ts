@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { IzinOnay } from '@webportal/shared';
+import { IzinOnay } from '@oyemcore/shared';
 import { izinService } from '../services/izinService';
 
 interface IzinState {

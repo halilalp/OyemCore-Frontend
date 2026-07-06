@@ -14,8 +14,11 @@ import {
   FlatList,
 } from 'react-native';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { api } from '@webportal/shared/src/api';
+import { api } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
+import { BottomNavBar } from '../../../components/BottomNavBar';
+import { ListHeader } from '../../../components/ListHeader';
+import { UserAvatar } from '../../../components/UserAvatar';
 import { Ionicons } from '@expo/vector-icons';
 
 export const AdminKullaniciScreen = () => {
@@ -441,46 +444,21 @@ export const AdminKullaniciScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Kullanıcı İşlemleri</Text>
-        </View>
-        <TouchableOpacity style={styles.newBtn} onPress={openNewUserWizard}>
-          <Text style={styles.newBtnText}>+ Yeni Kullanıcı</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter panel */}
-      <View style={styles.filterRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="İsim, eposta, sicil no ara..."
-          placeholderTextColor={colors.textSecondary}
-          value={search}
-          onChangeText={setSearch}
-        />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterPills}>
-          <TouchableOpacity
-            style={[styles.filterPill, statusFilter === '' && styles.filterPillActive]}
-            onPress={() => setStatusFilter('')}>
-            <Text style={[styles.filterPillText, statusFilter === '' && styles.filterPillTextActive]}>Tümü</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterPill, statusFilter === 'true' && styles.filterPillActive]}
-            onPress={() => setStatusFilter('true')}>
-            <Text style={[styles.filterPillText, statusFilter === 'true' && styles.filterPillTextActive]}>Aktif</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterPill, statusFilter === 'false' && styles.filterPillActive]}
-            onPress={() => setStatusFilter('false')}>
-            <Text style={[styles.filterPillText, statusFilter === 'false' && styles.filterPillTextActive]}>Pasif</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+    <View style={styles.container}>
+      <ListHeader
+        title="Kullanıcı İşlemleri"
+        subtitle={`${users.length} Kayıt`}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="İsim, eposta, sicil no ara..."
+        activeFilter={statusFilter}
+        onFilterChange={setStatusFilter}
+        filters={[
+          { id: '', label: 'Tümü' },
+          { id: 'true', label: 'Aktif' },
+          { id: 'false', label: 'Pasif' }
+        ]}
+      />
 
       {loading ? (
         <View style={styles.loader}>
@@ -494,11 +472,7 @@ export const AdminKullaniciScreen = () => {
           renderItem={({ item }) => (
             <View style={styles.userCard}>
               <View style={styles.userMain}>
-                <View style={styles.userInitials}>
-                  <Text style={styles.userInitialsText}>
-                    {item.adSoyad.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                  </Text>
-                </View>
+                <UserAvatar sicilNo={item.sicilNo} name={item.adSoyad} size={44} style={{ marginRight: 12 }} />
                 <View style={styles.userDetails}>
                   <Text style={styles.userName}>{item.adSoyad}</Text>
                   <Text style={styles.userMeta}>
@@ -934,7 +908,16 @@ export const AdminKullaniciScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      <BottomNavBar 
+        currentScreen="Admin" 
+        customAction={{
+          icon: 'add-outline',
+          label: 'Yeni Kullanıcı',
+          onPress: openNewUserWizard
+        }} 
+      />
+    </View>
   );
 };
 
@@ -1040,20 +1023,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 12,
-  },
-  userInitials: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userInitialsText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.primary,
   },
   userDetails: {
     flex: 1,

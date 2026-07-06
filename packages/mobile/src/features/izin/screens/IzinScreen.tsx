@@ -4,10 +4,11 @@ import { useIzinStore } from '../store/useIzinStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
-import { IzinOnay, api } from '@webportal/shared';
+import { IzinOnay, api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -209,35 +210,19 @@ export const IzinScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.contentWrapper}>
-        {/* Top Banner stats */}
-        <View style={styles.topStatsCard}>
-          <View style={styles.statInfo}>
-            <Text style={styles.statLabel}>Kalan Yıllık İzin Hakkınız</Text>
-            <Text style={styles.statValue}>{balance} GÜN</Text>
-          </View>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setIsModalOpen(true)}>
-            <Text style={styles.addBtnText}>+ Yeni İzin Talebi</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'my' && styles.activeTab]}
-            onPress={() => setActiveTab('my')}
-          >
-            <Text style={[styles.tabText, activeTab === 'my' && styles.activeTabText]}>İzin Taleplerim</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'approvals' && styles.activeTab]}
-            onPress={() => setActiveTab('approvals')}
-          >
-            <Text style={[styles.tabText, activeTab === 'approvals' && styles.activeTabText]}>Onay Bekleyenler ({approvals.length})</Text>
-          </TouchableOpacity>
-        </View>
-
+    <View style={styles.container}>
+      <ListHeader
+        title="İzin Yönetimi"
+        subtitle={`Kalan Yıllık İzin: ${balance} Gün`}
+        activeFilter={activeTab}
+        onFilterChange={(id: any) => setActiveTab(id)}
+        filters={[
+          { id: 'my', label: 'Taleplerim' },
+          { id: 'approvals', label: `Onay Bekleyenler (${approvals.length})` }
+        ]}
+      />
+      
+      <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         {/* List content */}
         {isLoading ? (
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -356,7 +341,16 @@ export const IzinScreen = () => {
         )}
       </View>
 
-      {/* Form Modal */}
+      <BottomNavBar 
+        currentScreen="Izin" 
+        customAction={{
+          icon: 'add-outline',
+          label: 'Yeni Talep',
+          onPress: () => setIsModalOpen(true)
+        }} 
+      />
+
+      {/* New Leave Modal */}
       <Modal visible={isModalOpen} animationType="slide" onRequestClose={() => setIsModalOpen(false)}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContentWrapper}>
@@ -601,23 +595,19 @@ export const IzinScreen = () => {
           </SafeAreaView>
         )}
       </Modal>
-
-      <BottomNavBar currentScreen="Izin" customAction={{
-        icon: 'create-outline',
-        label: 'Yeni İzin',
-        onPress: () => setIsModalOpen(true)
-      }} />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8fafc',
   },
   contentWrapper: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
