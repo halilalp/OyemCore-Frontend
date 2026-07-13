@@ -1,8 +1,7 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote",
-    "useWorkspaceRoot": true
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
