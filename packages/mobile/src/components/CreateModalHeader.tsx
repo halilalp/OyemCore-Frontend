@@ -25,7 +25,7 @@ export const CreateModalHeader: React.FC<CreateModalHeaderProps> = ({
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }]}>
       <LinearGradient
-        colors={gradientColors}
+        colors={gradientColors as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.background}

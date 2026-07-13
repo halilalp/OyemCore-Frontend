@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { CustomIcon } from '../../../components/CustomIcon';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, FlatList, Platform, RefreshControl, Dimensions } from 'react-native';

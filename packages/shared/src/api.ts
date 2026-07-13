@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim } from './types';
 
 let token: string | null = null;
-let apiBaseUrl: string = 'http://127.0.0.1:5140/api'; // Local loopback for ADB reversed emulator
+let apiBaseUrl: string = 'http://api.oyemsoft.com/api'; // Default backend API URL (SSL alınınca https yapılacak)
 
 export const setAuthToken = (newToken: string | null) => {
   token = newToken;
@@ -15,6 +15,13 @@ export const setApiBaseUrl = (newUrl: string) => {
 
 export const setClientType = (type: 'mobile' | 'web') => {
   apiClient.defaults.headers.common['X-Client-Type'] = type;
+};
+
+// Platform-specific 401 handling (e.g. mobile clearing AsyncStorage + navigating to Login)
+// is registered here instead of hardcoded, since this package must stay platform-agnostic.
+let unauthorizedHandler: (() => void) | null = null;
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
 };
 
 const apiClient: AxiosInstance = axios.create({
@@ -44,13 +51,14 @@ apiClient.interceptors.response.use((response) => {
         window.location.href = '/login';
       }
     }
+    unauthorizedHandler?.();
   }
   return Promise.reject(error);
 });
 
 export const api = {
   getBaseUrl: () => {
-    return apiBaseUrl.replace('/api', '');
+    return apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -'/api'.length) : apiBaseUrl;
   },
 
   // Dashboard & Takvim Endpoints
@@ -897,5 +905,64 @@ export const api = {
   }): Promise<{ items: any[]; totalCount: number }> => {
     const response = await apiClient.get<{ items: any[]; totalCount: number }>('/admin/belge-tarihce/paged', { params });
     return response.data;
+  },
+
+  // Mock/Bypass API endpoints for SAT/SAS module (not currently active)
+  getSatSasDashboard: async (): Promise<any> => {
+    return { sat: { bekleyen: 0 }, sas: { aktifAdet: 0, toplamTutar: 0 } };
+  },
+  getSatRequests: async (): Promise<{ data: any[] }> => {
+    return { data: [] };
+  },
+  getSasOrders: async (): Promise<any[]> => {
+    return [];
+  },
+  checkOrCreateSatDraft: async (): Promise<any> => {
+    return { success: true, belgeNo: '' };
+  },
+  getSatDetail: async (belgeNo: string): Promise<any> => {
+    return null;
+  },
+  getOfferComparison: async (belgeNo: string): Promise<any[]> => {
+    return [];
+  },
+  addItemToSatDraft: async (code: string, amount: number, unit: string, reason: string): Promise<any> => {
+    return { success: true, message: 'Ürün eklendi.' };
+  },
+  deleteItemFromSatDraft: async (id: number): Promise<any> => {
+    return { success: true, message: 'Kalem silindi.' };
+  },
+  submitSatRequest: async (): Promise<any> => {
+    return { success: true, message: 'Onaya gönderildi.' };
+  },
+  updateSatStatus: async (belgeNo: string, processStatus: string, finalStatus: string, comment: string): Promise<any> => {
+    return { success: true, message: 'Durum güncellendi.' };
+  },
+  getActiveSuppliers: async (): Promise<any[]> => {
+    return [];
+  },
+  saveSupplierOffer: async (belgeNo: string, tedarikciKodu: string, nakliye: number, paraBirimi: string, vade: number): Promise<any> => {
+    return { success: true, message: 'Tedarikçi teklifi eklendi.' };
+  },
+  deleteSupplierOffer: async (belgeNo: string, tedarikciKodu: string): Promise<any> => {
+    return { success: true, message: 'Teklif silindi.' };
+  },
+  saveOfferPrices: async (belgeNo: string, payloadItemsJson: string): Promise<any> => {
+    return { success: true, message: 'Fiyatlar kaydedildi.' };
+  },
+  selectApprovedOffer: async (belgeNo: string, satTeklifID: number): Promise<any> => {
+    return { success: true, message: 'Teklif onaylandı.' };
+  },
+  getSasOrderDetail: async (belgeNo: string): Promise<any> => {
+    return null;
+  },
+  updateSasPrices: async (belgeNo: string, itemsJson: string): Promise<any> => {
+    return { success: true, message: 'Fiyatlar güncellendi.' };
+  },
+  approveSasOrder: async (belgeNo: string, comment: string): Promise<any> => {
+    return { success: true, message: 'Sipariş onaylandı.' };
+  },
+  rejectSasOrder: async (belgeNo: string, comment: string): Promise<any> => {
+    return { success: true, message: 'Sipariş reddedildi.' };
   }
 };

@@ -316,3 +316,83 @@ export interface TalepBakim {
   isGuvOncelik: string;
 }
 
+// Mock/Bypass types for SAT/SAS module (not currently active)
+export interface SatOnay {
+  belgeNo: string;
+  konu?: string;
+  aciklama?: string;
+  kayitEposta?: string;
+  kayitTarStr?: string;
+  bekleyenOnay?: string;
+  durum?: boolean | null;
+  surecDurum?: string;
+  onayTeklifID?: number;
+  kurBilgi?: string;
+}
+
+export interface SaSip {
+  sasID: number;
+  belgeNo: string;
+  durum?: string;
+  tedarikciUnvan?: string;
+  tedarikciKodu?: string;
+  satBelgeNo?: string;
+  toplamTutar?: number;
+  paraBirim?: string;
+  tarihStr?: string;
+}
+
+export interface SasKalem {
+  sasKalemID: number;
+  malzemeKodu: string;
+  malzemeAdi: string;
+  miktar: number;
+  birimKodu?: string;
+  birimFiyat?: number;
+  toplamTutar?: number;
+  paraBirim?: string;
+}
+
+export interface SatKalem {
+  satKalemID: number;
+  malzemeKodu: string;
+  malzemeAdi: string;
+  miktar: number;
+  olcuBirimi?: string;
+  gerekce?: string;
+  birimKodu?: string;
+  talepNedeni?: string;
+}
+
+export interface SatTeklif {
+  satTeklifID: number;
+  tedarikciKodu: string;
+  nakliyeFiyat?: number;
+  birim?: string;
+  toplamFiyat?: number;
+  toplamFiyatDolar?: number;
+}
+
+export interface Supplier {
+  tedarikciKodu: string;
+  tedarikciUnvan?: string;
+  unvan?: string;
+}
+
+export interface OfferComparisonItem {
+  malzemeKodu: string;
+  urunAdi?: string;
+  miktar?: number;
+  birimKodu?: string;
+  liste?: {
+    teklifKalemID: number;
+    tedarikciAdi?: string;
+    tedarikciKodu: string;
+    birimFiyat?: string;
+    paraBirim?: string;
+    vadeGunu?: number;
+    toplamFiyat?: number;
+    teklifToplamFiyatDolar?: number;
+  }[];
+}
+

@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 15,
     fontWeight: '700',
-    color: slateTokens.text,
+    color: slateTokens.textBody,
     marginBottom: 12,
     lineHeight: 20,
   },

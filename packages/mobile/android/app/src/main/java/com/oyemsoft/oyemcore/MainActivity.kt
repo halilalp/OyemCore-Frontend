@@ -2,8 +2,6 @@ package com.oyemsoft.oyemcore
 
 import android.os.Build
 import android.os.Bundle
-import com.oyemsoft.webportal.R
-import com.oyemsoft.webportal.BuildConfig
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

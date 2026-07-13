@@ -199,11 +199,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
-  backButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

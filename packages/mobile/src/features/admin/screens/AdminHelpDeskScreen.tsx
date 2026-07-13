@@ -550,10 +550,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   loader: {
     flex: 1,
     justifyContent: 'center',

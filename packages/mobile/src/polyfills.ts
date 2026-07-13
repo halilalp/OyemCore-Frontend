@@ -1,6 +1,8 @@
 // Force React Native core initialization first to load standard web polyfills
 require('react-native/Libraries/Core/InitializeCore');
 
+declare var global: any;
+
 // Double-check and ensure Headers, Request, Response, and fetch are polyfilled
 if (typeof global.Headers === 'undefined') {
   require('whatwg-fetch');

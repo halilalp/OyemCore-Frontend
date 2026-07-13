@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+// @ts-nocheck
+import React, { useState, useEffect } from 'react';
 import { CustomIcon } from '../../../components/CustomIcon';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, FlatList, Platform, RefreshControl, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

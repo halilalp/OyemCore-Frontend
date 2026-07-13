@@ -202,12 +202,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  contentWrapper: {
-    flex: 1,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
