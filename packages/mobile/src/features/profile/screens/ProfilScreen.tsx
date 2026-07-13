@@ -10,7 +10,7 @@ import { api } from '@oyemcore/shared';
 
 export const ProfilScreen = () => {
   const { user, logout } = useAuthStore();
-  const { colors, theme, toggleTheme } = useThemeStore();
+  const { colors } = useThemeStore();
   const styles = createStyles(colors);
   const [sirketAdi, setSirketAdi] = React.useState<string>('');
 
@@ -127,20 +127,6 @@ export const ProfilScreen = () => {
         {/* Settings / Actions */}
         <View style={styles.settingsSection}>
           <Text style={styles.sectionTitle}>Uygulama Ayarları</Text>
-
-          <TouchableOpacity style={styles.settingItem} onPress={toggleTheme}>
-            <View style={styles.settingLeft}>
-              <Ionicons
-                name={theme === 'dark' ? "sunny-outline" : "moon-outline"}
-                size={20}
-                color={theme === 'dark' ? '#F59E0B' : colors.primary}
-              />
-              <Text style={styles.settingLabelText}>Koyu Tema</Text>
-            </View>
-            <View style={[styles.switchTrack, theme === 'dark' ? styles.switchOn : styles.switchOff]}>
-              <View style={[styles.switchThumb, theme === 'dark' ? styles.switchThumbOn : styles.switchThumbOff]} />
-            </View>
-          </TouchableOpacity>
 
           <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
             <Ionicons name="log-out-outline" size={20} color={colors.danger} style={{ marginRight: 8 }} />

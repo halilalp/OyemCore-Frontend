@@ -87,8 +87,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       const savedTenantId = await AsyncStorage.getItem('tenantId');
       const savedTenantUnvan = await AsyncStorage.getItem('tenantUnvan');
 
-      let activeUrl = savedApiUrl || 'http://127.0.0.1:5140/api';
-      if (activeUrl.includes('10.0.2.2') || activeUrl.includes('192.168.') || activeUrl.includes('oyemsoft.com')) {
+      let activeUrl = savedApiUrl || 'http://api.oyemsoft.com/api';
+      if (activeUrl.includes('10.0.2.2') || activeUrl.includes('192.168.')) {
         activeUrl = 'http://127.0.0.1:5140/api';
       }
       setApiBaseUrl(activeUrl);

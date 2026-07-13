@@ -125,7 +125,9 @@ export const pickAndUploadFile = async (
     name = uri.split('/').pop() || 'photo.jpg';
     nativeBase64 = result.assets[0].base64 ?? undefined;
   } else {
-    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: false });
+    // copyToCacheDirectory: true — Android'de content:// URI'leri FileSystem tarafından okunamıyor;
+    // önbelleğe kopyalanınca okunabilir bir file:// yolu döner.
+    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
     if (result.canceled || !result.assets || result.assets.length === 0) return null;
     uri = result.assets[0].uri;
     name = result.assets[0].name;

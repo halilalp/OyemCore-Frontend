@@ -13,16 +13,16 @@ let Notifications: any = {
   AndroidImportance: { MAX: 4 },
 };
 
-// try {
-//   Notifications = require('expo-notifications');
-// } catch (e) {
-//   console.warn('expo-notifications could not be loaded in Expo Go:', e);
-// }
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.warn('expo-notifications could not be loaded:', e);
+}
 
 import * as Device from 'expo-device';
 import { Platform, Alert, View, ActivityIndicator, LogBox } from 'react-native';
 LogBox.ignoreAllLogs();
-import { api } from '@oyemcore/shared';
+import { api, setUnauthorizedHandler } from '@oyemcore/shared';
 
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useThemeStore } from './src/store/useThemeStore';
@@ -58,16 +58,25 @@ const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef();
 
 // Globally override Alert.alert to use the premium AlertModal overlay
+const nativeAlert = Alert.alert.bind(Alert);
 Alert.alert = (title?: string, message?: string, buttons?: any[], options?: any) => {
   if (buttons && buttons.length > 0) {
     const confirmBtn = buttons.find(b => b.text === 'Evet' || b.text === 'Tamam' || b.text === 'Gönder' || b.text === 'Kaydet' || b.text === 'Onayla');
     const cancelBtn = buttons.find(b => b.text === 'İptal' || b.style === 'cancel');
-    
+
+    // AlertModal yalnızca Evet/İptal kalıbındaki onayları temsil edebilir. 3+ buton veya
+    // tanınmayan etiketler (örn. "Kamera" / "Dosya Seç") varsa seçenek kaybetmemek için
+    // native Alert'e geri düş.
+    if (buttons.length > 2 || (!confirmBtn && buttons.length > 1)) {
+      nativeAlert(title, message, buttons, options);
+      return;
+    }
+
     const onConfirmPress = () => {
       const btn = confirmBtn || buttons[0];
       if (btn && btn.onPress) btn.onPress();
     };
-    
+
     const onCancelPress = () => {
       const btn = cancelBtn || (buttons.length > 1 ? buttons[1] : null);
       if (btn && btn.onPress) btn.onPress();
@@ -152,12 +161,22 @@ async function registerForPushNotificationsAsync() {
 }
 
 export default function App() {
-  const { isAuthenticated, isLoading, restoreSession } = useAuthStore();
+  const { isAuthenticated, isLoading, restoreSession, logout } = useAuthStore();
   const { colors } = useThemeStore();
 
   React.useEffect(() => {
     restoreSession();
   }, []);
+
+  // Oturum süresi dolduğunda (401) kullanıcıyı otomatik çıkışa alıp Login ekranına döndürür.
+  // apiClient bu handler'ı platformdan bağımsız çalışabilmek için @oyemcore/shared üzerinden çağırır.
+  React.useEffect(() => {
+    setUnauthorizedHandler(() => {
+      Alert.alert('Oturum Süresi Doldu', 'Lütfen tekrar giriş yapın.');
+      logout();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   React.useEffect(() => {
     if (isAuthenticated) {

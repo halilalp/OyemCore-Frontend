@@ -467,7 +467,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     // ── FAB ──
     fabWrapper: {
       position: 'absolute',
-      top: -34, // Overlap high above top edge
+      top: -18, // Hafif dışa taşma (önceki -34 fazla yukarıdaydı)
       width: 64,
       height: 64,
       borderRadius: 32,

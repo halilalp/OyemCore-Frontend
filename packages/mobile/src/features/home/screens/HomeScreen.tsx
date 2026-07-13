@@ -121,7 +121,7 @@ export const HomeScreen = () => {
           id: t.talepID,
           title: t.konu || 'Konusuz Talep',
           sub: t.talepTurKodu || 'Talep',
-          dot: slateTokens.brandPrimary
+          dot: colors.primary
         })));
 
         console.log("DASHBOARD_STATS_DEBUG:", statsRes);
@@ -159,14 +159,14 @@ export const HomeScreen = () => {
 
   // Map backend menu items to UI modules format
   const dynamicModules = mobilePages.map((m, index) => {
-    const pastelBgs = [slateTokens.pastelBlueBg, slateTokens.pastelOrangeBg, slateTokens.pastelGreenBg, slateTokens.pastelPurpleBg];
-    const pastelIcons = [slateTokens.pastelBlueIcon, slateTokens.pastelOrangeIcon, slateTokens.pastelGreenIcon, slateTokens.pastelPurpleIcon];
+    const pastelBgs = [colors.pastelBlueBg, colors.pastelOrangeBg, colors.pastelGreenBg, colors.pastelPurpleBg];
+    const pastelIcons = [colors.pastelBlueIcon, colors.pastelOrangeIcon, colors.pastelGreenIcon, colors.pastelPurpleIcon];
     const colorIndex = index % 4;
 
     return {
       id: m.sayfaUrl || String(index),
       title: m.sayfaAdi as string,
-      icon: (m.mobilIcon || m.ikon || 'cube-outline') as any,
+      icon: (m.mobilIcon || mapKeenIconToIonicons(m.ikon)) as any,
       screen: m.mobilUrl || 'Home',
       bg: pastelBgs[colorIndex],
       color: pastelIcons[colorIndex],
@@ -330,7 +330,7 @@ export const HomeScreen = () => {
                   style={{ marginLeft: 8 }}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="search-outline" size={20} color={isSearchVisible ? slateTokens.brandPrimary : slateTokens.textMuted} />
+                  <Ionicons name="search-outline" size={20} color={isSearchVisible ? colors.primary : colors.textMuted} />
                 </TouchableOpacity>
               </View>
               <TouchableOpacity style={styles.seeAllBtn} onPress={() => setIsModulesModalVisible(true)}>
@@ -408,7 +408,7 @@ export const HomeScreen = () => {
           {/* Takvim — Etkinlikler (Calendar Önizlemeli) */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="calendar-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Takvim & Etkinlikler</Text>
             </View>
             
@@ -452,7 +452,7 @@ export const HomeScreen = () => {
                       justifyContent: 'flex-start',
                       paddingTop: 4,
                       borderRadius: 10,
-                      backgroundColor: isSelected ? 'rgba(52, 69, 197, 0.08)' : 'transparent',
+                      backgroundColor: isSelected ? colors.primaryAlpha08 : 'transparent',
                     }}
                   >
                     <View
@@ -460,7 +460,7 @@ export const HomeScreen = () => {
                         width: 24,
                         height: 24,
                         borderRadius: 12,
-                        backgroundColor: isSelected ? '#3445C5' : (isToday ? 'rgba(52, 69, 197, 0.1)' : 'transparent'),
+                        backgroundColor: isSelected ? colors.primary : (isToday ? colors.primaryAlpha15 : 'transparent'),
                         justifyContent: 'center',
                         alignItems: 'center',
                       }}
@@ -469,20 +469,20 @@ export const HomeScreen = () => {
                         style={{
                           fontSize: 13,
                           fontWeight: isSelected || isToday ? '700' : '500',
-                          color: isSelected ? '#FFFFFF' : (isToday ? '#3445C5' : (isDisabled ? '#CBD5E1' : '#1E293B')),
+                          color: isSelected ? '#FFFFFF' : (isToday ? colors.primary : (isDisabled ? colors.textMuted : colors.text)),
                         }}
                       >
                         {dayStr}
                       </Text>
                     </View>
-                    
+
                     {/* Event Preview Text directly in the cell */}
                     <View style={{ width: '100%', paddingHorizontal: 2, marginTop: 2, gap: 1 }}>
                       {dayEvents.slice(0, 2).map((e: any, idx: number) => (
                         <View
                           key={idx}
                           style={{
-                            backgroundColor: e.bgColor || e.BgColor || '#3445C5',
+                            backgroundColor: e.bgColor || e.BgColor || colors.primary,
                             borderRadius: 3,
                             paddingHorizontal: 2,
                             paddingVertical: 1,
@@ -507,18 +507,18 @@ export const HomeScreen = () => {
                 );
               }}
               theme={{
-                calendarBackground: '#FFFFFF',
-                textSectionTitleColor: '#475569',
-                selectedDayBackgroundColor: '#3445C5',
+                calendarBackground: colors.card,
+                textSectionTitleColor: colors.textSecondary,
+                selectedDayBackgroundColor: colors.primary,
                 selectedDayTextColor: '#ffffff',
-                todayTextColor: '#3445C5',
-                dayTextColor: '#1E293B',
-                textDisabledColor: '#CBD5E1',
-                dotColor: '#3445C5',
+                todayTextColor: colors.primary,
+                dayTextColor: colors.text,
+                textDisabledColor: colors.textMuted,
+                dotColor: colors.primary,
                 selectedDotColor: '#ffffff',
-                arrowColor: '#3445C5',
-                monthTextColor: '#1E293B',
-                indicatorColor: '#3445C5',
+                arrowColor: colors.primary,
+                monthTextColor: colors.text,
+                indicatorColor: colors.primary,
                 textDayFontWeight: '500',
                 textMonthFontWeight: 'bold',
                 textDayHeaderFontWeight: '600',
@@ -529,7 +529,7 @@ export const HomeScreen = () => {
               style={{
                 borderRadius: 16,
                 borderWidth: 1,
-                borderColor: '#E2E8F0',
+                borderColor: colors.border,
                 overflow: 'hidden',
                 marginBottom: 16,
               }}
@@ -539,7 +539,7 @@ export const HomeScreen = () => {
           {/* Duyurular */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="megaphone-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Ionicons name="megaphone-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Duyurular</Text>
             </View>
             {newsItems.length === 0 ? (
@@ -571,17 +571,17 @@ export const HomeScreen = () => {
                     });
                   }}
                 >
-                  <Ionicons name="newspaper-outline" size={18} color={slateTokens.brandAccent} style={{ marginRight: 10 }} />
+                  <Ionicons name="newspaper-outline" size={18} color={colors.brandAccent} style={{ marginRight: 10 }} />
                   <View style={styles.taskContent}>
                     <Text style={styles.taskTitle} numberOfLines={1}>{item.konu || item.Konu}</Text>
                     <Text style={styles.taskSub}>{item.tarih || item.Tarih}</Text>
                   </View>
                   {hasFile ? (
-                    <View style={{ backgroundColor: slateTokens.brandAccent + '15', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, marginRight: 4 }}>
-                      <Text style={{ fontSize: 10, color: slateTokens.brandAccent, fontWeight: '700' }}>Göster</Text>
+                    <View style={{ backgroundColor: colors.brandAccentLt, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, marginRight: 4 }}>
+                      <Text style={{ fontSize: 10, color: colors.brandAccent, fontWeight: '700' }}>Göster</Text>
                     </View>
                   ) : null}
-                  <Ionicons name="chevron-forward" size={16} color={slateTokens.textMuted} />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
               );
             })}
@@ -590,7 +590,7 @@ export const HomeScreen = () => {
           {/* Eğitimler */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="school-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Ionicons name="school-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Eğitimler</Text>
             </View>
             {trainingItems.length === 0 ? (
@@ -619,17 +619,17 @@ export const HomeScreen = () => {
                     });
                   }}
                 >
-                  <Ionicons name="book-outline" size={18} color={slateTokens.success} style={{ marginRight: 10 }} />
+                  <Ionicons name="book-outline" size={18} color={colors.success} style={{ marginRight: 10 }} />
                   <View style={styles.taskContent}>
                     <Text style={styles.taskTitle} numberOfLines={1}>{item.konu || item.Konu}</Text>
                     <Text style={styles.taskSub}>{item.kategori || item.Kategori || 'Genel'} • {item.tarih || item.Tarih}</Text>
                   </View>
                   {hasFile ? (
-                    <View style={{ backgroundColor: slateTokens.success + '15', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, marginRight: 4 }}>
-                      <Text style={{ fontSize: 10, color: slateTokens.success, fontWeight: '700' }}>Göster</Text>
+                    <View style={{ backgroundColor: colors.successLight, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, marginRight: 4 }}>
+                      <Text style={{ fontSize: 10, color: colors.success, fontWeight: '700' }}>Göster</Text>
                     </View>
                   ) : null}
-                  <Ionicons name="chevron-forward" size={16} color={slateTokens.textMuted} />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
               );
             })}
@@ -638,7 +638,7 @@ export const HomeScreen = () => {
           {/* Bugünün Görevleri */}
           <View style={[styles.section, { paddingBottom: 100 }]}>
             <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="checkbox-outline" size={20} color={slateTokens.brandPrimary} style={{ marginRight: 8 }} />
+              <Ionicons name="checkbox-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Bugünün görevleri</Text>
             </View>
 
@@ -649,7 +649,7 @@ export const HomeScreen = () => {
                   <Text style={styles.taskTitle}>{task.title}</Text>
                   <Text style={styles.taskSub}>{task.sub}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={slateTokens.textMuted} />
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -692,7 +692,7 @@ export const HomeScreen = () => {
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedItem(null)}>
           <View style={styles.modalContent}>
-            <View style={[styles.modalHeader, { backgroundColor: selectedItem?.type === 'news' ? slateTokens.brandAccent : slateTokens.success }]}>
+            <View style={[styles.modalHeader, { backgroundColor: selectedItem?.type === 'news' ? colors.brandAccent : colors.success }]}>
               <Ionicons name={selectedItem?.type === 'news' ? "megaphone" : "school"} size={24} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={styles.modalDateText}>
                 {selectedItem?.type === 'news' ? 'Duyuru Detayı' : 'Eğitim Detayı'}
@@ -764,7 +764,7 @@ export const HomeScreen = () => {
             <View style={styles.bottomSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Tüm Modüller</Text>
               <TouchableOpacity onPress={() => setIsModulesModalVisible(false)} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-                <Ionicons name="close" size={24} color={slateTokens.textBody} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             
@@ -774,8 +774,8 @@ export const HomeScreen = () => {
                   <Text style={styles.bottomSheetGroupTitle}>{projeAdi}</Text>
                   <View style={styles.modulesGrid}>
                     {groupedModules[projeAdi].map((m: any, idx: number) => {
-                      const pastelBgs = [slateTokens.pastelBlueBg, slateTokens.pastelOrangeBg, slateTokens.pastelGreenBg, slateTokens.pastelPurpleBg];
-                      const pastelIcons = [slateTokens.pastelBlueIcon, slateTokens.pastelOrangeIcon, slateTokens.pastelGreenIcon, slateTokens.pastelPurpleIcon];
+                      const pastelBgs = [colors.pastelBlueBg, colors.pastelOrangeBg, colors.pastelGreenBg, colors.pastelPurpleBg];
+                      const pastelIcons = [colors.pastelBlueIcon, colors.pastelOrangeIcon, colors.pastelGreenIcon, colors.pastelPurpleIcon];
                       const colorIndex = idx % 4;
                       return (
                         <TouchableOpacity
@@ -789,7 +789,7 @@ export const HomeScreen = () => {
                           }}
                         >
                           <View style={[styles.moduleIconBox, { backgroundColor: pastelBgs[colorIndex] }]}>
-                            <Ionicons name={(m.mobilIcon || m.ikon || 'cube-outline') as any} size={28} color={pastelIcons[colorIndex]} />
+                            <Ionicons name={(m.mobilIcon || mapKeenIconToIonicons(m.ikon)) as any} size={28} color={pastelIcons[colorIndex]} />
                           </View>
                           <Text style={styles.moduleLabel}>{m.sayfaAdi}</Text>
                         </TouchableOpacity>
@@ -997,7 +997,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     seeAllText: {
       fontSize: 14,
       fontWeight: '600',
-      color: slateTokens.brandPrimary,
+      color: colors.primary,
     },
 
     // CHIPS
@@ -1009,19 +1009,19 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       paddingHorizontal: 20,
       paddingVertical: 10,
       borderRadius: 24,
-      backgroundColor: '#FFF',
+      backgroundColor: colors.card,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: colors.border,
       justifyContent: 'center',
     },
     chipActive: {
-      backgroundColor: slateTokens.brandPrimary,
-      borderColor: slateTokens.brandPrimary,
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
     },
     chipText: {
       fontSize: 13,
       fontWeight: '600',
-      color: slateTokens.textSecondary,
+      color: colors.textSecondary,
     },
     chipTextActive: {
       color: '#FFF',
@@ -1036,22 +1036,22 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       gap: 10,
     },
     categoryTab: {
-      backgroundColor: '#F8FAFC',
+      backgroundColor: colors.card,
       paddingVertical: 10,
       paddingHorizontal: 20,
       borderRadius: 99,
       borderWidth: 1.5,
-      borderColor: '#E2E8F0',
-      shadowColor: '#0F172A',
+      borderColor: colors.border,
+      shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.04,
       shadowRadius: 4,
       elevation: 1,
     },
     categoryTabActive: {
-      backgroundColor: '#FFF8F5',
-      borderColor: slateTokens.brandPrimary,
-      shadowColor: slateTokens.brandPrimary,
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+      shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.15,
       shadowRadius: 8,
@@ -1060,10 +1060,10 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     categoryTabText: {
       fontSize: 13,
       fontWeight: '700',
-      color: '#64748B',
+      color: colors.textSecondary,
     },
     categoryTabTextActive: {
-      color: slateTokens.brandPrimary,
+      color: colors.primary,
     },
     modulesGrid: {
       flexDirection: 'row',
@@ -1111,11 +1111,11 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
 
     // CALENDAR CARD
     card: {
-      backgroundColor: '#FFF',
+      backgroundColor: colors.card,
       borderRadius: 20,
       padding: 20,
       borderWidth: 1,
-      borderColor: '#F1F5F9',
+      borderColor: colors.border,
       marginTop: 12,
     },
     cardHeader: {
@@ -1143,7 +1143,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       flexDirection: 'row',
       justifyContent: 'space-between',
       borderBottomWidth: 1,
-      borderBottomColor: '#F1F5F9',
+      borderBottomColor: colors.border,
       paddingBottom: 12,
       marginBottom: 12,
     },
@@ -1166,7 +1166,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     calCellBorder: {
       borderRightWidth: 1,
-      borderRightColor: '#F1F5F9',
+      borderRightColor: colors.border,
     },
     calDateHeader: {
       alignItems: 'flex-end',
@@ -1179,7 +1179,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       color: colors.text,
     },
     calDateTextActive: {
-      color: slateTokens.brandPrimary,
+      color: colors.primary,
     },
     calEvents: {
       flexDirection: 'column',
@@ -1200,13 +1200,13 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
 
     // TASKS
     taskCard: {
-      backgroundColor: '#FFF',
+      backgroundColor: colors.card,
       borderRadius: 16,
       padding: 16,
       flexDirection: 'row',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: '#F1F5F9',
+      borderColor: colors.border,
       marginBottom: 12,
     },
     taskDot: {
@@ -1241,7 +1241,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     modalContent: {
       width: '100%',
-      backgroundColor: '#FFF',
+      backgroundColor: colors.card,
       borderRadius: 20,
       overflow: 'hidden',
       elevation: 10,
@@ -1273,7 +1273,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       marginBottom: 20,
     },
     modalCloseBtn: {
-      backgroundColor: '#F1F5F9',
+      backgroundColor: colors.border,
       paddingVertical: 12,
       borderRadius: 12,
       alignItems: 'center',
@@ -1303,13 +1303,13 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       paddingHorizontal: 20,
       paddingBottom: 20,
       borderBottomWidth: 1,
-      borderBottomColor: slateTokens.border,
+      borderBottomColor: colors.border,
       marginBottom: 16,
     },
     bottomSheetTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: slateTokens.textBody,
+      color: colors.text,
     },
     bottomSheetGroup: {
       marginBottom: 24,
@@ -1317,7 +1317,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     bottomSheetGroupTitle: {
       fontSize: 16,
       fontWeight: '700',
-      color: slateTokens.textSecondary,
+      color: colors.textSecondary,
       paddingHorizontal: 20,
       marginBottom: 12,
     },

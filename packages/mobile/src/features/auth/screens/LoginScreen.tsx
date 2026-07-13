@@ -18,7 +18,7 @@ export const LoginScreen = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [sicilNo, setSicilNo] = useState('');
-  const [ipAddress, setIpAddress] = useState(Platform.OS === 'android' ? '127.0.0.1:5140' : '127.0.0.1:5140');
+  const [ipAddress, setIpAddress] = useState('api.oyemsoft.com');
   const [isResetMode, setIsResetMode] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export const LoginScreen = () => {
 
   const buildApiUrl = (ip: string) => {
     if (!ip) return '';
-    // TODO: Canlıya (Production) çıkarken 'http' yerine 'https' yapılmalı
+    // TODO: SSL sertifikası alındığında 'http' -> 'https' yapılacak
     const protocol = 'http';
     return ip.includes(':') || ip.toLowerCase().startsWith('api.')
       ? `${protocol}://${ip}/api`
@@ -60,7 +60,15 @@ export const LoginScreen = () => {
       } else {
         setSelectedTenant('');
       }
-    } catch {
+    } catch (err: any) {
+      console.warn("Tenant load error detail:", {
+        message: err?.message,
+        code: err?.code,
+        status: err?.response?.status,
+        data: err?.response?.data,
+        configUrl: err?.config?.url,
+        request: err?.request ? 'Request object exists' : 'No request object'
+      });
       setTenants([]);
       setSelectedTenant('');
       setLocalError('Sunucuya bağlanılamadı. IP adresini kontrol edin.');

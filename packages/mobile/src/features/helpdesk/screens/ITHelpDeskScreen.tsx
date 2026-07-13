@@ -479,7 +479,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
-        copyToCacheDirectory: false
+        copyToCacheDirectory: true // content:// URI'leri okunamıyor; cache kopyası file:// döner
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -3110,12 +3110,15 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     justifyContent: 'center',
     flex: 1,
     height: 80,
-    marginTop: -36, // pull up to overlap like the image
+    marginTop: -18, // Ana sayfadaki BottomNavBar FAB taşmasıyla aynı
   },
   centerPlusCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    // Ana sayfadaki çentikli FAB görünümü: zemin renginde halka + içte mavi daire
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 6,
+    borderColor: colors.background,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
