@@ -1,18 +1,23 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
+const fs = require('fs');
 
 const projectRoot = __dirname;
-const workspaceRootZ = path.resolve(projectRoot, '../..');
-const workspaceRootD = 'D:\\Solutions\\OyemCore\\OyemCoreSolution\\OyemCore-Frontend';
+const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Only extend watchFolders to include both Z and D workspace paths,
-// leaving resolver.nodeModulesPaths to default so that Metro's internal resolution works normally.
+// Yalnızca gerçekten var olan workspace kökünü izle. Sabit Windows yolları (örn. Z: / D:)
+// EAS'in Linux build sunucusunda mevcut olmadığı için Metro paketlemesini bozuyordu.
 config.watchFolders = [
   ...config.watchFolders,
-  workspaceRootZ,
-  workspaceRootD,
-];
+  workspaceRoot,
+].filter((dir) => {
+  try {
+    return fs.existsSync(dir);
+  } catch {
+    return false;
+  }
+});
 
 module.exports = config;
