@@ -33,6 +33,7 @@ Thumbs.db
 **/android/app/build/
 **/android/.kotlin/
 **/ios/build/
+**/.cxx/
 
 # IDE/Tooling
 .vs/
