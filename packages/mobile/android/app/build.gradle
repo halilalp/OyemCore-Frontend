@@ -182,3 +182,15 @@ dependencies {
 }
 
 apply plugin: 'com.google.gms.google-services'
+
+// Workaround for React Native New Architecture Autolinking bug
+def rootNodeModules = new File(rootDir, "../../../node_modules")
+def codegenJniPath = new File(rootNodeModules, "@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni")
+if (!codegenJniPath.exists()) {
+    println "[EAS Workaround] Creating missing codegen directory: ${codegenJniPath.absolutePath}"
+    codegenJniPath.mkdirs()
+    def cmakeFile = new File(codegenJniPath, "CMakeLists.txt")
+    if (!cmakeFile.exists()) {
+        cmakeFile.text = "# Dummy CMakeLists.txt to satisfy autolinking\n"
+    }
+}
