@@ -248,6 +248,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   }, [isFocused, route.params?.id, requests]);
 
+  // Ana sayfa FAB'ından "Yeni Talep" ile gelindiğinde formu otomatik aç
+  useEffect(() => {
+    if (isFocused && route.params?.openCreate) {
+      setIsCreateOpen(true);
+      navigation.setParams({ openCreate: undefined });
+    }
+  }, [isFocused, route.params?.openCreate]);
+
   // Load details when request selected
   const handleOpenDetail = async (request: Talep) => {
     setSelectedRequest(request);

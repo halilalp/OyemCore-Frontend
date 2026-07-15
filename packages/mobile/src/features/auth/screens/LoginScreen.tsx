@@ -132,7 +132,7 @@ export const LoginScreen = () => {
           {/* Logo */}
           <View style={isTablet ? styles.leftLogoContainer : styles.topLogoContainer}>
             <Image
-              source={require('../../../../assets/oyemcore-login.png')}
+              source={require('../../../../assets/oyemcore.png')}
               style={isTablet ? styles.logoTablet : styles.logoPhone}
               resizeMode="contain"
             />

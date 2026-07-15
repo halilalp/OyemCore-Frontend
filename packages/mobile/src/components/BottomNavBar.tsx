@@ -42,28 +42,39 @@ interface BottomNavBarProps {
 
 const QUICK_ACTIONS = [
   {
-    screen: 'Talepler' as ScreenName,
+    screen: 'ITHelpDesk' as ScreenName,
     icon: 'laptop-outline' as const,
-    label: 'Yeni Destek Talebi',
+    label: 'Yeni IT Talebi',
     color: slateTokens.brandPrimary,
+    params: { openCreate: true },
+  },
+  {
+    screen: 'ERPHelpDesk' as ScreenName,
+    icon: 'server-outline' as const,
+    label: 'Yeni ERP Talebi',
+    color: slateTokens.brandAccent,
+    params: { openCreate: true },
+  },
+  {
+    screen: 'BakimHelpDesk' as ScreenName,
+    icon: 'construct-outline' as const,
+    label: 'Yeni Bakım Talebi',
+    color: slateTokens.success,
+    params: { openCreate: true },
+  },
+  {
+    screen: 'Ticket' as ScreenName,
+    icon: 'ticket-outline' as const,
+    label: 'Yeni Ticket',
+    color: slateTokens.brandGold,
+    params: { openCreate: true },
   },
   {
     screen: 'Izin' as ScreenName,
     icon: 'airplane-outline' as const,
     label: 'Yeni İzin Talebi',
     color: slateTokens.danger,
-  },
-  {
-    screen: 'Ticket' as ScreenName,
-    icon: 'ticket-outline' as const,
-    label: 'Yeni Ticket',
-    color: slateTokens.brandAccent,
-  },
-  {
-    screen: 'Bakim' as ScreenName,
-    icon: 'build-outline' as const,
-    label: 'Yeni Bakım Girişi',
-    color: slateTokens.success,
+    params: { openCreate: true },
   },
 ];
 
@@ -250,7 +261,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
                       activeOpacity={0.8}
                       onPress={() => {
                         setIsMenuOpen(false);
-                        navigation.navigate(action.screen);
+                        navigation.navigate(action.screen, (action as any).params);
                       }}
                     >
                       <View style={[styles.menuIconBox, { backgroundColor: `${action.color}15` }]}>

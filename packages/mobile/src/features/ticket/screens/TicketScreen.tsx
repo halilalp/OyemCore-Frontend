@@ -160,6 +160,14 @@ export const TicketScreen = () => {
     }
   }, [isFocused, route.params?.id, tickets]);
 
+  // Ana sayfa FAB'ından "Yeni Ticket" ile gelindiğinde formu otomatik aç
+  useEffect(() => {
+    if (isFocused && route.params?.openCreate) {
+      setIsCreateOpen(true);
+      navigation.setParams({ openCreate: undefined });
+    }
+  }, [isFocused, route.params?.openCreate]);
+
   const loadTickets = async (refreshing = false) => {
     if (refreshing) setIsRefreshing(true);
     else setIsLoading(true);

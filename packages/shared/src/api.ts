@@ -4,8 +4,14 @@ import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay
 let token: string | null = null;
 let apiBaseUrl: string = 'https://api.oyemsoft.com/api'; // Default backend API URL (SSL aktif)
 
+// 401 sonrası oturum-bitti akışının yalnızca bir kez çalışmasını sağlar. Home ekranındaki
+// paralel isteklerin hepsi aynı anda 401 alıp uyarıyı tekrar tekrar tetiklemesin diye.
+let unauthorizedFired = false;
+
 export const setAuthToken = (newToken: string | null) => {
   token = newToken;
+  // Başarılı girişte (yeni token set edilince) 401 kilidini sıfırla.
+  if (newToken) unauthorizedFired = false;
 };
 
 export const setApiBaseUrl = (newUrl: string) => {
@@ -44,14 +50,21 @@ apiClient.interceptors.response.use((response) => {
   return response;
 }, (error) => {
   if (error.response && error.response.status === 401) {
-    setAuthToken(null);
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      localStorage.removeItem('token');
-      if (!window.location.pathname.endsWith('/login')) {
-        window.location.href = '/login';
+    // Aynı anda gelen birden çok 401'de oturum-bitti akışını yalnızca bir kez çalıştır.
+    if (!unauthorizedFired) {
+      unauthorizedFired = true;
+      setAuthToken(null);
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem('token');
+        if (!window.location.pathname.endsWith('/login')) {
+          window.location.href = '/login';
+        }
       }
+      unauthorizedHandler?.();
+    } else {
+      // Kilit açıkken token'ı yine de temizle ama uyarıyı/logout'u tekrar tetikleme.
+      token = null;
     }
-    unauthorizedHandler?.();
   }
   return Promise.reject(error);
 });
