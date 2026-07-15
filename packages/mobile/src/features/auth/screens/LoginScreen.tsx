@@ -34,8 +34,9 @@ export const LoginScreen = () => {
 
   const buildApiUrl = (ip: string) => {
     if (!ip) return '';
-    // TODO: SSL sertifikası alındığında 'http' -> 'https' yapılacak
-    const protocol = 'http';
+    // Canlı domain'ler HTTPS (SSL aktif); yerel IP ile geliştirme için HTTP.
+    const isLocal = /^(10\.|192\.168\.|127\.|localhost)/.test(ip);
+    const protocol = isLocal ? 'http' : 'https';
     return ip.includes(':') || ip.toLowerCase().startsWith('api.')
       ? `${protocol}://${ip}/api`
       : `${protocol}://${ip}:5000/api`;

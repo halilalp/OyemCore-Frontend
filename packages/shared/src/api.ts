@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim } from './types';
 
 let token: string | null = null;
-let apiBaseUrl: string = 'http://api.oyemsoft.com/api'; // Default backend API URL (SSL alınınca https yapılacak)
+let apiBaseUrl: string = 'https://api.oyemsoft.com/api'; // Default backend API URL (SSL aktif)
 
 export const setAuthToken = (newToken: string | null) => {
   token = newToken;

@@ -87,9 +87,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const savedTenantId = await AsyncStorage.getItem('tenantId');
       const savedTenantUnvan = await AsyncStorage.getItem('tenantUnvan');
 
-      let activeUrl = savedApiUrl || 'http://api.oyemsoft.com/api';
+      let activeUrl = savedApiUrl || 'https://api.oyemsoft.com/api';
       if (activeUrl.includes('10.0.2.2') || activeUrl.includes('192.168.')) {
         activeUrl = 'http://127.0.0.1:5140/api';
+      }
+      // SSL öncesi kaydedilmiş eski http://...oyemsoft.com adreslerini HTTPS'e yükselt.
+      if (activeUrl.startsWith('http://') && activeUrl.includes('oyemsoft.com')) {
+        activeUrl = activeUrl.replace('http://', 'https://');
       }
       setApiBaseUrl(activeUrl);
 
