@@ -484,6 +484,32 @@ export const api = {
     return response.data;
   },
 
+  saveHierarchy: async (model: {
+    hiyerarsiID?: number;
+    sicilNo: string;
+    eposta?: string;
+    amir1?: string;
+    amir2?: string;
+    amir3?: string;
+    izin?: number;
+  }): Promise<{ success: boolean; message?: string }> => {
+    const response = await apiClient.post<{ success: boolean; message?: string }>('/admin/hierarchy', {
+      HiyerarsiID: model.hiyerarsiID || 0,
+      SicilNo: model.sicilNo,
+      Eposta: model.eposta || '',
+      Amir1: model.amir1 || '',
+      Amir2: model.amir2 || '',
+      Amir3: model.amir3 || '',
+      izin: model.izin ?? 0,
+    });
+    return response.data;
+  },
+
+  deleteHierarchy: async (id: number): Promise<{ success: boolean }> => {
+    const response = await apiClient.delete<{ success: boolean }>(`/admin/hierarchy/${id}`);
+    return response.data;
+  },
+
   getAiSettings: async (): Promise<any> => {
     const response = await apiClient.get<any>('/admin/ai-settings');
     return response.data;

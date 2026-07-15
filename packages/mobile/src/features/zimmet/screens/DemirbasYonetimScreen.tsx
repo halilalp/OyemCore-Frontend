@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
+import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -69,6 +70,9 @@ export const DemirbasYonetimScreen = () => {
   const [createMasrafMerkezi, setCreateMasrafMerkezi] = useState('');
 
   // Assign Form States
+  // Atama, detay modalının İÇİNDE nested modal olarak açılır (iOS'ta iki fullScreen
+  // modalın aynı anda geçiş yapmasını önlemek için ayrı boolean ile yönetilir).
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [assignPersonel, setAssignPersonel] = useState<any>(null);
   const [assignUsage, setAssignUsage] = useState('ŞAHSİ'); // Changed default to 'ŞAHSİ'
   const [assignDesc, setAssignDesc] = useState('');
@@ -219,6 +223,7 @@ export const DemirbasYonetimScreen = () => {
       });
       if (res.success) {
         showAlert('Başarılı', res.message || 'Zimmet başarıyla atandı.');
+        setIsAssignOpen(false);
         setCurrentView('list');
         setAssignPersonel(null);
         setAssignDesc('');
@@ -371,18 +376,34 @@ export const DemirbasYonetimScreen = () => {
     }
   };
 
-  const renderSelectorView = () => {
+  // Seçici tipini fonksiyonel gruba eşler; böylece seçici Modal'ı ilgili parent
+  // modalının (create/assign) İÇİNDE render edilip iOS'ta üstte açılır.
+  const SELECTOR_GROUPS: Record<'filter' | 'create' | 'assign', string[]> = {
+    filter: ['filterCategory', 'filterBrand'],
+    create: ['createCategory', 'createBrand', 'createDep'],
+    assign: ['personel'],
+  };
+
+  const renderSelectorModal = (group: 'filter' | 'create' | 'assign') => {
+    const inGroup = activeSelector != null && SELECTOR_GROUPS[group].includes(activeSelector);
     const config = getSelectorDataAndConfig();
-    if (!config) return null;
+    const visible = inGroup && !!config;
 
     const cleanSearchText = selectorSearchText.toLocaleLowerCase('tr').trim();
-    const filteredData = config.data.filter(item => {
+    const filteredData = config ? config.data.filter(item => {
       const label = config.labelExtractor(item) || '';
       return label.toLocaleLowerCase('tr').includes(cleanSearchText);
-    });
+    }) : [];
 
     return (
-      <View style={styles.selectorOverlay}>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setActiveSelector(null); setSelectorSearchText(''); }}
+      >
+        {config && (
+        <View style={styles.selectorOverlay}>
         <View style={styles.selectorCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <View style={{ width: 40 }} />
@@ -429,7 +450,9 @@ export const DemirbasYonetimScreen = () => {
             }
           />
         </View>
-      </View>
+        </View>
+        )}
+      </Modal>
     );
   };
 
@@ -445,6 +468,7 @@ export const DemirbasYonetimScreen = () => {
           activeFilter=""
           onFilterChange={() => {}}
           filters={[]}
+          rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('ZimmetDashboard') }}
         >
           <ScrollView 
             horizontal 
@@ -559,31 +583,6 @@ export const DemirbasYonetimScreen = () => {
           />
         )}
 
-        {/* Add New Asset Button */}
-        {isAdmin && (
-          <View style={styles.bottomActionBar}>
-            <TouchableOpacity 
-              style={[styles.actionBtn, { backgroundColor: colors.primary }]} 
-              onPress={() => {
-                setEditingAsset(null);
-                setCreateTanim('');
-                setCreateSeriNo('');
-                setCreateAciklama('');
-                setCreateKategori(null);
-                setCreateMarka(null);
-                setCreateMiktar('1');
-                setCreateSorumluDepKod(null);
-                setCreateDemirbasKodu('');
-                setCreateKonum('');
-                setCreateMasrafMerkezi('');
-                setCurrentView('create');
-              }}
-            >
-              <Ionicons name="add-circle-outline" size={18} color="#fff" />
-              <Text style={[styles.actionBtnLabel, { color: '#fff' }]}>+ Yeni</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
     );
   };
@@ -717,7 +716,7 @@ export const DemirbasYonetimScreen = () => {
                   setAssignPersonel(null);
                   setAssignDesc('');
                   setAssignUsage('ŞAHSİ');
-                  setCurrentView('assign');
+                  setIsAssignOpen(true);
                 }}
               >
                 <Ionicons name="person-add-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
@@ -738,18 +737,18 @@ export const DemirbasYonetimScreen = () => {
   const renderCreateView = () => {
     return (
       <>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{editingAsset ? 'Demirbaş Güncelle' : 'Yeni Demirbaş Ekle'}</Text>
-          <TouchableOpacity onPress={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }} style={styles.closeButton}>
-            <Ionicons name="close" size={22} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
+        <CreateModalHeader
+          title={editingAsset ? 'Demirbaş Güncelle' : 'Yeni Demirbaş Ekle'}
+          onClose={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }}
+          colorTheme="purple"
+        />
 
         <ScrollView contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
+          <View style={styles.formInfoBox}>
+            <Text style={styles.formInfoBoxTitle}>Demirbaş Kayıt Formu</Text>
+            <Text style={styles.formInfoBoxText}>Yıldızlı alanları doldurarak demirbaş kaydını oluşturun. Kategori, marka ve sorumlu bölümü seçebilirsiniz.</Text>
+          </View>
+
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Demirbaş Tanımı *</Text>
             <TextInput
@@ -865,16 +864,11 @@ export const DemirbasYonetimScreen = () => {
   const renderAssignView = () => {
     return (
       <>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setCurrentView('detail')} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Zimmet Atama Formu</Text>
-          <TouchableOpacity onPress={() => setCurrentView('detail')} style={styles.closeButton}>
-            <Ionicons name="close" size={22} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
+        <CreateModalHeader
+          title="Zimmet Atama Formu"
+          onClose={() => setIsAssignOpen(false)}
+          colorTheme="purple"
+        />
 
         <ScrollView contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
           {/* Personel Selector */}
@@ -921,38 +915,85 @@ export const DemirbasYonetimScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Temel ekran: liste (diğer modüllerle aynı Modal tabanlı mimari) */}
       <View style={styles.contentWrapper}>
-        {currentView === 'list' && renderListView()}
-        {currentView === 'detail' && renderDetailView()}
-        {currentView === 'create' && renderCreateView()}
-        {currentView === 'assign' && renderAssignView()}
+        {renderListView()}
       </View>
-      
-      {currentView === 'list' && (
-        <BottomNavBar 
-          currentScreen="Zimmet" 
-          customAction={isAdmin ? {
-            icon: 'add-outline',
-            label: 'Yeni Demirbaş',
-            onPress: () => {
-              setEditingAsset(null);
-              setCreateTanim('');
-              setCreateSeriNo('');
-              setCreateAciklama('');
-              setCreateKategori(null);
-              setCreateMarka(null);
-              setCreateMiktar('1');
-              setCreateSorumluDepKod(null);
-              setCreateDemirbasKodu('');
-              setCreateKonum('');
-              setCreateMasrafMerkezi('');
-              setCurrentView('create');
-            }
-          } : undefined} 
-        />
-      )}
 
-      {renderSelectorView()}
+      <BottomNavBar
+        currentScreen="Zimmet"
+        customAction={isAdmin ? {
+          icon: 'add-outline',
+          label: 'Yeni Demirbaş',
+          onPress: () => {
+            setEditingAsset(null);
+            setCreateTanim('');
+            setCreateSeriNo('');
+            setCreateAciklama('');
+            setCreateKategori(null);
+            setCreateMarka(null);
+            setCreateMiktar('1');
+            setCreateSorumluDepKod(null);
+            setCreateDemirbasKodu('');
+            setCreateKonum('');
+            setCreateMasrafMerkezi('');
+            setCurrentView('create');
+          }
+        } : undefined}
+      />
+
+      {/* Filtre seçicileri (liste kökünde) */}
+      {renderSelectorModal('filter')}
+
+      {/* Detay Modal */}
+      <Modal
+        visible={currentView === 'detail'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={true}
+        onRequestClose={() => { setCurrentView('list'); setSelectedAsset(null); }}
+      >
+        <View style={styles.container}>
+          <View style={styles.contentWrapper}>
+            {renderDetailView()}
+          </View>
+
+          {/* Zimmet Atama — detay modalının İÇİNDE nested modal */}
+          <Modal
+            visible={isAssignOpen}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            statusBarTranslucent={true}
+            onRequestClose={() => setIsAssignOpen(false)}
+          >
+            <View style={styles.container}>
+              <View style={styles.contentWrapper}>
+                {renderAssignView()}
+              </View>
+              {/* Personel seçici atama modalının İÇİNDE */}
+              {renderSelectorModal('assign')}
+            </View>
+          </Modal>
+        </View>
+      </Modal>
+
+      {/* Kayıt/Güncelleme Modal */}
+      <Modal
+        visible={currentView === 'create'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={true}
+        onRequestClose={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }}
+      >
+        <View style={styles.container}>
+          <View style={styles.contentWrapper}>
+            {renderCreateView()}
+          </View>
+          {/* Kategori/Marka/Departman seçicileri create modalının İÇİNDE */}
+          {renderSelectorModal('create')}
+        </View>
+      </Modal>
+
     </View>
   );
 };
@@ -977,7 +1018,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    paddingTop: Platform.OS === 'android' ? 12 : 12,
+    paddingTop: (Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 44) + 12,
   },
   backButton: {
     padding: 8,
@@ -1029,36 +1070,53 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     padding: 0,
   },
   filtersScrollContainer: {
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
     flexGrow: 0,
+    marginTop: 8,
   },
   filtersScrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingRight: 16,
     flexDirection: 'row',
   },
   filterChip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.25)',
     marginRight: 8,
   },
   activeFilterChip: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.6)',
   },
   filterChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
   },
   activeFilterChipText: {
     color: '#fff',
+    fontWeight: '700',
+  },
+  formInfoBox: {
+    backgroundColor: (colors.primaryLight || colors.primary + '15') + '40',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '15',
+    marginBottom: 12,
+  },
+  formInfoBoxTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  formInfoBoxText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
   loader: {
     marginTop: 40,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 let Notifications: any = {
   setNotificationHandler: () => {},
@@ -29,7 +29,12 @@ import { useThemeStore } from './src/store/useThemeStore';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { HomeScreen } from './src/features/home/screens/HomeScreen';
 import { TicketScreen } from './src/features/ticket/screens/TicketScreen';
+import { TicketDashboardScreen } from './src/features/ticket/screens/TicketDashboardScreen';
+import { BakimDashboardScreen } from './src/features/bakim_yonetim/screens/BakimDashboardScreen';
 import { IzinScreen } from './src/features/izin/screens/IzinScreen';
+import { IzinDashboardScreen } from './src/features/izin/screens/IzinDashboardScreen';
+import { HelpDeskDashboardScreen } from './src/features/helpdesk/screens/HelpDeskDashboardScreen';
+import { ZimmetDashboardScreen } from './src/features/zimmet/screens/ZimmetDashboardScreen';
 import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScreen';
 import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
 import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
@@ -43,6 +48,7 @@ import { TedarikciScreen } from './src/features/tedarikci/screens/TedarikciScree
 import { AdminAyarlarScreen } from './src/features/admin/screens/AdminAyarlarScreen';
 import { AdminKullaniciScreen } from './src/features/admin/screens/AdminKullaniciScreen';
 import { AdminHelpDeskScreen } from './src/features/admin/screens/AdminHelpDeskScreen';
+import { AdminHiyerarsiScreen } from './src/features/admin/screens/AdminHiyerarsiScreen';
 import { AdminLogsScreen } from './src/features/admin/screens/AdminLogsScreen';
 import { AdminTarihceScreen } from './src/features/admin/screens/AdminTarihceScreen';
 import { CalendarScreen } from './src/features/home/screens/CalendarScreen';
@@ -53,9 +59,13 @@ import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
 import { SasDetailScreen } from './src/features/satsas/screens/SasDetailScreen';
 import { AlertModal } from './src/components/AlertModal';
 import { useAlertStore } from './src/store/useAlertStore';
+import { InAppNotification } from './src/components/InAppNotification';
+import { useNotificationStore } from './src/store/useNotificationStore';
+import { navigationRef, navigateFromNotificationData } from './src/navigation/navigationRef';
 
 const Stack = createNativeStackNavigator();
-export const navigationRef = createNavigationContainerRef();
+// Geriye dönük uyumluluk için navigationRef'i buradan da dışa aktarıyoruz.
+export { navigationRef };
 
 // Globally override Alert.alert to use the premium AlertModal overlay
 const nativeAlert = Alert.alert.bind(Alert);
@@ -108,11 +118,14 @@ Alert.alert = (title?: string, message?: string, buttons?: any[], options?: any)
 // Configure how notifications are displayed when the app is in the foreground
 try {
   Notifications.setNotificationHandler({
+    // Ön planda OS'in kendi banner'ını göstermiyoruz; onun yerine uygulama içi
+    // özel banner (InAppNotification) gösteriliyor. Böylece çift bildirim olmuyor.
+    // Ses ve bildirim merkezindeki liste kaydı korunuyor.
     handleNotification: async () => ({
-      shouldShowAlert: true,
+      shouldShowAlert: false,
       shouldPlaySound: true,
       shouldSetBadge: false,
-      shouldShowBanner: true,
+      shouldShowBanner: false,
       shouldShowList: true,
     }),
   });
@@ -211,39 +224,26 @@ export default function App() {
     let responseListener: any;
 
     try {
-      // Listen for notifications received while the app is in the foreground
+      // Uygulama ön plandayken gelen bildirimi uygulama içi banner olarak göster.
+      // Dokunulunca banner kendisi ilgili işleme yönlendirir.
       notificationListener = Notifications.addNotificationReceivedListener(notification => {
-        console.log('Received notification in foreground:', notification);
+        try {
+          const content = notification?.request?.content || {};
+          useNotificationStore.getState().showNotification(
+            content.title || 'Bildirim',
+            content.body || '',
+            content.data || null
+          );
+        } catch (e) {
+          console.warn('In-app notification banner failed:', e);
+        }
       });
 
-      // Listen for notification clicks/taps
+      // Kullanıcı sistem bildirimine (arka plan/kilit ekranı) dokunduğunda
+      // ilgili işleme yönlendir.
       responseListener = Notifications.addNotificationResponseReceivedListener(response => {
         const data = response.notification.request.content.data;
-        console.log('Notification response received:', data);
-
-        if (data && data.screen) {
-          if (navigationRef.isReady()) {
-            // Normalize screen name if it ends with "Screen"
-            let targetScreen = data.screen;
-            if (targetScreen === 'IzinScreen') targetScreen = 'Izin';
-            if (targetScreen === 'TalepScreen' || targetScreen === 'Talepler') {
-              if (data.type === 'ERP') targetScreen = 'ERPHelpDesk';
-              else if (data.type === 'BAKIM') targetScreen = 'BakimHelpDesk';
-              else targetScreen = 'ITHelpDesk';
-            }
-            if (targetScreen === 'BakimScreen') targetScreen = 'Bakim';
-            if (targetScreen === 'TicketScreen') targetScreen = 'Ticket';
-            if (targetScreen === 'HomeScreen') targetScreen = 'Home';
-            if (targetScreen === 'ZimmetScreen' || targetScreen === 'Zimmet') targetScreen = 'Zimmetlerim';
-            if (targetScreen === 'TedarikciScreen') targetScreen = 'Tedarikci';
-
-            (navigationRef as any).navigate(targetScreen, {
-              code: data.code,
-              id: data.id,
-              type: data.type
-            });
-          }
-        }
+        navigateFromNotificationData(data);
       });
     } catch (e) {
       console.warn('Failed to register notification listeners in Expo Go:', e);
@@ -311,11 +311,16 @@ export default function App() {
                 headerShown: false
               }} 
             />
-            <Stack.Screen 
-              name="Bakim" 
-              component={BakimScreen} 
-              options={{ headerShown: false }} 
+            <Stack.Screen
+              name="Bakim"
+              component={BakimScreen}
+              options={{ headerShown: false }}
             />
+            <Stack.Screen name="TicketDashboard" component={TicketDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="BakimDashboard" component={BakimDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="IzinDashboard" component={IzinDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="HelpDeskDashboard" component={HelpDeskDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ZimmetDashboard" component={ZimmetDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen 
               name="Performans" 
               component={PerformansScreen} 
@@ -349,6 +354,7 @@ export default function App() {
             <Stack.Screen name="AdminAyarlar" component={AdminAyarlarScreen} />
             <Stack.Screen name="AdminKullanici" component={AdminKullaniciScreen} />
             <Stack.Screen name="AdminHelpDesk" component={AdminHelpDeskScreen} />
+            <Stack.Screen name="AdminHiyerarsi" component={AdminHiyerarsiScreen} />
             <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
             <Stack.Screen name="AdminTarihce" component={AdminTarihceScreen} />
             <Stack.Screen name="Calendar" component={CalendarScreen} options={{ headerShown: false }} />
@@ -361,6 +367,7 @@ export default function App() {
         )}
       </Stack.Navigator>
       <StatusBar style={colors.statusBar} />
+      <InAppNotification />
       <AlertModal />
     </NavigationContainer>
   );

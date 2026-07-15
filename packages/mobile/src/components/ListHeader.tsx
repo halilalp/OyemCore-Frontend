@@ -22,6 +22,8 @@ interface ListHeaderProps {
   activeFilter?: string;
   onFilterChange?: (id: string) => void;
   onBack?: () => void;
+  // Başlık sağında opsiyonel aksiyon butonu (ör. dashboard/pano girişi)
+  rightAction?: { icon: any; onPress: () => void };
   children?: React.ReactNode;
 }
 
@@ -35,6 +37,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
   activeFilter,
   onFilterChange,
   onBack,
+  rightAction,
   children,
 }) => {
   const navigation = useNavigation();
@@ -72,6 +75,11 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
             {onSearchChange && (
               <TouchableOpacity onPress={() => setIsSearchExpanded(!isSearchExpanded)} style={styles.searchToggleButton}>
                 <Ionicons name={isSearchExpanded ? "close" : "search"} size={22} color="#FFF" />
+              </TouchableOpacity>
+            )}
+            {rightAction && (
+              <TouchableOpacity onPress={rightAction.onPress} style={[styles.searchToggleButton, { marginLeft: 8 }]}>
+                <Ionicons name={rightAction.icon} size={20} color="#FFF" />
               </TouchableOpacity>
             )}
           </View>

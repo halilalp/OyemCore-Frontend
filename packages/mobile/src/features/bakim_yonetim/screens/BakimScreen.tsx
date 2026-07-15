@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { api, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { ListHeader } from '../../../components/ListHeader';
+import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { FilePickerSheet } from '../../../components/FilePickerSheet';
 import { AttachmentPreview } from '../../../components/AttachmentPreview';
@@ -16,6 +17,7 @@ import { AttachmentPreview } from '../../../components/AttachmentPreview';
 
 export const BakimScreen = () => {
   const isFocused = useIsFocused();
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, theme);
@@ -52,7 +54,6 @@ export const BakimScreen = () => {
   const [formPlanBitis, setFormPlanBitis] = useState('');
   
   const [isFormPlanHatOpen, setIsFormPlanHatOpen] = useState(false);
-  const [isFormPlanTurOpen, setIsFormPlanTurOpen] = useState(false);
 
   // Plan datepicker visibility states
   const [isPlanBasDatePickerOpen, setIsPlanBasDatePickerOpen] = useState(false);
@@ -91,7 +92,6 @@ export const BakimScreen = () => {
   const [formCtrlAciklama, setFormCtrlAciklama] = useState('');
 
   const [isFormCtrlBolumOpen, setIsFormCtrlBolumOpen] = useState(false);
-  const [isFormCtrlTurOpen, setIsFormCtrlTurOpen] = useState(false);
 
   // Control datepicker visibility states
   const [isCtrlBasDatePickerOpen, setIsCtrlBasDatePickerOpen] = useState(false);
@@ -455,6 +455,7 @@ export const BakimScreen = () => {
           { id: 'periyodik', label: 'Periyodik Kontrol' },
           { id: 'rapor', label: 'Raporlar' }
         ]}
+        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('BakimDashboard') }}
       >
         {activeTab === 'plan' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
@@ -706,7 +707,7 @@ export const BakimScreen = () => {
       {/* ======================================================== */}
 
       {/* PLAN DETAILS MODAL */}
-      <Modal visible={selectedPlan !== null} animationType="slide" onRequestClose={() => setSelectedPlan(null)}>
+      <Modal visible={selectedPlan !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedPlan(null)}>
         {selectedPlan && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
@@ -820,17 +821,17 @@ export const BakimScreen = () => {
       </Modal>
 
       {/* NEW PLAN MODAL */}
-      <Modal visible={isNewPlanOpen} animationType="slide" onRequestClose={() => setIsNewPlanOpen(false)}>
-        <SafeAreaView style={styles.modalContainer}>
+      <Modal visible={isNewPlanOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsNewPlanOpen(false)}>
+        <View style={styles.modalContainer}>
+          <CreateModalHeader title="Yeni Bakım Planı" onClose={() => setIsNewPlanOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <View style={{ width: 40 }} />
-              <Text style={styles.modalTitle}>Yeni Bakım Planı</Text>
-              <TouchableOpacity onPress={() => setIsNewPlanOpen(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={22} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={styles.modalScroll}>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+
+              <View style={styles.formInfoBox}>
+                <Text style={styles.formInfoBoxTitle}>Planlı Bakım Formu</Text>
+                <Text style={styles.formInfoBoxText}>Hat/makine, bakım türü ve hedef tarihleri belirleyerek planlı bakım kaydı oluşturun.</Text>
+              </View>
+
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Plan Kodu *</Text>
                 <TextInput
@@ -844,46 +845,57 @@ export const BakimScreen = () => {
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Hat / Makine Seçimi *</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setIsFormPlanHatOpen(true)}>
-                  <Text style={styles.selectBoxText}>
+                <TouchableOpacity style={[styles.selectBox, styles.dateInput]} onPress={() => setIsFormPlanHatOpen(true)}>
+                  <Ionicons name="git-branch-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.selectBoxText, { flex: 1 }]}>
                     {dropdowns?.hats?.find((h: any) => h.hatKodu === formPlanHat)?.hatAdi || 'Hat Seçiniz'}
                   </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Bakım Türü *</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setIsFormPlanTurOpen(true)}>
-                  <Text style={styles.selectBoxText}>{formPlanTur}</Text>
-                </TouchableOpacity>
+                <View style={styles.selectorGrid}>
+                  {['Planlı', 'Revizyon', 'Fason', 'Deneme', 'Diğer'].map(t => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.selectorItem, formPlanTur === t && styles.selectorItemActive]}
+                      onPress={() => setFormPlanTur(t)}
+                    >
+                      <Text style={[styles.selectorItemText, formPlanTur === t && styles.selectorItemTextActive]}>{t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Hedef Başlangıç *</Text>
-                <TouchableOpacity 
-                  style={styles.selectBox} 
+                <TouchableOpacity
+                  style={[styles.selectBox, styles.dateInput]}
                   onPress={() => setIsPlanBasDatePickerOpen(true)}
                   activeOpacity={0.7}
                 >
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.selectBoxText}>
-                    {formPlanBaslangic || 'Tarih Seçiniz (dd.MM.yyyy)'}
+                    {formPlanBaslangic || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Hedef Bitiş *</Text>
-                <TouchableOpacity 
-                  style={styles.selectBox} 
+                <TouchableOpacity
+                  style={[styles.selectBox, styles.dateInput]}
                   onPress={() => setIsPlanBitDatePickerOpen(true)}
                   activeOpacity={0.7}
                 >
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.selectBoxText}>
-                    {formPlanBitis || 'Tarih Seçiniz (dd.MM.yyyy)'}
+                    {formPlanBitis || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
-
 
               <View style={styles.formActionsRow}>
                 <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsNewPlanOpen(false)}>
@@ -895,11 +907,34 @@ export const BakimScreen = () => {
               </View>
             </ScrollView>
           </View>
-        </SafeAreaView>
+
+          {/* Picker modalları create modalının İÇİNDE — iOS'ta üstte açılır (arkada kalma/kilitlenme fix) */}
+          <SearchableSelectorModal
+            visible={isFormPlanHatOpen}
+            onClose={() => setIsFormPlanHatOpen(false)}
+            onSelect={(item) => setFormPlanHat(item.hatKodu)}
+            data={dropdowns?.hats || []}
+            keyExtractor={(item) => item.hatKodu}
+            labelExtractor={(item) => item.hatAdi}
+            title="Hat / Makine Seçin"
+          />
+          <DatePickerModal
+            visible={isPlanBasDatePickerOpen}
+            onClose={() => setIsPlanBasDatePickerOpen(false)}
+            onSelectDate={setFormPlanBaslangic}
+            title="Plan Hedef Başlangıç Tarihi Seçin"
+          />
+          <DatePickerModal
+            visible={isPlanBitDatePickerOpen}
+            onClose={() => setIsPlanBitDatePickerOpen(false)}
+            onSelectDate={setFormPlanBitis}
+            title="Plan Hedef Bitiş Tarihi Seçin"
+          />
+        </View>
       </Modal>
 
       {/* PERIODIC CONTROL DETAILS MODAL */}
-      <Modal visible={selectedCtrl !== null} animationType="slide" onRequestClose={() => setSelectedCtrl(null)}>
+      <Modal visible={selectedCtrl !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedCtrl(null)}>
         {selectedCtrl && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
@@ -1123,32 +1158,43 @@ export const BakimScreen = () => {
                 )}
               </ScrollView>
             </View>
+
+            {/* Makine seçici detay modalının İÇİNDE — üstte açılması için */}
+            <SearchableSelectorModal
+              visible={isSarfMachineOpen}
+              onClose={() => setIsSarfMachineOpen(false)}
+              onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
+              data={(dropdowns?.makines || []).filter((m: any) => selectedCtrl && m.bolumKodu === selectedCtrl.bolumKodu)}
+              keyExtractor={(item) => item.makineKodu}
+              labelExtractor={(item) => item.makineAdi}
+              title="Makine Seçin"
+            />
+
+            <FilePickerSheet
+              visible={isCtrlFilePickerOpen}
+              onClose={() => setIsCtrlFilePickerOpen(false)}
+              module="BAKIM"
+              onPicked={(file) => {
+                setCtrlDosyaUrl(file.filePath);
+                setCtrlDosyaName(file.fileName);
+              }}
+            />
           </SafeAreaView>
         )}
       </Modal>
 
-      <FilePickerSheet
-        visible={isCtrlFilePickerOpen}
-        onClose={() => setIsCtrlFilePickerOpen(false)}
-        module="BAKIM"
-        onPicked={(file) => {
-          setCtrlDosyaUrl(file.filePath);
-          setCtrlDosyaName(file.fileName);
-        }}
-      />
-
       {/* NEW PERIODIC CONTROL MODAL */}
-      <Modal visible={isNewCtrlOpen} animationType="slide" onRequestClose={() => setIsNewCtrlOpen(false)}>
-        <SafeAreaView style={styles.modalContainer}>
+      <Modal visible={isNewCtrlOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsNewCtrlOpen(false)}>
+        <View style={styles.modalContainer}>
+          <CreateModalHeader title="Yeni Periyodik Kontrol" onClose={() => setIsNewCtrlOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <View style={{ width: 40 }} />
-              <Text style={styles.modalTitle}>Yeni Periyodik Kontrol</Text>
-              <TouchableOpacity onPress={() => setIsNewCtrlOpen(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={22} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={styles.modalScroll}>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+
+              <View style={styles.formInfoBox}>
+                <Text style={styles.formInfoBoxTitle}>Periyodik Kontrol Formu</Text>
+                <Text style={styles.formInfoBoxText}>Bölüm, kontrol türü ve hedef tarihleri seçerek periyodik kontrol kaydı oluşturun.</Text>
+              </View>
+
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Kontrol Kodu *</Text>
                 <TextInput
@@ -1162,46 +1208,57 @@ export const BakimScreen = () => {
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Bölüm Seçimi *</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setIsFormCtrlBolumOpen(true)}>
-                  <Text style={styles.selectBoxText}>
+                <TouchableOpacity style={[styles.selectBox, styles.dateInput]} onPress={() => setIsFormCtrlBolumOpen(true)}>
+                  <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.selectBoxText, { flex: 1 }]}>
                     {dropdowns?.bolums?.find((b: any) => b.bolumKodu === formCtrlBolum)?.bolumAdi || 'Bölüm Seçiniz'}
                   </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Kontrol Türü *</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setIsFormCtrlTurOpen(true)}>
-                  <Text style={styles.selectBoxText}>{formCtrlTur}</Text>
-                </TouchableOpacity>
+                <View style={styles.selectorGrid}>
+                  {['Elektrik', 'Mekanik', 'Bina', 'Müteahhit', 'Diğer'].map(t => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.selectorItem, formCtrlTur === t && styles.selectorItemActive]}
+                      onPress={() => setFormCtrlTur(t)}
+                    >
+                      <Text style={[styles.selectorItemText, formCtrlTur === t && styles.selectorItemTextActive]}>{t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Hedef Başlangıç *</Text>
-                <TouchableOpacity 
-                  style={styles.selectBox} 
+                <TouchableOpacity
+                  style={[styles.selectBox, styles.dateInput]}
                   onPress={() => setIsCtrlBasDatePickerOpen(true)}
                   activeOpacity={0.7}
                 >
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.selectBoxText}>
-                    {formCtrlBaslangic || 'Tarih Seçiniz (dd.MM.yyyy)'}
+                    {formCtrlBaslangic || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Hedef Bitiş *</Text>
-                <TouchableOpacity 
-                  style={styles.selectBox} 
+                <TouchableOpacity
+                  style={[styles.selectBox, styles.dateInput]}
                   onPress={() => setIsCtrlBitDatePickerOpen(true)}
                   activeOpacity={0.7}
                 >
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                   <Text style={styles.selectBoxText}>
-                    {formCtrlBitis || 'Tarih Seçiniz (dd.MM.yyyy)'}
+                    {formCtrlBitis || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
-
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Açıklama / Detay</Text>
@@ -1226,7 +1283,30 @@ export const BakimScreen = () => {
               </View>
             </ScrollView>
           </View>
-        </SafeAreaView>
+
+          {/* Picker modalları create modalının İÇİNDE */}
+          <SearchableSelectorModal
+            visible={isFormCtrlBolumOpen}
+            onClose={() => setIsFormCtrlBolumOpen(false)}
+            onSelect={(item) => setFormCtrlBolum(item.bolumKodu)}
+            data={dropdowns?.bolums || []}
+            keyExtractor={(item) => item.bolumKodu}
+            labelExtractor={(item) => item.bolumAdi}
+            title="Bölüm Seçin"
+          />
+          <DatePickerModal
+            visible={isCtrlBasDatePickerOpen}
+            onClose={() => setIsCtrlBasDatePickerOpen(false)}
+            onSelectDate={setFormCtrlBaslangic}
+            title="Kontrol Hedef Başlangıç Tarihi Seçin"
+          />
+          <DatePickerModal
+            visible={isCtrlBitDatePickerOpen}
+            onClose={() => setIsCtrlBitDatePickerOpen(false)}
+            onSelectDate={setFormCtrlBitis}
+            title="Kontrol Hedef Bitiş Tarihi Seçin"
+          />
+        </View>
       </Modal>
 
       {/* ======================================================== */}
@@ -1323,61 +1403,6 @@ export const BakimScreen = () => {
         title="Durum Filtresi"
       />
 
-      {/* Form Plan Hat */}
-      <SearchableSelectorModal
-        visible={isFormPlanHatOpen}
-        onClose={() => setIsFormPlanHatOpen(false)}
-        onSelect={(item) => setFormPlanHat(item.hatKodu)}
-        data={dropdowns?.hats || []}
-        keyExtractor={(item) => item.hatKodu}
-        labelExtractor={(item) => item.hatAdi}
-        title="Hat / Makine Seçin"
-      />
-
-      {/* Form Plan Tur */}
-      <SearchableSelectorModal
-        visible={isFormPlanTurOpen}
-        onClose={() => setIsFormPlanTurOpen(false)}
-        onSelect={(item) => setFormPlanTur(item)}
-        data={['Planlı', 'Revizyon', 'Fason', 'Deneme', 'Diğer']}
-        keyExtractor={(item) => item}
-        labelExtractor={(item) => item}
-        title="Plan Türü Seçin"
-      />
-
-      {/* Form Ctrl Bolum */}
-      <SearchableSelectorModal
-        visible={isFormCtrlBolumOpen}
-        onClose={() => setIsFormCtrlBolumOpen(false)}
-        onSelect={(item) => setFormCtrlBolum(item.bolumKodu)}
-        data={dropdowns?.bolums || []}
-        keyExtractor={(item) => item.bolumKodu}
-        labelExtractor={(item) => item.bolumAdi}
-        title="Bölüm Seçin"
-      />
-
-      {/* Form Ctrl Tur */}
-      <SearchableSelectorModal
-        visible={isFormCtrlTurOpen}
-        onClose={() => setIsFormCtrlTurOpen(false)}
-        onSelect={(item) => setFormCtrlTur(item)}
-        data={['Elektrik', 'Mekanik', 'Bina', 'Müteahhit', 'Diğer']}
-        keyExtractor={(item) => item}
-        labelExtractor={(item) => item}
-        title="Kontrol Türü Seçin"
-      />
-
-      {/* Sarfiyat Machine */}
-      <SearchableSelectorModal
-        visible={isSarfMachineOpen}
-        onClose={() => setIsSarfMachineOpen(false)}
-        onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
-        data={(dropdowns?.makines || []).filter((m: any) => selectedCtrl && m.bolumKodu === selectedCtrl.bolumKodu)}
-        keyExtractor={(item) => item.makineKodu}
-        labelExtractor={(item) => item.makineAdi}
-        title="Makine Seçin"
-      />
-
       {/* Rapor Yıl Filter */}
       <SearchableSelectorModal
         visible={isRaporYilOpen}
@@ -1413,34 +1438,7 @@ export const BakimScreen = () => {
         labelExtractor={(item) => item.sirketAdi}
         title="Şirket Seçin"
       />
-      <DatePickerModal
-        visible={isPlanBasDatePickerOpen}
-        onClose={() => setIsPlanBasDatePickerOpen(false)}
-        onSelectDate={setFormPlanBaslangic}
-        title="Plan Hedef Başlangıç Tarihi Seçin"
-      />
-
-      <DatePickerModal
-        visible={isPlanBitDatePickerOpen}
-        onClose={() => setIsPlanBitDatePickerOpen(false)}
-        onSelectDate={setFormPlanBitis}
-        title="Plan Hedef Bitiş Tarihi Seçin"
-      />
-
-      <DatePickerModal
-        visible={isCtrlBasDatePickerOpen}
-        onClose={() => setIsCtrlBasDatePickerOpen(false)}
-        onSelectDate={setFormCtrlBaslangic}
-        title="Kontrol Hedef Başlangıç Tarihi Seçin"
-      />
-
-      <DatePickerModal
-        visible={isCtrlBitDatePickerOpen}
-        onClose={() => setIsCtrlBitDatePickerOpen(false)}
-        onSelectDate={setFormCtrlBitis}
-        title="Kontrol Hedef Bitiş Tarihi Seçin"
-      />
-      <BottomNavBar 
+      <BottomNavBar
         currentScreen="Bakim" 
         customAction={
           activeTab === 'plan' ? {
@@ -1681,6 +1679,59 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   modalScroll: {
     padding: 16,
     gap: 16,
+  },
+  formScroll: {
+    padding: 20,
+    gap: 16,
+  },
+  formInfoBox: {
+    backgroundColor: (colors.primaryLight || colors.primary + '15') + '40',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '15',
+    marginBottom: 8,
+  },
+  formInfoBoxTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  formInfoBoxText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  selectorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  selectorItem: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  selectorItemActive: {
+    backgroundColor: colors.accentLight,
+    borderColor: colors.accent,
+  },
+  selectorItemText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  selectorItemTextActive: {
+    color: colors.accent,
+    fontWeight: 'bold',
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   detailCard: {
     backgroundColor: colors.card,

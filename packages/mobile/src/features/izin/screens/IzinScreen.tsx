@@ -7,8 +7,8 @@ import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native'
 import { IzinOnay, api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
-import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { ListHeader } from '../../../components/ListHeader';
+import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -54,9 +54,6 @@ export const IzinScreen = () => {
   const [formIsGunu, setFormIsGunu] = useState('');
   const [formAciklama, setFormAciklama] = useState('');
 
-  // Dropdown option states
-  const [isTypeSelectOpen, setIsTypeSelectOpen] = useState(false);
-
   // Detail View modal state
   const [selectedDetailRequest, setSelectedDetailRequest] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -93,6 +90,14 @@ export const IzinScreen = () => {
       loadInitialData();
     }
   }, [isFocused]);
+
+  // Ana sayfa FAB'ından "Yeni İzin Talebi" ile gelindiğinde formu otomatik aç
+  useEffect(() => {
+    if (isFocused && route.params?.openCreate) {
+      setIsModalOpen(true);
+      navigation.setParams({ openCreate: undefined });
+    }
+  }, [isFocused, route.params?.openCreate]);
 
   // Auto-open leave detail if route parameter code is passed from notification click
   useEffect(() => {
@@ -220,6 +225,7 @@ export const IzinScreen = () => {
           { id: 'my', label: 'Taleplerim' },
           { id: 'approvals', label: `Onay Bekleyenler (${approvals.length})` }
         ]}
+        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('IzinDashboard') }}
       />
       
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
@@ -350,37 +356,54 @@ export const IzinScreen = () => {
         }} 
       />
 
-      {/* New Leave Modal */}
-      <Modal visible={isModalOpen} animationType="slide" onRequestClose={() => setIsModalOpen(false)}>
-        <SafeAreaView style={styles.modalContainer}>
+      {/* New Leave Modal — Ticket kayıt formu ile aynı tasarım dili */}
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View style={styles.modalContainer}>
+          <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="gold" />
           <View style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <View style={{ width: 40 }} />
-              <Text style={styles.modalTitle}>Yeni İzin Talebi</Text>
-              <TouchableOpacity onPress={() => setIsModalOpen(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={22} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={styles.modalScroll}>
-              
-              {/* İzin Türü */}
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+
+              {/* Bilgi kutusu */}
+              <View style={styles.formInfoBox}>
+                <Text style={styles.formInfoBoxTitle}>İzin Talep Formu</Text>
+                <Text style={styles.formInfoBoxText}>Lütfen yıldızlı alanları doldurarak izin talebinizi oluşturunuz. Talebiniz amir onayına gönderilecektir.</Text>
+              </View>
+
+              {/* İzin Türü — chip seçici */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İzin Türü *</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setIsTypeSelectOpen(true)}>
-                  <Text style={styles.selectBoxText}>{formIzinTuru}</Text>
-                </TouchableOpacity>
+                <View style={styles.selectorGrid}>
+                  {leaveTypes.map(type => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.selectorItem, formIzinTuru === type && styles.selectorItemActive]}
+                      onPress={() => setFormIzinTuru(type)}
+                    >
+                      <Text style={[styles.selectorItemText, formIzinTuru === type && styles.selectorItemTextActive]}>
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               {/* Çıkış Tarihi */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İzin Çıkış Tarihi *</Text>
-                <TouchableOpacity 
-                  style={styles.selectBox} 
+                <TouchableOpacity
+                  style={[styles.textInput, styles.dateInput]}
                   onPress={() => setIsCikisDatePickerOpen(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.selectBoxText}>
-                    {formCikisTar || 'Tarih Seçiniz (dd.MM.yyyy)'}
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+                  <Text style={{ color: formCikisTar ? colors.text : colors.placeholder, fontSize: 13 }}>
+                    {formCikisTar || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -388,17 +411,17 @@ export const IzinScreen = () => {
               {/* İşe Başlama Tarihi */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İşe Başlama Tarihi *</Text>
-                <TouchableOpacity 
-                  style={styles.selectBox} 
+                <TouchableOpacity
+                  style={[styles.textInput, styles.dateInput]}
                   onPress={() => setIsIsBasiDatePickerOpen(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.selectBoxText}>
-                    {formIsBasiTar || 'Tarih Seçiniz (dd.MM.yyyy)'}
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+                  <Text style={{ color: formIsBasiTar ? colors.text : colors.placeholder, fontSize: 13 }}>
+                    {formIsBasiTar || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
-
 
               {/* İş Günü */}
               <View style={styles.formGroup}>
@@ -438,18 +461,7 @@ export const IzinScreen = () => {
 
             </ScrollView>
           </View>
-        </SafeAreaView>
-
-        {/* Leave Type Select Modal */}
-        <SearchableSelectorModal
-          visible={isTypeSelectOpen}
-          onClose={() => setIsTypeSelectOpen(false)}
-          onSelect={setFormIzinTuru}
-          data={leaveTypes}
-          keyExtractor={item => item}
-          labelExtractor={item => item}
-          title="İzin Türü Seçin"
-        />
+        </View>
       </Modal>
 
       <DatePickerModal
@@ -602,7 +614,7 @@ export const IzinScreen = () => {
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background,
   },
   contentWrapper: {
     flex: 1,
@@ -854,14 +866,63 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     padding: 20,
     gap: 16,
   },
+  formScroll: {
+    padding: 20,
+    gap: 16,
+  },
+  formInfoBox: {
+    backgroundColor: (colors.primaryLight || colors.primary + '15') + '40',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '15',
+    marginBottom: 8,
+  },
+  formInfoBoxTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  formInfoBoxText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
   formGroup: {
     marginBottom: 14,
+    gap: 8,
   },
   formLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  selectorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  selectorItem: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  selectorItemActive: {
+    backgroundColor: colors.accentLight,
+    borderColor: colors.accent,
+  },
+  selectorItemText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 6,
+    color: colors.textSecondary,
+  },
+  selectorItemTextActive: {
+    color: colors.accent,
+    fontWeight: 'bold',
   },
   selectBox: {
     height: 48,
@@ -875,6 +936,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   selectBoxText: {
     fontSize: 14,
     color: colors.text,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   textInput: {
     height: 48,

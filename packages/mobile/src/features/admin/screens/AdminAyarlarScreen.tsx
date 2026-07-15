@@ -121,6 +121,19 @@ export const AdminAyarlarScreen = () => {
             </View>
             <Text style={styles.chevron}>➔</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminHiyerarsi')}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconWrapper, { backgroundColor: '#6366f115' }]}>
+                <Text style={[styles.menuIcon, { color: '#6366f1' }]}>🧬</Text>
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Hiyerarşi İşlemleri</Text>
+                <Text style={styles.menuDesc}>Personel amir zinciri (izin/onay) tanımları</Text>
+              </View>
+            </View>
+            <Text style={styles.chevron}>➔</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.menuSection}>
