@@ -256,6 +256,18 @@ export const api = {
     return response.data;
   },
 
+  // Ticket modülü başlangıç yapılandırması: kullanıcı ticket yöneticisi mi + kendi şirketi
+  getTicketInit: async (): Promise<{ isAdmin: boolean; sirketKodu: string; adSoyad: string }> => {
+    const response = await apiClient.get<{ isAdmin: boolean; sirketKodu: string; adSoyad: string }>('/tickets/init');
+    return response.data;
+  },
+
+  // Seçili şirkete bağlı aktif ticket kategorileri (yeni kayıt formu için)
+  getTicketCategoriesByCompany: async (sirketKodu: string): Promise<{ id: number; tanim: string }[]> => {
+    const response = await apiClient.get<{ id: number; tanim: string }[]>('/tickets/categories', { params: { sirketKodu } });
+    return response.data;
+  },
+
   getPersonels: async (): Promise<Personel[]> => {
     const response = await apiClient.get<Personel[]>('/tickets/personels');
     return response.data;

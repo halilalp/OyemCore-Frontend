@@ -95,6 +95,9 @@ export const TicketScreen = () => {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [companies, setCompanies] = useState<Company[]>([]);
   const [personels, setPersonels] = useState<Personel[]>([]);
+  // Ticket yetkisi + kullanıcının kendi şirketi (yeni kayıt formu davranışını belirler)
+  const [isTicketAdmin, setIsTicketAdmin] = useState<boolean>(false);
+  const [ownSirket, setOwnSirket] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -125,6 +128,8 @@ export const TicketScreen = () => {
   const [formBaslik, setFormBaslik] = useState('');
   const [formAciklama, setFormAciklama] = useState('');
   const [formSirket, setFormSirket] = useState('');
+  const [formKategoriID, setFormKategoriID] = useState<number | null>(null);
+  const [categories, setCategories] = useState<{ id: number; tanim: string }[]>([]);
   const [formTur, setFormTur] = useState('Hata');
   const [formOncelik, setFormOncelik] = useState('ORTA');
   const [formBitisTarihi, setFormBitisTarihi] = useState('');
@@ -172,19 +177,39 @@ export const TicketScreen = () => {
 
   const loadDropdowns = async () => {
     try {
-      const [compData, persData] = await Promise.all([
+      const [compData, persData, initData] = await Promise.all([
         api.getCompanies(),
-        api.getPersonels()
+        api.getPersonels(),
+        api.getTicketInit().catch(() => ({ isAdmin: false, sirketKodu: '', adSoyad: '' }))
       ]);
       setCompanies(compData || []);
       setPersonels(persData || []);
-      if (compData && compData.length > 0) {
-        setFormSirket(compData[0].sirketKodu);
-      }
+      setIsTicketAdmin(!!initData.isAdmin);
+      setOwnSirket(initData.sirketKodu || '');
+
+      // Yetkili değilse form şirketi kendi şirketine sabitlenir; yetkiliyse ilk şirket seçili gelir.
+      const defaultSirket = initData.isAdmin
+        ? (compData && compData.length > 0 ? compData[0].sirketKodu : '')
+        : (initData.sirketKodu || '');
+      setFormSirket(defaultSirket);
     } catch (err: any) {
       Alert.alert('Hata', 'Destek formu verileri yüklenemedi.');
     }
   };
+
+  // Seçili şirket değiştiğinde o şirkete bağlı kategorileri yükle, seçili kategoriyi sıfırla.
+  useEffect(() => {
+    if (!formSirket) { setCategories([]); setFormKategoriID(null); return; }
+    let iptal = false;
+    api.getTicketCategoriesByCompany(formSirket)
+      .then(list => {
+        if (iptal) return;
+        setCategories(list || []);
+        setFormKategoriID((list && list.length > 0) ? list[0].id : null);
+      })
+      .catch(() => { if (!iptal) { setCategories([]); setFormKategoriID(null); } });
+    return () => { iptal = true; };
+  }, [formSirket]);
 
   const handleTicketPress = async (ticket: Ticket) => {
     setSelectedTicket(ticket);
@@ -378,12 +403,19 @@ export const TicketScreen = () => {
       Alert.alert('Hata', 'Lütfen başlık, açıklama ve şirket alanlarını doldurun.');
       return;
     }
+    if (!formKategoriID) {
+      Alert.alert('Hata', categories.length === 0
+        ? 'Seçili şirkete tanımlı ticket kategorisi bulunmuyor.'
+        : 'Lütfen bir kategori seçin.');
+      return;
+    }
     setIsSubmittingTicket(true);
     try {
       await api.saveTicket({
         baslik: formBaslik,
         aciklama: formAciklama,
         sirketKodu: formSirket,
+        kategoriID: formKategoriID,
         islemTuru: formTur,
         oncelik: formOncelik === 'YÜKSEK' ? 'Yüksek' : formOncelik === 'ORTA' ? 'Orta' : 'Düşük',
         bitisTarihi: formBitisTarihi || null
@@ -1121,13 +1153,14 @@ export const TicketScreen = () => {
                 />
               </View>
 
-              {/* Şirket */}
+              {/* Şirket — yetkili tüm şirketleri seçebilir; yetkisiz yalnızca kendi şirketi (kilitli) */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Şirket *</Text>
                 <View style={styles.selectorGrid}>
-                  {companies.map(c => (
+                  {(isTicketAdmin ? companies : companies.filter(c => c.sirketKodu === ownSirket)).map(c => (
                     <TouchableOpacity
                       key={c.sirketKodu}
+                      disabled={!isTicketAdmin}
                       style={[styles.selectorItem, formSirket === c.sirketKodu && styles.selectorItemActive]}
                       onPress={() => setFormSirket(c.sirketKodu)}
                     >
@@ -1137,6 +1170,30 @@ export const TicketScreen = () => {
                     </TouchableOpacity>
                   ))}
                 </View>
+              </View>
+
+              {/* Kategori — seçili şirkete bağlı */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Kategori *</Text>
+                {categories.length === 0 ? (
+                  <Text style={{ color: colors.textMuted, fontSize: 13, fontStyle: 'italic', paddingVertical: 6 }}>
+                    Bu şirkete tanımlı kategori bulunmuyor.
+                  </Text>
+                ) : (
+                  <View style={styles.selectorGrid}>
+                    {categories.map(k => (
+                      <TouchableOpacity
+                        key={k.id}
+                        style={[styles.selectorItem, formKategoriID === k.id && styles.selectorItemActive]}
+                        onPress={() => setFormKategoriID(k.id)}
+                      >
+                        <Text style={[styles.selectorItemText, formKategoriID === k.id && styles.selectorItemTextActive]}>
+                          {k.tanim}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
 
               {/* İşlem Türü */}
