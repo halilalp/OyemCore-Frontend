@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
-import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused, useRoute } from '@react-navigation/native';
@@ -28,11 +27,12 @@ export const HelpDeskDashboardScreen = () => {
   useEffect(() => { if (isFocused) load(); }, [isFocused, tur]);
 
   const load = async () => {
-    if (isBakim) { setLoading(false); return; } // Bakım performansı ayrı (SP tabanlı) — hazırlanıyor
     try {
       setLoading(true);
       const yil = new Date().getFullYear().toString();
-      const res = await api.getHelpDeskPerformans({ yil, ay: 'Tümü', talepTur: tur });
+      const res = isBakim
+        ? await api.getBakimHelpDeskPerformans({ yil, ay: 'Tümü' })
+        : await api.getHelpDeskPerformans({ yil, ay: 'Tümü', talepTur: tur });
       setData(res);
     } catch (e) { setData(null); }
     finally { setLoading(false); }
@@ -58,19 +58,23 @@ export const HelpDeskDashboardScreen = () => {
       />
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-      ) : isBakim ? (
-        <View style={styles.pendingBox}>
-          <Ionicons name="construct-outline" size={40} color={colors.textSecondary} />
-          <Text style={styles.pendingText}>Bakım performans raporu hazırlanıyor.</Text>
-        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.tilesGrid}>
             <StatTile label="Toplam Talep" value={num(kpi, 'talepSayisi')} icon="albums-outline" color={colors.primary} />
             <StatTile label="Açık" value={num(kpi, 'acikTalep')} icon="folder-open-outline" color="#f59e0b" />
             <StatTile label="Tamamlanan" value={num(kpi, 'tamamlananTalep')} icon="checkmark-done-outline" color="#10b981" />
-            <StatTile label="Ort. Tamamlama" value={`${num(kpi, 'tamamlamaSuresi').toFixed(1)}s`} icon="time-outline" color="#3b82f6" />
-            <StatTile label="Ort. Müdahale" value={`${num(kpi, 'mudahaleSuresi').toFixed(1)}s`} icon="alarm-outline" color="#8b5cf6" />
+            {isBakim ? (
+              <>
+                <StatTile label="Onay Bekleyen" value={num(kpi, 'onayBekleyen')} icon="hourglass-outline" color="#3b82f6" />
+                <StatTile label="Ort. SLA (Çözüm)" value={`${num(kpi, 'slaSuresi').toFixed(1)}s`} icon="time-outline" color="#8b5cf6" />
+              </>
+            ) : (
+              <>
+                <StatTile label="Ort. Tamamlama" value={`${num(kpi, 'tamamlamaSuresi').toFixed(1)}s`} icon="time-outline" color="#3b82f6" />
+                <StatTile label="Ort. Müdahale" value={`${num(kpi, 'mudahaleSuresi').toFixed(1)}s`} icon="alarm-outline" color="#8b5cf6" />
+              </>
+            )}
             <StatTile label="Ort. İş Yükü" value={num(kpi, 'ortIsYuku').toFixed(1)} icon="people-outline" color="#14b8a6" />
           </View>
 
@@ -93,7 +97,7 @@ export const HelpDeskDashboardScreen = () => {
                 <View key={i} style={styles.persRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.persName} numberOfLines={1}>{p.name}</Text>
-                    <Text style={styles.persSub}>Tamamlama: {p.avgTamamlama} • Müdahale: {p.avgMudahale}</Text>
+                    <Text style={styles.persSub}>{isBakim ? `Çözüm: ${p.avgResolve}` : `Tamamlama: ${p.avgTamamlama} • Müdahale: ${p.avgMudahale}`}</Text>
                   </View>
                   <View style={styles.persBadges}>
                     <Text style={[styles.pb, { backgroundColor: '#f59e0b22', color: '#b45309' }]}>Açık {num(p, 'openTasks')}</Text>

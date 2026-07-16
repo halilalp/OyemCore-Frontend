@@ -448,6 +448,18 @@ export const api = {
     return response.data;
   },
 
+  // Referans WebServiceBakimPlani.DashboardOzetGetir (planlı/periyodik özet)
+  getBakimDashboardOzet: async (sirket = ''): Promise<any> => {
+    const response = await apiClient.get<any>('/bakim/dashboard-ozet', { params: { sirket } });
+    return response.data;
+  },
+
+  // Referans WebServiceBakimRapor.PersonelPerformansRaporuGetir (Bakım HelpDesk)
+  getBakimHelpDeskPerformans: async (params: { yil?: string; ay?: string; sirket?: string }): Promise<any> => {
+    const response = await apiClient.get<any>('/bakim/rapor/performans', { params });
+    return response.data;
+  },
+
   // Admin / Settings Endpoints
   getLogs: async (): Promise<any[]> => {
     const response = await apiClient.get<any[]>('/admin/logs');

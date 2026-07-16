@@ -19,6 +19,7 @@ export const BakimDashboardScreen = () => {
   const styles = createStyles(colors);
 
   const [months, setMonths] = useState<any[]>([]);
+  const [ozet, setOzet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const year = new Date().getFullYear().toString();
 
@@ -29,10 +30,14 @@ export const BakimDashboardScreen = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const data = await api.getBakimDashboardStats(year, '');
+      const [data, ozetData] = await Promise.all([
+        api.getBakimDashboardStats(year, ''),
+        api.getBakimDashboardOzet('').catch(() => null),
+      ]);
       const arr = Array.isArray(data) ? data : [];
       const yearRow = arr.find((x: any) => `${g(x, 'year', 'Year')}` === year) || arr[0];
       setMonths((yearRow && (g(yearRow, 'data', 'Data') || [])) || []);
+      setOzet(ozetData);
     } catch (e) {
       setMonths([]);
     } finally {
@@ -79,6 +84,16 @@ export const BakimDashboardScreen = () => {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Planlı/periyodik özet (DashboardOzetGetir) */}
+          {ozet && (
+            <View style={styles.tilesGrid}>
+              <StatTile label="Bekleyen Talep" value={g(ozet, 'bekleyenTalepSayisi', 'BekleyenTalepSayisi') || 0} icon="file-tray-outline" color="#f59e0b" />
+              <StatTile label="Açık İş Emri" value={g(ozet, 'acikIsEmriSayisi', 'AcikIsEmriSayisi') || 0} icon="hammer-outline" color="#3b82f6" />
+              <StatTile label="Onay Bekleyen" value={g(ozet, 'onayBekleyenSayisi', 'OnayBekleyenSayisi') || 0} icon="hourglass-outline" color="#8b5cf6" />
+              <StatTile label="Bu Ay Tamamlanan" value={g(ozet, 'tamamlananTalepSayisi', 'TamamlananTalepSayisi') || 0} icon="checkmark-done-outline" color="#10b981" />
+            </View>
+          )}
+
           <View style={styles.tilesGrid}>
             <StatTile label="Toplam Kontrol" value={toplam} icon="construct-outline" color={colors.primary} />
             <StatTile label="Tamamlanan" value={tamam} icon="checkmark-done-outline" color="#10b981" />
