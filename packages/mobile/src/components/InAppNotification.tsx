@@ -17,7 +17,7 @@ import { navigateFromNotificationData } from '../navigation/navigationRef';
 // Ön planda (uygulama açıkken) gelen push bildirimlerini ekranın üstünde
 // kayan bir kart olarak gösterir. Karta dokunulunca ilgili işleme yönlendirir,
 // 5 saniye sonra ya da yukarı kaydırınca kendiliğinden kapanır.
-const AUTO_HIDE_MS = 5000;
+const AUTO_HIDE_MS = 9000;
 
 const topInset = Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 24) + 6;
 
@@ -99,34 +99,38 @@ export const InAppNotification = () => {
       style={[styles.wrapper, { transform: [{ translateY }] }]}
       {...panResponder.panHandlers}
     >
-      <TouchableOpacity activeOpacity={0.9} onPress={handlePress} style={styles.card}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="notifications" size={22} color="#ffffff" />
-        </View>
-        <View style={styles.textContainer}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-          {!!body && (
-            <Text style={styles.body} numberOfLines={2}>
-              {body}
+      <View style={styles.card}>
+        <View style={styles.infoRow}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="notifications" size={22} color="#ffffff" />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
             </Text>
-          )}
-          {!!(data && data.screen) && (
-            <View style={styles.goRow}>
-              <Text style={styles.goText}>Detaya git</Text>
-              <Ionicons name="arrow-forward" size={12} color={colors.primary} />
-            </View>
-          )}
+            {!!body && (
+              <Text style={styles.body} numberOfLines={3}>
+                {body}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={dismiss}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.closeBtn}
+          >
+            <Ionicons name="close" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          onPress={dismiss}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.closeBtn}
-        >
-          <Ionicons name="close" size={18} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </TouchableOpacity>
+
+        {!!(data && data.screen) && (
+          <TouchableOpacity style={styles.goButton} activeOpacity={0.85} onPress={handlePress}>
+            <Ionicons name="open-outline" size={16} color="#ffffff" />
+            <Text style={styles.goButtonText}>Detayları Gör</Text>
+            <Ionicons name="arrow-forward" size={15} color="#ffffff" />
+          </TouchableOpacity>
+        )}
+      </View>
       <View style={styles.grabber} />
     </Animated.View>
   );
@@ -143,8 +147,6 @@ const createStyles = (colors: any) =>
       elevation: 20,
     },
     card: {
-      flexDirection: 'row',
-      alignItems: 'center',
       backgroundColor: colors.card,
       borderRadius: 18,
       paddingVertical: 12,
@@ -156,6 +158,25 @@ const createStyles = (colors: any) =>
       shadowOpacity: 0.18,
       shadowRadius: 14,
       elevation: 10,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    goButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 10,
+      marginTop: 12,
+    },
+    goButtonText: {
+      color: '#ffffff',
+      fontSize: 13,
+      fontWeight: '800',
     },
     iconContainer: {
       width: 42,
