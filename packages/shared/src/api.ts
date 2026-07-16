@@ -484,6 +484,12 @@ export const api = {
     return response.data;
   },
 
+  // Referans WebServicePersonel.IKDashboardVerisiGetir ile birebir İK dashboard verisi
+  getIKDashboard: async (params?: { basTar?: string; bitTar?: string; yaka?: string; sirketFilter?: string }): Promise<any> => {
+    const response = await apiClient.get<any>('/ik/dashboard', { params });
+    return response.data;
+  },
+
   saveHierarchy: async (model: {
     hiyerarsiID?: number;
     sicilNo: string;
