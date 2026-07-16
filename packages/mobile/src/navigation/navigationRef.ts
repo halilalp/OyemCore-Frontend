@@ -9,9 +9,16 @@ export const navigationRef = createNavigationContainerRef();
 // ve varsa ilgili parametrelerle yönlendirir. Hem arka planda gelen bildirim
 // dokunuşu (response listener) hem de ön planda gösterilen uygulama içi banner
 // dokunuşu bu tek fonksiyonu kullanır.
-export function navigateFromNotificationData(data: any) {
+export function navigateFromNotificationData(data: any, _retry = 0) {
   if (!data || !data.screen) return;
-  if (!navigationRef.isReady()) return;
+  // Soğuk başlangıçta bildirime dokunulduğunda navigasyon henüz hazır olmayabilir;
+  // hazır olana kadar kısa aralıklarla yeniden dene (en fazla ~5 sn).
+  if (!navigationRef.isReady()) {
+    if (_retry < 25) {
+      setTimeout(() => navigateFromNotificationData(data, _retry + 1), 200);
+    }
+    return;
+  }
 
   let targetScreen = data.screen;
   if (targetScreen === 'IzinScreen') targetScreen = 'Izin';

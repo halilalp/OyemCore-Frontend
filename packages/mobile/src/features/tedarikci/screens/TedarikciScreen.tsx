@@ -273,7 +273,7 @@ export const TedarikciScreen = () => {
         showAlert('Hata', res.message || 'Kaydedilemedi.');
       }
     } catch (e: any) {
-      showAlert('Hata', e.message || 'Kaydederken hata oluştu.');
+      showAlert('Hata', e?.response?.data?.message || e?.message || 'Kaydederken hata oluştu.');
     } finally {
       setIsLoading(false);
     }
@@ -400,7 +400,6 @@ export const TedarikciScreen = () => {
         activeFilter=""
         onFilterChange={() => {}}
         filters={[]}
-        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('TedarikciDashboard') }}
       >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
           <View style={styles.filterChipContainer}>

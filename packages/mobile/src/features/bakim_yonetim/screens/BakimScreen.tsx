@@ -455,7 +455,6 @@ export const BakimScreen = () => {
           { id: 'periyodik', label: 'Periyodik Kontrol' },
           { id: 'rapor', label: 'Raporlar' }
         ]}
-        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('BakimDashboard') }}
       >
         {activeTab === 'plan' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>

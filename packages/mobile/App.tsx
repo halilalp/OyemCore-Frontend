@@ -9,6 +9,7 @@ let Notifications: any = {
   getPermissionsAsync: async () => ({ status: 'denied' }),
   requestPermissionsAsync: async () => ({ status: 'denied' }),
   getExpoPushTokenAsync: async () => ({ data: '' }),
+  getLastNotificationResponseAsync: async () => null,
   setNotificationChannelAsync: async () => {},
   AndroidImportance: { MAX: 4 },
 };
@@ -100,19 +101,11 @@ Alert.alert = (title?: string, message?: string, buttons?: any[], options?: any)
       buttons.length > 1 ? onCancelPress : undefined
     );
   } else {
-    let type: 'success' | 'error' | 'warning' | 'info' = 'info';
-    const lowerTitle = (title || '').toLowerCase();
-    const lowerMsg = (message || '').toLowerCase();
-    
-    if (lowerTitle.includes('hata') || lowerMsg.includes('hata') || lowerMsg.includes('başarısız') || lowerTitle.includes('error') || lowerMsg.includes('olmadı') || lowerMsg.includes('bulunamadı')) {
-      type = 'error';
-    } else if (lowerTitle.includes('başarı') || lowerMsg.includes('başarı') || lowerTitle.includes('success') || lowerMsg.includes('kaydedildi') || lowerMsg.includes('tamamlandı')) {
-      type = 'success';
-    } else if (lowerTitle.includes('uyarı') || lowerMsg.includes('uyarı') || lowerTitle.includes('warning') || lowerMsg.includes('dikkat')) {
-      type = 'warning';
-    }
-    
-    useAlertStore.getState().showAlert(title || '', message || '', type);
+    // Tek butonlu bilgi/başarı/hata uyarıları: sistem native alert'i kullanılır.
+    // Neden: özel AlertModal, fullScreen bir modal (kayıt/güncelleme formu) açıkken
+    // iOS'ta modalın ARKASINDA kalıyor ve uyarı ancak form kapandıktan sonra
+    // görünüyordu. Native alert her zaman en üstte gösterilir (form açıkken bile).
+    nativeAlert(title || '', message || '');
   }
 };
 
@@ -201,11 +194,9 @@ export default function App() {
             api.savePushToken(token)
               .then(() => {
                 console.log('Successfully saved push token to backend');
-                Alert.alert('Bildirim Kaydı Başarılı', 'Bildirim altyapısı kuruldu.');
               })
               .catch(err => {
                 console.warn('Error saving push token to backend:', err);
-                Alert.alert('Veritabanı Hatası', 'Token sunucuya kaydedilemedi: ' + (err.message || err));
               });
           } else {
             console.log('Push notifications not registered (could be running on emulator/simulator)');
@@ -213,7 +204,6 @@ export default function App() {
         })
         .catch(err => {
           console.warn('Error registering for push notifications:', err);
-          Alert.alert('Bildirim Hatası', 'Cihaz kaydı başarısız: ' + err);
         });
     }
   }, [isAuthenticated]);
@@ -246,6 +236,17 @@ export default function App() {
         const data = response.notification.request.content.data;
         navigateFromNotificationData(data);
       });
+
+      // Soğuk başlangıç: uygulama tamamen kapalıyken bildirime dokunulup açıldıysa,
+      // son bildirim yanıtını alıp ilgili işleme yönlendir (listener bunu kaçırır).
+      if (Notifications.getLastNotificationResponseAsync) {
+        Notifications.getLastNotificationResponseAsync()
+          .then((response: any) => {
+            const data = response?.notification?.request?.content?.data;
+            if (data) navigateFromNotificationData(data);
+          })
+          .catch(() => {});
+      }
     } catch (e) {
       console.warn('Failed to register notification listeners in Expo Go:', e);
     }

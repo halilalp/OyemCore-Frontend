@@ -523,7 +523,6 @@ export const TicketScreen = () => {
         activeFilter={activeTab}
         onFilterChange={(id: string) => setActiveTab(id as any)}
         filters={[]}
-        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('TicketDashboard') }}
       >
         {/* Durum Tabları */}
         <View style={styles.tabsRow}>

@@ -468,7 +468,6 @@ export const DemirbasYonetimScreen = () => {
           activeFilter=""
           onFilterChange={() => {}}
           filters={[]}
-          rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('ZimmetDashboard') }}
         >
           <ScrollView 
             horizontal 

@@ -225,7 +225,6 @@ export const IzinScreen = () => {
           { id: 'my', label: 'Taleplerim' },
           { id: 'approvals', label: `Onay Bekleyenler (${approvals.length})` }
         ]}
-        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('IzinDashboard') }}
       />
       
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>

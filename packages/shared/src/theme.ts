@@ -63,6 +63,16 @@ export const slateTokens = {
   primaryAlpha08:  'rgba(59, 130, 246, 0.08)',
   accentAlpha15:   'rgba(249, 115, 22, 0.15)',
 
+  // ── Geriye dönük alias'lar (bazı ekranlar bu adlarla kullanıyor) ──
+  // Bunlar tanımsız kaldığında `slateTokens.primary + '1A'` gibi ifadeler
+  // "undefined1A" geçersiz rengine dönüşüp Android'de çökmeye yol açıyordu.
+  primary:         '#3B82F6',   // = brandPrimary
+  text:            '#0F172A',   // = textBody
+  textDark:        '#0F172A',
+  borderLight:     '#E2E8F0',   // Slate 200
+  pastelRedBg:     '#FEF2F2',   // Red 50
+  white:           '#FFFFFF',
+
   // Eski uyumluluk
   goldBg15:        'rgba(245, 158, 11, 0.15)',
   goldBorder35:    'rgba(245, 158, 11, 0.35)',

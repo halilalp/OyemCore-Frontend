@@ -856,7 +856,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         activeFilter={activeTab}
         onFilterChange={(id: any) => setActiveTab(id)}
         filters={[]} // Boş bırak, children render edilecek
-        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('HelpDeskDashboard', { tur: type, title: 'Bakım HelpDesk' }) }}
       >
         {/* Advanced Filters inside ListHeader */}
         <View style={styles.headerFiltersRow}>
