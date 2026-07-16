@@ -28,6 +28,13 @@ export const BakimScreen = () => {
   // Dropdown lists
   const [dropdowns, setDropdowns] = useState<any>(null);
 
+  // --- Şirket-önce kapısı ---
+  // Admin (BAKIMADMIN) ise şirket seçimi açık; değilse kişinin kendi şirketi kilitli.
+  // Seçilen şirket hem planlı hem periyodik listeleri ve yeni kayıtları sürükler.
+  const [isBakimAdmin, setIsBakimAdmin] = useState(false);
+  const [gateSirket, setGateSirket] = useState('');
+  const [isGateSirketOpen, setIsGateSirketOpen] = useState(false);
+
   // --- TAB 1: Planlı Bakımlar ---
   const [plans, setPlans] = useState<BakimPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<BakimPlan | null>(null);
@@ -125,8 +132,18 @@ export const BakimScreen = () => {
       try {
         const data = await api.getBakimDropdowns();
         setDropdowns(data);
+
+        // Şirket kapısı: admin ise açık (varsayılan tüm/ilk şirket), değilse kendi şirketine kilitli.
+        const admin = !!data?.isAdmin;
+        setIsBakimAdmin(admin);
+        const ownSirket = user?.sirketKodu || '';
+        const initialGate = admin ? '' : ownSirket;
+        setGateSirket(initialGate);
+        setPlanSirketFilter(initialGate);
+        setCtrlSirketFilter(initialGate);
+
         if (data?.sirkets?.length > 0) {
-          setRaporSirket(data.sirkets[0].sirketKodu);
+          setRaporSirket(admin ? data.sirkets[0].sirketKodu : (ownSirket || data.sirkets[0].sirketKodu));
         }
       } catch (err) {
         console.error('Dropdown verileri alınamadı:', err);
@@ -458,11 +475,6 @@ export const BakimScreen = () => {
       >
         {activeTab === 'plan' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
-            <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanSirketFltOpen(true)}>
-              <Text style={styles.filterChipText}>
-                🏢 Şirket: {dropdowns?.sirkets?.find((c: any) => c.sirketKodu === planSirketFilter)?.sirketAdi || 'Hepsi'}
-              </Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanBolumFltOpen(true)}>
               <Text style={styles.filterChipText}>
                 ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === planBolumFilter)?.bolumAdi || 'Hepsi'}
@@ -478,11 +490,6 @@ export const BakimScreen = () => {
 
         {activeTab === 'periyodik' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
-            <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlSirketFltOpen(true)}>
-              <Text style={styles.filterChipText}>
-                🏢 Şirket: {dropdowns?.sirkets?.find((c: any) => c.sirketKodu === ctrlSirketFilter)?.sirketAdi || 'Hepsi'}
-              </Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlBolumFltOpen(true)}>
               <Text style={styles.filterChipText}>
                 ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === ctrlBolumFilter)?.bolumAdi || 'Hepsi'}
@@ -496,6 +503,45 @@ export const BakimScreen = () => {
           </ScrollView>
         )}
       </ListHeader>
+
+      {/* Şirket-önce kapısı: admin seçebilir, yetkisiz kilitli */}
+      {activeTab !== 'rapor' && (
+        <View style={styles.gateBar}>
+          <Ionicons name="business-outline" size={16} color={colors.primary} />
+          <Text style={styles.gateLabel}>Şirket:</Text>
+          <TouchableOpacity
+            style={[styles.gateSelect, !isBakimAdmin && styles.gateSelectLocked]}
+            disabled={!isBakimAdmin}
+            activeOpacity={0.7}
+            onPress={() => setIsGateSirketOpen(true)}
+          >
+            <Text style={styles.gateSelectText} numberOfLines={1}>
+              {gateSirket
+                ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket)
+                : (isBakimAdmin ? 'Tüm Şirketler' : 'Şirket')}
+            </Text>
+            {isBakimAdmin
+              ? <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              : <Ionicons name="lock-closed" size={13} color={colors.textSecondary} />}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Gate şirket seçici (yalnız admin) */}
+      <SearchableSelectorModal
+        visible={isGateSirketOpen}
+        onClose={() => setIsGateSirketOpen(false)}
+        onSelect={(item) => {
+          const kod = item.sirketKodu || '';
+          setGateSirket(kod);
+          setPlanSirketFilter(kod);
+          setCtrlSirketFilter(kod);
+        }}
+        data={[{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(dropdowns?.sirkets || [])]}
+        keyExtractor={(item) => item.sirketKodu || 'all'}
+        labelExtractor={(item) => item.sirketAdi}
+        title="Şirket Seçin"
+      />
 
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         
@@ -1460,6 +1506,43 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  gateBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  gateLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  gateSelect: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  gateSelectLocked: {
+    opacity: 0.7,
+  },
+  gateSelectText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    marginRight: 8,
   },
   contentWrapper: {
     flex: 1,
