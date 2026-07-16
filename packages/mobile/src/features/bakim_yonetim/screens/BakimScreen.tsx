@@ -23,6 +23,8 @@ export const BakimScreen = () => {
   const styles = createStyles(colors, theme);
 
   const [activeTab, setActiveTab] = useState<'plan' | 'periyodik' | 'rapor'>('plan');
+  // Plan/Periyodik içinde iki mod: 'plan' = oluşturma/yönetim, 'uygula' = işleme alma
+  const [bakimMode, setBakimMode] = useState<'plan' | 'uygula'>('plan');
   const [isLoading, setIsLoading] = useState(false);
 
   // Dropdown lists
@@ -461,18 +463,39 @@ export const BakimScreen = () => {
     <View style={styles.container}>
       <ListHeader
         title="Bakım Yönetimi"
-        subtitle={activeTab === 'plan' ? `${plans.length} Planlı Bakım` : activeTab === 'periyodik' ? `${controls.length} Periyodik Kontrol` : 'Raporlar'}
+        subtitle={activeTab === 'rapor'
+          ? 'Raporlar'
+          : `${bakimMode === 'uygula' ? 'İşleme Alma' : 'Yönetim'} • ${activeTab === 'plan' ? `${plans.length} Plan` : `${controls.length} Kontrol`}`}
         searchValue={getSearchValue()}
         onSearchChange={handleSearchChange}
         searchPlaceholder={activeTab === 'plan' ? "Plan Kodu veya Hat Ara..." : "Kontrol Kodu veya Bölüm Ara..."}
         activeFilter={activeTab}
-        onFilterChange={(id: string) => setActiveTab(id as any)}
-        filters={[
-          { id: 'plan', label: 'Planlı Bakım' },
-          { id: 'periyodik', label: 'Periyodik Kontrol' },
-          { id: 'rapor', label: 'Raporlar' }
-        ]}
+        onFilterChange={() => {}}
+        filters={[]}
       >
+        {/* Bakım sekmeleri: Planlı/Periyodik × (Plan/Uygulama) + Raporlar */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bakimTabsScroll} contentContainerStyle={styles.bakimTabsRow}>
+          {[
+            { mod: 'plan', mode: 'plan', label: 'Planlı Bakım' },
+            { mod: 'plan', mode: 'uygula', label: 'Bakım Uygulama' },
+            { mod: 'periyodik', mode: 'plan', label: 'Periyodik Plan' },
+            { mod: 'periyodik', mode: 'uygula', label: 'Periyodik Uygulama' },
+            { mod: 'rapor', mode: 'plan', label: 'Raporlar' },
+          ].map(t => {
+            const isActive = activeTab === t.mod && (t.mod === 'rapor' || bakimMode === t.mode);
+            return (
+              <TouchableOpacity
+                key={t.label}
+                style={[styles.bakimTab, isActive && styles.bakimTabActive]}
+                onPress={() => { setActiveTab(t.mod as any); if (t.mod !== 'rapor') setBakimMode(t.mode as any); }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.bakimTabText, isActive && styles.bakimTabTextActive]}>{t.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
         {activeTab === 'plan' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanBolumFltOpen(true)}>
@@ -1486,16 +1509,17 @@ export const BakimScreen = () => {
       <BottomNavBar
         currentScreen="Bakim" 
         customAction={
-          activeTab === 'plan' ? {
+          // Yalnız "Plan" (oluşturma) modunda yeni kayıt; "Uygulama" modunda işleme alınır, oluşturma yok.
+          (bakimMode === 'plan' && activeTab === 'plan') ? {
             icon: 'add-outline',
             label: 'Yeni Plan',
             onPress: () => setIsNewPlanOpen(true)
-          } : activeTab === 'periyodik' ? {
+          } : (bakimMode === 'plan' && activeTab === 'periyodik') ? {
             icon: 'add-outline',
             label: 'Yeni Kontrol',
             onPress: () => setIsNewCtrlOpen(true)
           } : undefined
-        } 
+        }
       />
     </View>
   );
@@ -1506,6 +1530,35 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  bakimTabsScroll: {
+    marginBottom: 4,
+  },
+  bakimTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 16,
+  },
+  bakimTab: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  bakimTabActive: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.7)',
+  },
+  bakimTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  bakimTabTextActive: {
+    color: '#fff',
+    fontWeight: '800',
   },
   gateBar: {
     flexDirection: 'row',
