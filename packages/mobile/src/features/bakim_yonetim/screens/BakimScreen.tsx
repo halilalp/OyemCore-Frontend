@@ -893,11 +893,28 @@ export const BakimScreen = () => {
         <View style={styles.modalContainer}>
           <CreateModalHeader title="Yeni Bakım Planı" onClose={() => setIsNewPlanOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
               <View style={styles.formInfoBox}>
                 <Text style={styles.formInfoBoxTitle}>Planlı Bakım Formu</Text>
-                <Text style={styles.formInfoBoxText}>Hat/makine, bakım türü ve hedef tarihleri belirleyerek planlı bakım kaydı oluşturun.</Text>
+                <Text style={styles.formInfoBoxText}>Önce şirket seçin; ardından hat/makine, bakım türü ve hedef tarihleri belirleyin.</Text>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Şirket *</Text>
+                <TouchableOpacity
+                  style={[styles.selectBox, styles.dateInput, !isBakimAdmin && { opacity: 0.7 }]}
+                  disabled={!isBakimAdmin}
+                  onPress={() => setIsGateSirketOpen(true)}
+                >
+                  <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.selectBoxText, { flex: 1 }]}>
+                    {gateSirket ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket) : (isBakimAdmin ? 'Şirket Seçiniz' : 'Şirket')}
+                  </Text>
+                  {isBakimAdmin
+                    ? <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                    : <Ionicons name="lock-closed" size={14} color={colors.textSecondary} />}
+                </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>
@@ -1256,11 +1273,28 @@ export const BakimScreen = () => {
         <View style={styles.modalContainer}>
           <CreateModalHeader title="Yeni Periyodik Kontrol" onClose={() => setIsNewCtrlOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
               <View style={styles.formInfoBox}>
                 <Text style={styles.formInfoBoxTitle}>Periyodik Kontrol Formu</Text>
-                <Text style={styles.formInfoBoxText}>Bölüm, kontrol türü ve hedef tarihleri seçerek periyodik kontrol kaydı oluşturun.</Text>
+                <Text style={styles.formInfoBoxText}>Önce şirket seçin; ardından bölüm, kontrol türü ve hedef tarihleri belirleyin.</Text>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Şirket *</Text>
+                <TouchableOpacity
+                  style={[styles.selectBox, styles.dateInput, !isBakimAdmin && { opacity: 0.7 }]}
+                  disabled={!isBakimAdmin}
+                  onPress={() => setIsGateSirketOpen(true)}
+                >
+                  <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
+                  <Text style={[styles.selectBoxText, { flex: 1 }]}>
+                    {gateSirket ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket) : (isBakimAdmin ? 'Şirket Seçiniz' : 'Şirket')}
+                  </Text>
+                  {isBakimAdmin
+                    ? <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                    : <Ionicons name="lock-closed" size={14} color={colors.textSecondary} />}
+                </TouchableOpacity>
               </View>
 
               <View style={styles.formGroup}>

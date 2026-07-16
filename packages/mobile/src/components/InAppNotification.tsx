@@ -112,6 +112,12 @@ export const InAppNotification = () => {
               {body}
             </Text>
           )}
+          {!!(data && data.screen) && (
+            <View style={styles.goRow}>
+              <Text style={styles.goText}>Detaya git</Text>
+              <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+            </View>
+          )}
         </View>
         <TouchableOpacity
           onPress={dismiss}
@@ -173,6 +179,17 @@ const createStyles = (colors: any) =>
       fontSize: 12.5,
       color: colors.textSecondary,
       lineHeight: 17,
+    },
+    goRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 4,
+    },
+    goText: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.primary,
     },
     closeBtn: {
       marginLeft: 8,

@@ -366,7 +366,7 @@ export const IzinScreen = () => {
         <View style={styles.modalContainer}>
           <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="gold" />
           <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
               {/* Bilgi kutusu */}
               <View style={styles.formInfoBox}>

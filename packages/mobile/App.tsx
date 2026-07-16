@@ -59,8 +59,6 @@ import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScre
 import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
 import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
 import { SasDetailScreen } from './src/features/satsas/screens/SasDetailScreen';
-import { AlertModal } from './src/components/AlertModal';
-import { useAlertStore } from './src/store/useAlertStore';
 import { InAppNotification } from './src/components/InAppNotification';
 import { useNotificationStore } from './src/store/useNotificationStore';
 import { navigationRef, navigateFromNotificationData } from './src/navigation/navigationRef';
@@ -73,33 +71,11 @@ export { navigationRef };
 const nativeAlert = Alert.alert.bind(Alert);
 Alert.alert = (title?: string, message?: string, buttons?: any[], options?: any) => {
   if (buttons && buttons.length > 0) {
-    const confirmBtn = buttons.find(b => b.text === 'Evet' || b.text === 'Tamam' || b.text === 'Gönder' || b.text === 'Kaydet' || b.text === 'Onayla');
-    const cancelBtn = buttons.find(b => b.text === 'İptal' || b.style === 'cancel');
-
-    // AlertModal yalnızca Evet/İptal kalıbındaki onayları temsil edebilir. 3+ buton veya
-    // tanınmayan etiketler (örn. "Kamera" / "Dosya Seç") varsa seçenek kaybetmemek için
-    // native Alert'e geri düş.
-    if (buttons.length > 2 || (!confirmBtn && buttons.length > 1)) {
-      nativeAlert(title, message, buttons, options);
-      return;
-    }
-
-    const onConfirmPress = () => {
-      const btn = confirmBtn || buttons[0];
-      if (btn && btn.onPress) btn.onPress();
-    };
-
-    const onCancelPress = () => {
-      const btn = cancelBtn || (buttons.length > 1 ? buttons[1] : null);
-      if (btn && btn.onPress) btn.onPress();
-    };
-
-    useAlertStore.getState().showConfirm(
-      title || 'Onay',
-      message || '',
-      onConfirmPress,
-      buttons.length > 1 ? onCancelPress : undefined
-    );
+    // Onay/çok-butonlu diyaloglar: her zaman sistem native alert'i. Özel AlertModal,
+    // fullScreen bir form modalı açıkken iOS'ta modalın ARKASINDA kalıyordu; native
+    // alert her zaman en üstte gösterilir (form açıkken bile).
+    nativeAlert(title, message, buttons, options);
+    return;
   } else {
     // Tek butonlu bilgi/başarı/hata uyarıları: sistem native alert'i kullanılır.
     // Neden: özel AlertModal, fullScreen bir modal (kayıt/güncelleme formu) açıkken
@@ -230,20 +206,37 @@ export default function App() {
         }
       });
 
-      // Kullanıcı sistem bildirimine (arka plan/kilit ekranı) dokunduğunda
-      // ilgili işleme yönlendir.
+      // Kullanıcı sistem bildirimine (arka plan/kilit ekranı) dokunduğunda:
+      // doğrudan yönlendirmek yerine uygulama içi banner (popup) göster; kullanıcı
+      // isterse banner'a dokunup ilgili işlem detayına gider.
       responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-        const data = response.notification.request.content.data;
-        navigateFromNotificationData(data);
+        try {
+          const content = response?.notification?.request?.content || {};
+          useNotificationStore.getState().showNotification(
+            content.title || 'Bildirim',
+            content.body || '',
+            content.data || null
+          );
+        } catch (e) {
+          console.warn('Notification response banner failed:', e);
+        }
       });
 
       // Soğuk başlangıç: uygulama tamamen kapalıyken bildirime dokunulup açıldıysa,
-      // son bildirim yanıtını alıp ilgili işleme yönlendir (listener bunu kaçırır).
+      // son bildirim yanıtını alıp banner olarak göster (kısa gecikme ile, UI hazır olsun).
       if (Notifications.getLastNotificationResponseAsync) {
         Notifications.getLastNotificationResponseAsync()
           .then((response: any) => {
-            const data = response?.notification?.request?.content?.data;
-            if (data) navigateFromNotificationData(data);
+            const content = response?.notification?.request?.content;
+            if (content) {
+              setTimeout(() => {
+                useNotificationStore.getState().showNotification(
+                  content.title || 'Bildirim',
+                  content.body || '',
+                  content.data || null
+                );
+              }, 1200);
+            }
           })
           .catch(() => {});
       }
@@ -371,7 +364,6 @@ export default function App() {
       </Stack.Navigator>
       <StatusBar style={colors.statusBar} />
       <InAppNotification />
-      <AlertModal />
     </NavigationContainer>
   );
 

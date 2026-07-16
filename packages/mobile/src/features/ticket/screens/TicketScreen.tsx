@@ -338,8 +338,8 @@ export const TicketScreen = () => {
       setCommentDosyaName(null);
       setIsAddCommentOpen(false);
       await reloadDetails(selectedTicket.id);
-    } catch (err) {
-      Alert.alert('Hata', 'Yorum eklenirken hata oluştu.');
+    } catch (err: any) {
+      Alert.alert('Hata', err?.response?.data?.message || err?.message || 'Yorum eklenirken hata oluştu.');
     } finally {
       setIsSubmittingComment(false);
     }
@@ -1127,7 +1127,7 @@ export const TicketScreen = () => {
         <View style={styles.modalContainer}>
           <CreateModalHeader title="Yeni Bilet" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
