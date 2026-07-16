@@ -6,7 +6,7 @@ import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow } from '../../../components/dashboard/DashboardKit';
+import { StatTile, ChartCard, LegendRow, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 const g = (o: any, ...keys: string[]) => {
   for (const k of keys) if (o && o[k] !== undefined && o[k] !== null) return o[k];
@@ -21,18 +21,25 @@ export const BakimDashboardScreen = () => {
   const [months, setMonths] = useState<any[]>([]);
   const [ozet, setOzet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const year = new Date().getFullYear().toString();
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [filter, setFilter] = useState<DashboardFilterValue>({ sirket: '', yil: '' });
+  const year = filter.yil || new Date().getFullYear().toString();
+
+  useEffect(() => {
+    api.getBakimDropdowns().then((d: any) => setCompanies(d?.sirkets || [])).catch(() => setCompanies([]));
+  }, []);
 
   useEffect(() => {
     if (isFocused) load();
-  }, [isFocused]);
+  }, [isFocused, filter.sirket, filter.yil]);
 
   const load = async () => {
     try {
       setLoading(true);
+      const sirket = filter.sirket || '';
       const [data, ozetData] = await Promise.all([
-        api.getBakimDashboardStats(year, ''),
-        api.getBakimDashboardOzet('').catch(() => null),
+        api.getBakimDashboardStats(year, sirket),
+        api.getBakimDashboardOzet(sirket).catch(() => null),
       ]);
       const arr = Array.isArray(data) ? data : [];
       const yearRow = arr.find((x: any) => `${g(x, 'year', 'Year')}` === year) || arr[0];
@@ -84,6 +91,7 @@ export const BakimDashboardScreen = () => {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} showAy={false} />
           {/* Planlı/periyodik özet (DashboardOzetGetir) */}
           {ozet && (
             <View style={styles.tilesGrid}>

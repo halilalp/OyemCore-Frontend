@@ -6,7 +6,7 @@ import { api } from '@oyemcore/shared';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, CHART_PALETTE } from '../../../components/dashboard/DashboardKit';
+import { StatTile, ChartCard, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 // Referans WebServiceHelpDeskRapor.HelpDeskPerformansRaporuGetir ile birebir (IT/ERP).
 const num = (o: any, k: string) => (o && typeof o[k] === 'number') ? o[k] : 0;
@@ -23,16 +23,18 @@ export const HelpDeskDashboardScreen = () => {
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<DashboardFilterValue>({ yil: '', ay: '' });
 
-  useEffect(() => { if (isFocused) load(); }, [isFocused, tur]);
+  useEffect(() => { if (isFocused) load(); }, [isFocused, tur, filter.yil, filter.ay]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const yil = new Date().getFullYear().toString();
+      const yil = filter.yil || new Date().getFullYear().toString();
+      const ay = filter.ay || 'Tümü';
       const res = isBakim
-        ? await api.getBakimHelpDeskPerformans({ yil, ay: 'Tümü' })
-        : await api.getHelpDeskPerformans({ yil, ay: 'Tümü', talepTur: tur });
+        ? await api.getBakimHelpDeskPerformans({ yil, ay })
+        : await api.getHelpDeskPerformans({ yil, ay, talepTur: tur });
       setData(res);
     } catch (e) { setData(null); }
     finally { setLoading(false); }
@@ -60,6 +62,7 @@ export const HelpDeskDashboardScreen = () => {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <DashboardFilterBar value={filter} onChange={setFilter} showSirket={false} />
           <View style={styles.tilesGrid}>
             <StatTile label="Toplam Talep" value={num(kpi, 'talepSayisi')} icon="albums-outline" color={colors.primary} />
             <StatTile label="Açık" value={num(kpi, 'acikTalep')} icon="folder-open-outline" color="#f59e0b" />

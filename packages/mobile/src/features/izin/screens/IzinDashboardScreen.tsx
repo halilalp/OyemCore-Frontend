@@ -6,7 +6,7 @@ import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, CHART_PALETTE } from '../../../components/dashboard/DashboardKit';
+import { StatTile, ChartCard, LegendRow, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 // Referans WebServicePersonel.IKDashboardVerisiGetir ile birebir İK dashboard'u.
 const num = (o: any, k: string) => (o && typeof o[k] === 'number') ? o[k] : 0;
@@ -18,13 +18,19 @@ export const IzinDashboardScreen = () => {
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [filter, setFilter] = useState<DashboardFilterValue>({ sirket: '' });
 
-  useEffect(() => { if (isFocused) load(); }, [isFocused]);
+  useEffect(() => {
+    api.getCompanies().then(setCompanies).catch(() => setCompanies([]));
+  }, []);
+
+  useEffect(() => { if (isFocused) load(); }, [isFocused, filter.sirket]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await api.getIKDashboard();
+      const res = await api.getIKDashboard(filter.sirket ? { sirketFilter: filter.sirket } : undefined);
       setData(res);
     } catch (e) { setData(null); }
     finally { setLoading(false); }
@@ -77,6 +83,7 @@ export const IzinDashboardScreen = () => {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} showYil={false} showAy={false} />
           <View style={styles.tilesGrid}>
             <StatTile label="Aktif Personel" value={totalActive} icon="people-outline" color={colors.primary} />
             <StatTile label="İşe Alınan" value={monthlyHired} icon="person-add-outline" color="#10b981" />

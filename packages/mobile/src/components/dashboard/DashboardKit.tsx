@@ -1,7 +1,77 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../store/useThemeStore';
+import { SearchableSelectorModal } from '../SearchableSelectorModal';
+
+// Dashboard filtre çubuğu: şirket / yıl / ay. Referans dashboard'lardaki
+// filtre seçeneklerinin mobil karşılığı. İhtiyaç duyulan filtreler flag'lerle açılır.
+export interface DashboardFilterValue { sirket?: string; yil?: string; ay?: string; }
+
+export const DashboardFilterBar = ({
+  companies, value, onChange, showSirket = true, showYil = true, showAy = true,
+}: {
+  companies?: { sirketKodu: string; sirketAdi: string }[];
+  value: DashboardFilterValue;
+  onChange: (v: DashboardFilterValue) => void;
+  showSirket?: boolean; showYil?: boolean; showAy?: boolean;
+}) => {
+  const { colors } = useThemeStore();
+  const s = createStyles(colors);
+  const [open, setOpen] = useState<null | 'sirket' | 'yil' | 'ay'>(null);
+
+  const nowY = new Date().getFullYear();
+  const years = Array.from({ length: 4 }, (_, i) => `${nowY - i}`);
+  const months = [
+    { code: '', label: 'Tüm Yıl' },
+    ...['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => ({ code: m, label: `${m}. Ay` })),
+  ];
+  const sirketData = [{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(companies || [])];
+  const sirketAdi = value.sirket ? (companies || []).find(c => c.sirketKodu === value.sirket)?.sirketAdi || value.sirket : 'Tüm Şirketler';
+
+  return (
+    <View style={s.filterBar}>
+      {showSirket && (
+        <TouchableOpacity style={s.filterChip} onPress={() => setOpen('sirket')}>
+          <Ionicons name="business-outline" size={13} color={colors.textSecondary} />
+          <Text style={s.filterChipText} numberOfLines={1}>{sirketAdi}</Text>
+          <Ionicons name="chevron-down" size={13} color={colors.textSecondary} />
+        </TouchableOpacity>
+      )}
+      {showYil && (
+        <TouchableOpacity style={s.filterChip} onPress={() => setOpen('yil')}>
+          <Text style={s.filterChipText}>{value.yil || `${nowY}`}</Text>
+          <Ionicons name="chevron-down" size={13} color={colors.textSecondary} />
+        </TouchableOpacity>
+      )}
+      {showAy && (
+        <TouchableOpacity style={s.filterChip} onPress={() => setOpen('ay')}>
+          <Text style={s.filterChipText}>{value.ay ? `${value.ay}. Ay` : 'Tüm Yıl'}</Text>
+          <Ionicons name="chevron-down" size={13} color={colors.textSecondary} />
+        </TouchableOpacity>
+      )}
+
+      <SearchableSelectorModal
+        visible={open === 'sirket'} onClose={() => setOpen(null)}
+        onSelect={(item) => onChange({ ...value, sirket: item.sirketKodu })}
+        data={sirketData} keyExtractor={(i) => i.sirketKodu || 'all'} labelExtractor={(i) => i.sirketAdi}
+        title="Şirket Seçin"
+      />
+      <SearchableSelectorModal
+        visible={open === 'yil'} onClose={() => setOpen(null)}
+        onSelect={(item) => onChange({ ...value, yil: item })}
+        data={years} keyExtractor={(i) => i} labelExtractor={(i) => i}
+        title="Yıl Seçin"
+      />
+      <SearchableSelectorModal
+        visible={open === 'ay'} onClose={() => setOpen(null)}
+        onSelect={(item) => onChange({ ...value, ay: item.code })}
+        data={months} keyExtractor={(i) => i.code || 'all'} labelExtractor={(i) => i.label}
+        title="Ay Seçin"
+      />
+    </View>
+  );
+};
 
 // Tüm modül dashboard'larında ortak kullanılan yapı taşları:
 // istatistik kutucuğu, grafik kartı sarmalayıcısı ve içgörü satırı.
@@ -79,6 +149,29 @@ export const InsightRow = ({ type, text }: { type: string; text: string }) => {
 export const CHART_PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#14b8a6', '#f43f5e'];
 
 const createStyles = (colors: any) => StyleSheet.create({
+  filterBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    maxWidth: 180,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text,
+  },
   statTile: {
     flex: 1,
     minWidth: '30%',

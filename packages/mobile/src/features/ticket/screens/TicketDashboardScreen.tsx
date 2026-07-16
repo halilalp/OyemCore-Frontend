@@ -6,7 +6,7 @@ import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, InsightRow, CHART_PALETTE } from '../../../components/dashboard/DashboardKit';
+import { StatTile, ChartCard, LegendRow, InsightRow, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 // Referans WebServiceTicket.GetDashboardStats ile birebir aynı veriyi gösterir.
 // Backend camelCase döndürür: total, open, completed, highPriority, inProgress,
@@ -20,15 +20,23 @@ export const TicketDashboardScreen = () => {
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [filter, setFilter] = useState<DashboardFilterValue>({ sirket: '', yil: '', ay: '' });
+
+  useEffect(() => {
+    api.getCompanies().then(setCompanies).catch(() => setCompanies([]));
+  }, []);
 
   useEffect(() => {
     if (isFocused) load();
-  }, [isFocused]);
+  }, [isFocused, filter.sirket, filter.yil, filter.ay]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await api.getTicketStats();
+      const fltYil = filter.yil ? parseInt(filter.yil) : 0;
+      const fltAy = filter.ay ? parseInt(filter.ay) : 0;
+      const res = await api.getTicketStats(filter.sirket || '', 0, fltYil, fltAy);
       setData(res);
     } catch (e) {
       setData(null);
@@ -93,6 +101,7 @@ export const TicketDashboardScreen = () => {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} />
           <View style={styles.tilesGrid}>
             <StatTile label="Toplam" value={total} icon="albums-outline" color={colors.primary} />
             <StatTile label="Açık" value={open} icon="folder-open-outline" color="#f59e0b" />
