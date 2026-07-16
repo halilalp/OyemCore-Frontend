@@ -805,6 +805,12 @@ export const api = {
     return response.data;
   },
 
+  // Referans WebServiceHelpDeskRapor.HelpDeskPerformansRaporuGetir birebir (IT/ERP)
+  getHelpDeskPerformans: async (params: { yil?: string; ay?: string; talepTur: string; sirket?: string }): Promise<any> => {
+    const response = await apiClient.get<any>('/helpdeskrapor/performans', { params });
+    return response.data;
+  },
+
   getTedarikciDashboardStats: async (ay = 0): Promise<any> => {
     const response = await apiClient.get<any>('/Tedarikci/dashboard', { params: { ay } });
     return response.data;

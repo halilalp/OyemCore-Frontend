@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { PieChart, BarChart } from 'react-native-gifted-charts';
+import { BarChart } from 'react-native-gifted-charts';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, CHART_PALETTE } from '../../../components/dashboard/DashboardKit';
+import { StatTile, ChartCard, CHART_PALETTE } from '../../../components/dashboard/DashboardKit';
 
-// Talep.durum sınıflandırması ("Kapalı" / "ONAY BEKLİYOR" / "BEKLEMEDE" / "Açık")
-const classifyDurum = (d: string): 'kapali' | 'onay' | 'acik' => {
-  const v = (d || '').toLocaleUpperCase('tr');
-  if (v.includes('KAPAL')) return 'kapali';
-  if (v.includes('ONAY')) return 'onay';
-  return 'acik';
-};
+// Referans WebServiceHelpDeskRapor.HelpDeskPerformansRaporuGetir ile birebir (IT/ERP).
+const num = (o: any, k: string) => (o && typeof o[k] === 'number') ? o[k] : 0;
 
 export const HelpDeskDashboardScreen = () => {
   const { colors } = useThemeStore();
@@ -24,46 +20,31 @@ export const HelpDeskDashboardScreen = () => {
 
   const tur: string = route.params?.tur || 'IT';
   const baslik: string = route.params?.title || (tur === 'ERP' ? 'ERP HelpDesk' : tur === 'BAKIM' ? 'Bakım HelpDesk' : 'IT HelpDesk');
+  const isBakim = tur === 'BAKIM';
 
-  const [taleps, setTaleps] = useState<any[]>([]);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (isFocused) load();
-  }, [isFocused, tur]);
+  useEffect(() => { if (isFocused) load(); }, [isFocused, tur]);
 
   const load = async () => {
+    if (isBakim) { setLoading(false); return; } // Bakım performansı ayrı (SP tabanlı) — hazırlanıyor
     try {
       setLoading(true);
-      const data = await api.getTaleps(tur);
-      setTaleps(data || []);
-    } catch (e) {
-      setTaleps([]);
-    } finally {
-      setLoading(false);
-    }
+      const yil = new Date().getFullYear().toString();
+      const res = await api.getHelpDeskPerformans({ yil, ay: 'Tümü', talepTur: tur });
+      setData(res);
+    } catch (e) { setData(null); }
+    finally { setLoading(false); }
   };
 
-  const toplam = taleps.length;
-  const kapali = taleps.filter(t => classifyDurum(t.durum) === 'kapali').length;
-  const onay = taleps.filter(t => classifyDurum(t.durum) === 'onay').length;
-  const acik = taleps.filter(t => classifyDurum(t.durum) === 'acik').length;
-
-  const statusColors = { acik: '#f59e0b', onay: '#3b82f6', kapali: '#10b981' };
-  const pieData = [
-    { value: acik, color: statusColors.acik },
-    { value: onay, color: statusColors.onay },
-    { value: kapali, color: statusColors.kapali },
-  ].filter(d => d.value > 0);
-
-  // Kategori dağılımı (bar, ilk 6)
-  const katMap: Record<string, number> = {};
-  taleps.forEach(t => { const k = t.kategoriAdi || 'Diğer'; katMap[k] = (katMap[k] || 0) + 1; });
-  const topKat = Object.keys(katMap).sort((a, b) => katMap[b] - katMap[a]).slice(0, 6);
+  const kpi = data?.kpi || {};
+  const personel: any[] = data?.personel || [];
   const chartWidth = Math.min(Dimensions.get('window').width, 800) - 64;
-  const barData = topKat.map((k, i) => ({
-    value: katMap[k],
-    label: k.length > 8 ? k.substring(0, 7) + '…' : k,
+
+  const perfBars = personel.slice(0, 8).map((p, i) => ({
+    value: num(p, 'tamamlanan'),
+    label: (p.name || '').split(' ')[0].substring(0, 8),
     frontColor: CHART_PALETTE[i % CHART_PALETTE.length],
   }));
 
@@ -71,53 +52,57 @@ export const HelpDeskDashboardScreen = () => {
     <View style={styles.container}>
       <ListHeader
         title={`${baslik} Panosu`}
-        subtitle="Talep istatistikleri"
+        subtitle="Personel performans raporu"
         searchValue="" onSearchChange={() => {}} searchPlaceholder=""
         activeFilter="" onFilterChange={() => {}} filters={[]}
       />
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+      ) : isBakim ? (
+        <View style={styles.pendingBox}>
+          <Ionicons name="construct-outline" size={40} color={colors.textSecondary} />
+          <Text style={styles.pendingText}>Bakım performans raporu hazırlanıyor.</Text>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.tilesGrid}>
-            <StatTile label="Toplam Talep" value={toplam} icon="albums-outline" color={colors.primary} />
-            <StatTile label="Açık" value={acik} icon="folder-open-outline" color="#f59e0b" />
-            <StatTile label="Onay Bekleyen" value={onay} icon="hourglass-outline" color="#3b82f6" />
-            <StatTile label="Kapalı" value={kapali} icon="checkmark-done-outline" color="#10b981" />
+            <StatTile label="Toplam Talep" value={num(kpi, 'talepSayisi')} icon="albums-outline" color={colors.primary} />
+            <StatTile label="Açık" value={num(kpi, 'acikTalep')} icon="folder-open-outline" color="#f59e0b" />
+            <StatTile label="Tamamlanan" value={num(kpi, 'tamamlananTalep')} icon="checkmark-done-outline" color="#10b981" />
+            <StatTile label="Ort. Tamamlama" value={`${num(kpi, 'tamamlamaSuresi').toFixed(1)}s`} icon="time-outline" color="#3b82f6" />
+            <StatTile label="Ort. Müdahale" value={`${num(kpi, 'mudahaleSuresi').toFixed(1)}s`} icon="alarm-outline" color="#8b5cf6" />
+            <StatTile label="Ort. İş Yükü" value={num(kpi, 'ortIsYuku').toFixed(1)} icon="people-outline" color="#14b8a6" />
           </View>
 
-          <ChartCard title="Talep Durumu" subtitle="Açık / Onay Bekleyen / Kapalı">
-            {pieData.length > 0 ? (
-              <>
-                <PieChart
-                  data={pieData} donut radius={90} innerRadius={58}
-                  innerCircleColor={colors.card}
-                  centerLabelComponent={() => (
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{toplam}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>Talep</Text>
-                    </View>
-                  )}
-                />
-                <LegendRow items={[
-                  { label: 'Açık', color: statusColors.acik, value: acik },
-                  { label: 'Onay Bekleyen', color: statusColors.onay, value: onay },
-                  { label: 'Kapalı', color: statusColors.kapali, value: kapali },
-                ]} />
-              </>
-            ) : <Text style={styles.empty}>Gösterilecek veri yok.</Text>}
-          </ChartCard>
-
-          <ChartCard title="Kategori Dağılımı" subtitle="En çok talep gelen kategoriler">
-            {barData.length > 0 ? (
-              <BarChart
-                data={barData} width={chartWidth} height={180} barWidth={22} spacing={12}
-                initialSpacing={10} roundedTop yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+          {perfBars.length > 0 && (
+            <ChartCard title="Personel Performansı" subtitle="Tamamlanan talep sayısı">
+              <BarChart data={perfBars} width={chartWidth} height={180} barWidth={24} spacing={14}
+                initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
+                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
                 yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4} rulesColor={colors.border}
-              />
-            ) : <Text style={styles.empty}>Kategori verisi yok.</Text>}
+                noOfSections={4} rulesColor={colors.border} />
+            </ChartCard>
+          )}
+
+          {/* Personel detay kartları */}
+          <ChartCard title="Personel Detayı" subtitle={`${personel.length} personel`}>
+            <View style={{ width: '100%' }}>
+              {personel.length === 0 ? (
+                <Text style={styles.empty}>Bu dönemde sorumlu personel kaydı yok.</Text>
+              ) : personel.map((p, i) => (
+                <View key={i} style={styles.persRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.persName} numberOfLines={1}>{p.name}</Text>
+                    <Text style={styles.persSub}>Tamamlama: {p.avgTamamlama} • Müdahale: {p.avgMudahale}</Text>
+                  </View>
+                  <View style={styles.persBadges}>
+                    <Text style={[styles.pb, { backgroundColor: '#f59e0b22', color: '#b45309' }]}>Açık {num(p, 'openTasks')}</Text>
+                    <Text style={[styles.pb, { backgroundColor: '#10b98122', color: '#047857' }]}>Tamam {num(p, 'tamamlanan')}</Text>
+                    {num(p, 'rating') > 0 && <Text style={[styles.pb, { backgroundColor: '#6366f122', color: '#4338ca' }]}>★ {num(p, 'rating').toFixed(1)}</Text>}
+                  </View>
+                </View>
+              ))}
+            </View>
           </ChartCard>
 
           <View style={{ height: 20 }} />
@@ -132,5 +117,15 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
+  empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 12 },
+  pendingBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 30 },
+  pendingText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  persRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border + '60',
+  },
+  persName: { fontSize: 13, fontWeight: '800', color: colors.text },
+  persSub: { fontSize: 10, color: colors.textSecondary, marginTop: 2 },
+  persBadges: { flexDirection: 'row', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 160 },
+  pb: { fontSize: 9, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
 });
