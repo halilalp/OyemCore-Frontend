@@ -45,6 +45,7 @@ import { ZimmetlerimScreen } from './src/features/zimmet/screens/ZimmetlerimScre
 import { DemirbasYonetimScreen } from './src/features/zimmet/screens/DemirbasYonetimScreen';
 import { DemirbasSayimScreen } from './src/features/zimmet/screens/DemirbasSayimScreen';
 import { TedarikciScreen } from './src/features/tedarikci/screens/TedarikciScreen';
+import { TedarikciDashboardScreen } from './src/features/tedarikci/screens/TedarikciDashboardScreen';
 import { AdminAyarlarScreen } from './src/features/admin/screens/AdminAyarlarScreen';
 import { AdminKullaniciScreen } from './src/features/admin/screens/AdminKullaniciScreen';
 import { AdminHelpDeskScreen } from './src/features/admin/screens/AdminHelpDeskScreen';
@@ -321,6 +322,7 @@ export default function App() {
             <Stack.Screen name="IzinDashboard" component={IzinDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="HelpDeskDashboard" component={HelpDeskDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ZimmetDashboard" component={ZimmetDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TedarikciDashboard" component={TedarikciDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen 
               name="Performans" 
               component={PerformansScreen} 

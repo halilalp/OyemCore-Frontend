@@ -799,6 +799,11 @@ export const api = {
     return response.data;
   },
 
+  getTedarikciDashboardStats: async (ay = 0): Promise<any> => {
+    const response = await apiClient.get<any>('/Tedarikci/dashboard', { params: { ay } });
+    return response.data;
+  },
+
   getTedarikciDetail: async (belgeNo: string): Promise<any> => {
     const response = await apiClient.get<any>(`/Tedarikci/detail/${belgeNo}`);
     return response.data;

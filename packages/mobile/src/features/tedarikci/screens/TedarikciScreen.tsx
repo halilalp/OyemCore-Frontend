@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
@@ -80,6 +80,7 @@ const renderHtml = (htmlString: string, textStyle: any, boldStyle: any) => {
 export const TedarikciScreen = () => {
   const { user } = useAuthStore();
   const isFocused = useIsFocused();
+  const navigation = useNavigation<any>();
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, theme);
 
@@ -399,6 +400,7 @@ export const TedarikciScreen = () => {
         activeFilter=""
         onFilterChange={() => {}}
         filters={[]}
+        rightAction={{ icon: 'stats-chart-outline', onPress: () => navigation.navigate('TedarikciDashboard') }}
       >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
           <View style={styles.filterChipContainer}>

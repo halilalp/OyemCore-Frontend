@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { PieChart, BarChart } from 'react-native-gifted-charts';
+import { LineChart, BarChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, InsightRow } from '../../../components/dashboard/DashboardKit';
+import { StatTile, ChartCard, LegendRow, InsightRow, CHART_PALETTE } from '../../../components/dashboard/DashboardKit';
 
-const g = (o: any, ...keys: string[]) => {
-  for (const k of keys) if (o && o[k] !== undefined && o[k] !== null) return o[k];
-  return undefined;
-};
+// Referans WebServiceTicket.GetDashboardStats ile birebir aynı veriyi gösterir.
+// Backend camelCase döndürür: total, open, completed, highPriority, inProgress,
+// inTest, today, byCategory[], byStaff[], byCompany[], trend[], aiInsights[].
+const num = (o: any, k: string) => (o && typeof o[k] === 'number') ? o[k] : 0;
 
 export const TicketDashboardScreen = () => {
   const { colors } = useThemeStore();
   const isFocused = useIsFocused();
   const styles = createStyles(colors);
 
-  const [stats, setStats] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,128 +28,164 @@ export const TicketDashboardScreen = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const data = await api.getTicketStats();
-      setStats(data);
+      const res = await api.getTicketStats();
+      setData(res);
     } catch (e) {
-      setStats(null);
+      setData(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const havuz = g(stats, 'havuzCount', 'HavuzCount') || 0;
-  const islem = g(stats, 'inProgressCount', 'InProgressCount') || 0;
-  const test = g(stats, 'inTestCount', 'InTestCount') || 0;
-  const tamam = g(stats, 'completedCount', 'CompletedCount') || 0;
-  const toplam = g(stats, 'totalCount', 'TotalCount') || 0;
-  const acik = g(stats, 'openCount', 'OpenCount') || 0;
-  const yuksek = g(stats, 'highPrioCount', 'HighPrioCount') || 0;
-  const bugun = g(stats, 'todayCount', 'TodayCount') || 0;
-  const atanmamis = g(stats, 'unassignedCount', 'UnassignedCount') || 0;
-  const trend: any[] = g(stats, 'weeklyTrend', 'WeeklyTrend') || [];
-  const insights: any[] = g(stats, 'insights', 'Insights') || [];
+  const total = num(data, 'total');
+  const open = num(data, 'open');
+  const completed = num(data, 'completed');
+  const highPriority = num(data, 'highPriority');
+  const inProgress = num(data, 'inProgress');
+  const inTest = num(data, 'inTest');
+  const today = num(data, 'today');
 
-  const statusColors = { havuz: '#f59e0b', islem: '#3b82f6', test: '#8b5cf6', tamam: '#10b981' };
-  const pieData = [
-    { value: havuz, color: statusColors.havuz, text: `${havuz}` },
-    { value: islem, color: statusColors.islem, text: `${islem}` },
-    { value: test, color: statusColors.test, text: `${test}` },
-    { value: tamam, color: statusColors.tamam, text: `${tamam}` },
-  ].filter(d => d.value > 0);
+  const byCategory: any[] = data?.byCategory || [];
+  const byStaff: any[] = data?.byStaff || [];
+  const byCompany: any[] = data?.byCompany || [];
+  const trend: any[] = data?.trend || [];
+  const aiInsights: any[] = data?.aiInsights || [];
 
   const chartWidth = Math.min(Dimensions.get('window').width, 800) - 64;
-  const barData = trend.map(t => ({
-    value: g(t, 'count', 'Count') || 0,
-    label: g(t, 'date', 'Date') || '',
-    frontColor: colors.primary,
+
+  // Trend (alan/çizgi)
+  const trendData = trend.map(t => ({ value: num(t, 'count'), label: t.date }));
+
+  // Kategori (dikey bar) — top 5
+  const catBars = byCategory.map((c, i) => ({
+    value: num(c, 'count'),
+    label: (c.kategoriAd || '').length > 8 ? c.kategoriAd.substring(0, 7) + '…' : (c.kategoriAd || ''),
+    frontColor: CHART_PALETTE[i % CHART_PALETTE.length],
+  }));
+
+  // Personel (yığılmış bar: Havuz/İşlem/Test/Tamam)
+  const staffStack = byStaff.slice(0, 8).map(s => ({
+    stacks: [
+      { value: num(s, 'havuzCount'), color: '#a1a5b7' },
+      { value: num(s, 'islemCount'), color: '#f59e0b' },
+      { value: num(s, 'testCount'), color: '#3b82f6' },
+      { value: num(s, 'completedCount'), color: '#10b981' },
+    ],
+    label: (s.staffName || '').split(' ')[0].substring(0, 8),
+  }));
+
+  // Şirket (dikey bar)
+  const companyBars = byCompany.map((c, i) => ({
+    value: num(c, 'count'),
+    label: (c.sirketAdi || '').length > 8 ? c.sirketAdi.substring(0, 7) + '…' : (c.sirketAdi || ''),
+    frontColor: CHART_PALETTE[i % CHART_PALETTE.length],
   }));
 
   return (
     <View style={styles.container}>
       <ListHeader
         title="Bilet Panosu"
-        subtitle="Ticket istatistikleri ve trendler"
-        searchValue=""
-        onSearchChange={() => {}}
-        searchPlaceholder=""
-        activeFilter=""
-        onFilterChange={() => {}}
-        filters={[]}
+        subtitle="Ticket istatistikleri"
+        searchValue="" onSearchChange={() => {}} searchPlaceholder=""
+        activeFilter="" onFilterChange={() => {}} filters={[]}
       />
-
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Stat tiles */}
           <View style={styles.tilesGrid}>
-            <StatTile label="Toplam Bilet" value={toplam} icon="albums-outline" color={colors.primary} />
-            <StatTile label="Açık" value={acik} icon="folder-open-outline" color="#f59e0b" />
-            <StatTile label="Tamamlanan" value={tamam} icon="checkmark-done-outline" color="#10b981" />
-            <StatTile label="Yüksek Öncelik" value={yuksek} icon="alert-circle-outline" color="#ef4444" />
-            <StatTile label="Bugün Açılan" value={bugun} icon="today-outline" color="#3b82f6" />
-            <StatTile label="Atanmamış" value={atanmamis} icon="person-remove-outline" color="#8b5cf6" />
+            <StatTile label="Toplam" value={total} icon="albums-outline" color={colors.primary} />
+            <StatTile label="Açık" value={open} icon="folder-open-outline" color="#f59e0b" />
+            <StatTile label="Tamamlanan" value={completed} icon="checkmark-done-outline" color="#10b981" />
+            <StatTile label="Yüksek Öncelik" value={highPriority} icon="alert-circle-outline" color="#ef4444" />
+            <StatTile label="İşlemde" value={inProgress} icon="construct-outline" color="#3b82f6" />
+            <StatTile label="Testte" value={inTest} icon="flask-outline" color="#8b5cf6" />
+            <StatTile label="Bugün" value={today} icon="today-outline" color="#14b8a6" />
           </View>
 
-          {/* Durum dağılımı - donut */}
-          <ChartCard title="Durum Dağılımı" subtitle="Biletlerin süreç durumuna göre dağılımı">
-            {pieData.length > 0 ? (
-              <>
-                <PieChart
-                  data={pieData}
-                  donut
-                  radius={90}
-                  innerRadius={58}
-                  innerCircleColor={colors.card}
-                  centerLabelComponent={() => (
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{toplam}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>Toplam</Text>
-                    </View>
-                  )}
-                />
-                <LegendRow items={[
-                  { label: 'Havuz', color: statusColors.havuz, value: havuz },
-                  { label: 'İşlem', color: statusColors.islem, value: islem },
-                  { label: 'Test', color: statusColors.test, value: test },
-                  { label: 'Tamam', color: statusColors.tamam, value: tamam },
-                ]} />
-              </>
-            ) : (
-              <Text style={styles.empty}>Gösterilecek veri yok.</Text>
-            )}
+          {/* Trend (Son 15 gün) */}
+          <ChartCard title="Yeni Talep Trendi" subtitle="Son 15 gün, günlük açılan bilet">
+            {trendData.length > 0 ? (
+              <LineChart
+                data={trendData} width={chartWidth} height={180}
+                areaChart curved
+                color={colors.primary} startFillColor={colors.primary}
+                startOpacity={0.35} endOpacity={0.03} thickness={2}
+                yAxisThickness={0} xAxisThickness={0}
+                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                noOfSections={4} rulesColor={colors.border}
+                spacing={Math.max(18, chartWidth / Math.max(trendData.length, 1) - 6)}
+                initialSpacing={12} hideDataPoints={trendData.length > 12}
+              />
+            ) : <Text style={styles.empty}>Trend verisi yok.</Text>}
           </ChartCard>
 
-          {/* Haftalık trend - bar */}
-          <ChartCard title="Son 14 Gün Trendi" subtitle="Günlük açılan bilet sayısı">
-            {barData.length > 0 ? (
+          {/* Kategori Dağılımı */}
+          <ChartCard title="Kategori Dağılımı" subtitle="En çok talep gelen 5 kategori">
+            {catBars.length > 0 ? (
+              <>
+                <BarChart
+                  data={catBars} width={chartWidth} height={180} barWidth={26} spacing={16}
+                  initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4} rulesColor={colors.border}
+                />
+                <View style={{ width: '100%', marginTop: 12 }}>
+                  {byCategory.map((c, i) => (
+                    <View key={i} style={styles.catRow}>
+                      <Text style={styles.catName} numberOfLines={1}>{c.kategoriAd}</Text>
+                      <View style={styles.catBadges}>
+                        <Text style={[styles.badge, { backgroundColor: '#a1a5b722', color: colors.textSecondary }]}>Hvz {num(c, 'havuzCount')}</Text>
+                        <Text style={[styles.badge, { backgroundColor: '#f59e0b22', color: '#b45309' }]}>İşl/Tst {num(c, 'islemCount') + num(c, 'testCount')}</Text>
+                        <Text style={[styles.badge, { backgroundColor: '#10b98122', color: '#047857' }]}>Tam {num(c, 'tamamCount')}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : <Text style={styles.empty}>Kategori verisi yok.</Text>}
+          </ChartCard>
+
+          {/* Personel Yükü (yığılmış) */}
+          {staffStack.length > 0 && (
+            <ChartCard title="Personel İş Yükü" subtitle="Havuz / İşlem / Test / Tamam">
               <BarChart
-                data={barData}
-                width={chartWidth}
-                height={180}
-                barWidth={14}
-                spacing={10}
-                initialSpacing={10}
-                roundedTop
-                frontColor={colors.primary}
-                yAxisThickness={0}
-                xAxisThickness={0}
+                stackData={staffStack as any} width={chartWidth} height={200} barWidth={24} spacing={16}
+                initialSpacing={12} yAxisThickness={0} xAxisThickness={0}
+                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                noOfSections={4} rulesColor={colors.border}
+              />
+              <LegendRow items={[
+                { label: 'Havuz', color: '#a1a5b7' },
+                { label: 'İşlem', color: '#f59e0b' },
+                { label: 'Test', color: '#3b82f6' },
+                { label: 'Tamam', color: '#10b981' },
+              ]} />
+            </ChartCard>
+          )}
+
+          {/* Şirket Dağılımı */}
+          {companyBars.length > 0 && (
+            <ChartCard title="Şirket Dağılımı" subtitle="Şirkete göre talep sayısı">
+              <BarChart
+                data={companyBars} width={chartWidth} height={180} barWidth={26} spacing={16}
+                initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
                 xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
                 yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4}
-                rulesColor={colors.border}
+                noOfSections={4} rulesColor={colors.border}
               />
-            ) : (
-              <Text style={styles.empty}>Trend verisi yok.</Text>
-            )}
-          </ChartCard>
+            </ChartCard>
+          )}
 
-          {/* İçgörüler */}
-          {insights.length > 0 && (
-            <ChartCard title="Öne Çıkanlar" subtitle="Otomatik analiz">
+          {/* AI İçgörüleri */}
+          {aiInsights.length > 0 && (
+            <ChartCard title="Akıllı Analiz" subtitle="Otomatik öneriler">
               <View style={{ width: '100%' }}>
-                {insights.map((it, i) => (
-                  <InsightRow key={i} type={g(it, 'type', 'Type') || 'info'} text={g(it, 'text', 'Text') || ''} />
+                {aiInsights.map((it, i) => (
+                  <InsightRow key={i} type={it.type || 'info'} text={it.text || ''} />
                 ))}
               </View>
             </ChartCard>
@@ -158,32 +194,24 @@ export const TicketDashboardScreen = () => {
           <View style={{ height: 20 }} />
         </ScrollView>
       )}
-
       <BottomNavBar currentScreen="Ticket" />
     </View>
   );
 };
 
 const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: colors.background },
+  scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
+  catRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border + '60',
   },
-  scroll: {
-    padding: 16,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  tilesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
-  empty: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    paddingVertical: 20,
+  catName: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.text, paddingRight: 8 },
+  catBadges: { flexDirection: 'row', gap: 4 },
+  badge: {
+    fontSize: 9, fontWeight: '800', overflow: 'hidden',
+    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6,
   },
 });
