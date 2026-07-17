@@ -16,6 +16,7 @@ import { UserAvatar } from '../../../components/UserAvatar';
 import { AttachmentPreview } from '../../../components/AttachmentPreview';
 import { CustomIcon } from '../../../components/CustomIcon';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
+import { ErrorBoundary } from '../../../components/ErrorBoundary';
 import { slateTokens } from '@oyemcore/shared';
 import { theme as appTheme } from '../../../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -1379,6 +1380,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       />
 
       <Modal visible={isDetailOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsDetailOpen(false)}>
+        <ErrorBoundary title="Talep detayı açılamadı" onClose={handleCloseDetail}>
         {selectedRequest && (() => {
           const isCreator = detailData?.talep?.kayitSicil === user?.sicilNo;
           const isManager = user?.yonetici === true;
@@ -2316,6 +2318,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
           </View>
         )})()}
+        </ErrorBoundary>
       </Modal>
 
       {/* ----------------- WORK ORDER CREATE MODAL ----------------- */}

@@ -1274,16 +1274,17 @@ export const TicketScreen = () => {
 
             </ScrollView>
           </View>
+
+          {/* Tarih seçici create modalının İÇİNDE — dışarıda kalınca iOS'ta arkada kalıyordu */}
+          <DatePickerModal
+            visible={isDatePickerOpen}
+            onClose={() => setIsDatePickerOpen(false)}
+            onSelectDate={setFormBitisTarihi}
+            title="Bitiş Tarihi Seçin"
+            outputFormat="yyyy-MM-dd"
+          />
         </View>
       </Modal>
-
-      <DatePickerModal
-        visible={isDatePickerOpen}
-        onClose={() => setIsDatePickerOpen(false)}
-        onSelectDate={setFormBitisTarihi}
-        title="Bitiş Tarihi Seçin"
-        outputFormat="yyyy-MM-dd"
-      />
     </View>
   );
 };

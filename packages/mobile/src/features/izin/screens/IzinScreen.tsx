@@ -460,22 +460,23 @@ export const IzinScreen = () => {
 
             </ScrollView>
           </View>
+
+          {/* Tarih seçiciler create modalının İÇİNDE — dışarıda kalınca iOS'ta
+              formun arkasında kalıyordu. */}
+          <DatePickerModal
+            visible={isCikisDatePickerOpen}
+            onClose={() => setIsCikisDatePickerOpen(false)}
+            onSelectDate={setFormCikisTar}
+            title="İzin Çıkış Tarihi Seçin"
+          />
+          <DatePickerModal
+            visible={isIsBasiDatePickerOpen}
+            onClose={() => setIsIsBasiDatePickerOpen(false)}
+            onSelectDate={setFormIsBasiTar}
+            title="İşe Başlama Tarihi Seçin"
+          />
         </View>
       </Modal>
-
-      <DatePickerModal
-        visible={isCikisDatePickerOpen}
-        onClose={() => setIsCikisDatePickerOpen(false)}
-        onSelectDate={setFormCikisTar}
-        title="İzin Çıkış Tarihi Seçin"
-      />
-
-      <DatePickerModal
-        visible={isIsBasiDatePickerOpen}
-        onClose={() => setIsIsBasiDatePickerOpen(false)}
-        onSelectDate={setFormIsBasiTar}
-        title="İşe Başlama Tarihi Seçin"
-      />
 
 
       {/* Detail Modal */}
