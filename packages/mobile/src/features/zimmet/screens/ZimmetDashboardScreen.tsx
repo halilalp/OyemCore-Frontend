@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -58,7 +59,7 @@ export const ZimmetDashboardScreen = () => {
         activeFilter="" onFilterChange={() => {}} filters={[]}
       />
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+        <LogoLoader style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.tilesGrid}>

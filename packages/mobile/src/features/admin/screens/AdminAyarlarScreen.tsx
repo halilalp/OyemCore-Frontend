@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -67,7 +68,7 @@ export const AdminAyarlarScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
 
         {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 30 }} />
+          <LogoLoader style={{ marginVertical: 30 }} />
         ) : stats ? (
           <View style={styles.statsGrid}>
             <View style={[styles.statBox, { borderLeftColor: colors.primary }]}>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator,
   Modal, FlatList, Alert, Platform, StatusBar,
@@ -60,12 +61,15 @@ export const AdminHiyerarsiScreen = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      // Hiyerarşi DDL'leri ve amir adı çözümü için TÜM aktif personel gerekir
+      // (referanstaki HiyerarsiKullaniciGetir gibi). /tickets/personels yalnız ticket
+      // sorumlularını döndüğü için burada /admin/personnel kullanıyoruz.
       const [hier, pers] = await Promise.all([
         api.getHierarchy(),
-        api.getPersonels(),
+        api.adminGetPersonnel(),
       ]);
       setRows((hier as HierarchyRow[]) || []);
-      setPersonels(pers || []);
+      setPersonels((pers as Personel[]) || []);
     } catch (e) {
       Alert.alert('Hata', 'Hiyerarşi verileri yüklenemedi.');
     } finally {
@@ -195,7 +199,7 @@ export const AdminHiyerarsiScreen = () => {
 
       <View style={styles.contentWrapper}>
         {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+          <LogoLoader style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={filtered}
@@ -225,6 +229,7 @@ export const AdminHiyerarsiScreen = () => {
                       <View key={i} style={styles.amirChip}>
                         <Text style={styles.amirChipLabel}>{i + 1}. Amir</Text>
                         <Text style={styles.amirChipName} numberOfLines={1}>{personelName(a)}</Text>
+                        <Text style={styles.amirChipSicil} numberOfLines={1}>{a}</Text>
                       </View>
                     ) : null)
                   )}
@@ -450,6 +455,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginTop: 2,
+  },
+  amirChipSicil: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: 1,
   },
   amirEmpty: {
     fontSize: 12,

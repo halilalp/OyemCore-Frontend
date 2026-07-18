@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet,
   Text,
@@ -462,7 +463,7 @@ export const AdminKullaniciScreen = () => {
 
       {loading ? (
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <LogoLoader />
         </View>
       ) : (
         <FlatList
@@ -575,7 +576,7 @@ export const AdminKullaniciScreen = () => {
             <Text style={styles.modalSubtitle}>{selectedUser?.adSoyad}</Text>
 
             {savingDoc ? (
-              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 30 }} />
+              <LogoLoader style={{ marginVertical: 30 }} />
             ) : (
               <ScrollView style={styles.scrollList}>
                 {docTypes.map(t => (
@@ -618,7 +619,7 @@ export const AdminKullaniciScreen = () => {
             <Text style={styles.modalSubtitle}>{selectedUser?.adSoyad}</Text>
 
             {savingPerm ? (
-              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 30 }} />
+              <LogoLoader style={{ marginVertical: 30 }} />
             ) : (
               <ScrollView style={styles.scrollList}>
                 {projects.map(proj => {

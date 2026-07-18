@@ -804,7 +804,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
         {/* Requests List */}
         {isLoading && requests.length === 0 ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+          <LogoLoader style={styles.loader} />
         ) : (
           <FlatList
             ref={flatListRef}

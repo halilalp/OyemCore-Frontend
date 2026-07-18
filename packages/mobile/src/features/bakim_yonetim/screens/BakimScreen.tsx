@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -12,6 +13,14 @@ import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { FilePickerSheet } from '../../../components/FilePickerSheet';
 import { AttachmentPreview } from '../../../components/AttachmentPreview';
+
+// Bakım planı türleri — referans projedeki statik değerler (BakimPlani.html ddlBakimTuru).
+const BAKIM_TURLERI: { value: string; label: string }[] = [
+  { value: 'PERIYODIK', label: 'Periyodik Bakım' },
+  { value: 'KESITIMCI', label: 'Kestirimci Bakım' },
+  { value: 'YAGLAMA', label: 'Yağlama Bakımı' },
+];
+const bakimTurLabel = (v: string) => BAKIM_TURLERI.find(t => t.value === v)?.label || v || '-';
 
 
 
@@ -58,9 +67,8 @@ export const BakimScreen = () => {
 
   // New Plan form states
   const [isNewPlanOpen, setIsNewPlanOpen] = useState(false);
-  const [formPlanKodu, setFormPlanKodu] = useState('');
   const [formPlanHat, setFormPlanHat] = useState('');
-  const [formPlanTur, setFormPlanTur] = useState('Planlı');
+  const [formPlanTur, setFormPlanTur] = useState('PERIYODIK');
   const [formPlanBaslangic, setFormPlanBaslangic] = useState('');
   const [formPlanBitis, setFormPlanBitis] = useState('');
   
@@ -239,13 +247,19 @@ export const BakimScreen = () => {
   };
 
   const handleSavePlan = async () => {
-    if (!formPlanKodu.trim() || !formPlanHat || !formPlanBaslangic.trim() || !formPlanBitis.trim()) {
-      Alert.alert('Hata', 'Lütfen zorunlu alanları doldurun.');
+    // PlanKodu sistem tarafından üretilir (referans BakimPlanKaydet: PLN-{yıl}{ay}-{ID});
+    // kullanıcıdan istenmez. Zorunlu alanlar: şirket, hat, bakım türü, tarihler.
+    if (!gateSirket) {
+      Alert.alert('Hata', 'Lütfen önce şirket seçin.');
+      return;
+    }
+    if (!formPlanHat || !formPlanTur || !formPlanBaslangic.trim() || !formPlanBitis.trim()) {
+      Alert.alert('Hata', 'Lütfen zorunlu alanları doldurun (hat, bakım türü, tarihler).');
       return;
     }
     try {
       const res = await api.saveBakimPlan({
-        planKodu: formPlanKodu,
+        planKodu: '', // boş → backend PLN-YYYYAA-ID olarak üretir
         hatKodu: formPlanHat,
         bakimTuru: formPlanTur,
         hedefBaslangic: toISODate(formPlanBaslangic),
@@ -254,9 +268,8 @@ export const BakimScreen = () => {
       if (res.success) {
         Alert.alert('Başarılı', 'Bakım planı oluşturuldu.');
         setIsNewPlanOpen(false);
-        setFormPlanKodu('');
         setFormPlanHat('');
-        setFormPlanTur('Planlı');
+        setFormPlanTur('PERIYODIK');
         setFormPlanBaslangic('');
         setFormPlanBitis('');
         loadPlans();
@@ -575,7 +588,7 @@ export const BakimScreen = () => {
           <View style={{ flex: 1 }}>
 
             {isLoading ? (
-              <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+              <LogoLoader style={styles.loader} />
             ) : (
               <FlatList
                 data={plans}
@@ -589,7 +602,7 @@ export const BakimScreen = () => {
                         <Text style={[styles.statusText, { color: getStatusTextColor(item.durum) }]}>{item.durum}</Text>
                       </View>
                     </View>
-                    <Text style={styles.cardTitle}>{item.hatAdi || item.hatKodu} - {item.bakimTuru}</Text>
+                    <Text style={styles.cardTitle}>{item.hatAdi || item.hatKodu} - {bakimTurLabel(item.bakimTuru)}</Text>
                     <View style={styles.cardFooter}>
                       <Text style={styles.cardFooterText}>📅 {item.hedefBaslangicStr} - {item.hedefBitisStr}</Text>
                       <Text style={styles.cardFooterText}>👤 {item.kayitYapan}</Text>
@@ -611,7 +624,7 @@ export const BakimScreen = () => {
           <View style={{ flex: 1 }}>
 
             {isLoading ? (
-              <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+              <LogoLoader style={styles.loader} />
             ) : (
               <FlatList
                 data={controls}
@@ -674,7 +687,7 @@ export const BakimScreen = () => {
             </View>
 
             {isLoading ? (
-              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 40 }} />
+              <LogoLoader style={{ marginVertical: 40 }} />
             ) : (
               <>
                 {/* KPI stats dashboard */}
@@ -806,7 +819,7 @@ export const BakimScreen = () => {
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Bakım Türü:</Text>
-                    <Text style={styles.detailValue}>{selectedPlan.bakimTuru}</Text>
+                    <Text style={styles.detailValue}>{bakimTurLabel(selectedPlan.bakimTuru)}</Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Hedef Başlangıç:</Text>
@@ -919,16 +932,7 @@ export const BakimScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Plan Kodu *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Örn: PLN-0001"
-                  placeholderTextColor={colors.placeholder}
-                  value={formPlanKodu}
-                  onChangeText={setFormPlanKodu}
-                />
-              </View>
+              {/* Plan Kodu sistem tarafından üretilir (PLN-YYYYAA-ID); kullanıcıya gösterilmez. */}
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Hat / Makine Seçimi *</Text>
@@ -944,13 +948,13 @@ export const BakimScreen = () => {
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Bakım Türü *</Text>
                 <View style={styles.selectorGrid}>
-                  {['Planlı', 'Revizyon', 'Fason', 'Deneme', 'Diğer'].map(t => (
+                  {BAKIM_TURLERI.map(t => (
                     <TouchableOpacity
-                      key={t}
-                      style={[styles.selectorItem, formPlanTur === t && styles.selectorItemActive]}
-                      onPress={() => setFormPlanTur(t)}
+                      key={t.value}
+                      style={[styles.selectorItem, formPlanTur === t.value && styles.selectorItemActive]}
+                      onPress={() => setFormPlanTur(t.value)}
                     >
-                      <Text style={[styles.selectorItemText, formPlanTur === t && styles.selectorItemTextActive]}>{t}</Text>
+                      <Text style={[styles.selectorItemText, formPlanTur === t.value && styles.selectorItemTextActive]}>{t.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

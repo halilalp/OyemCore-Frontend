@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -484,7 +485,7 @@ export const TedarikciScreen = () => {
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         {/* List evaluations */}
         {isLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+          <LogoLoader style={styles.loader} />
         ) : (
           <FlatList
             ref={flatListRef}

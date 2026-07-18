@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet, Text, View, ScrollView, TouchableOpacity,
   ActivityIndicator, Modal, TextInput, SafeAreaView, Alert,
@@ -588,7 +589,7 @@ export const TicketScreen = () => {
       {/* Ticket Listesi */}
       <View style={styles.contentWrapper}>
         {isLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+          <LogoLoader style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={filteredTickets}

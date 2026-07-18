@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -141,7 +142,7 @@ export const DemirbasSayimScreen = () => {
 
         {/* Scanned Items List */}
         {isSayimLoading && sayimList.length === 0 ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+          <LogoLoader style={styles.loader} />
         ) : (
           <FlatList
             data={sayimList}

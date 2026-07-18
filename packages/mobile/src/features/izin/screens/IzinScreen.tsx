@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
 import { useIzinStore } from '../store/useIzinStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
@@ -230,7 +231,7 @@ export const IzinScreen = () => {
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         {/* List content */}
         {isLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+          <LogoLoader style={styles.loader} />
         ) : activeTab === 'my' ? (
           <FlatList
             data={requests}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet,
   Text,
@@ -132,7 +133,7 @@ export const AdminTarihceScreen = () => {
 
       {loading ? (
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <LogoLoader />
         </View>
       ) : (
         <FlatList

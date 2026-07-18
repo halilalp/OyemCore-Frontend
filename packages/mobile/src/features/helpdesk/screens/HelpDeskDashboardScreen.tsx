@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -65,7 +66,7 @@ export const HelpDeskDashboardScreen = () => {
         activeFilter="" onFilterChange={() => {}} filters={[]}
       />
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+        <LogoLoader style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <DashboardFilterBar value={filter} onChange={setFilter} showSirket={false} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet, View, Text, TouchableOpacity, ActivityIndicator,
   Alert, FlatList, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView,
@@ -574,7 +575,7 @@ export const CalendarScreen = () => {
 
       {/* list */}
       {loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color={slateTokens.brandPrimary} /></View>
+        <View style={styles.center}><LogoLoader /></View>
       ) : (
         <FlatList
           data={filteredEvents}
