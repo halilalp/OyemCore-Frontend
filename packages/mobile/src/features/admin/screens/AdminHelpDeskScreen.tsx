@@ -271,7 +271,10 @@ export const AdminHelpDeskScreen = () => {
                 key={sCode}
                 style={[styles.tabButton, isActive && styles.tabButtonActive]}
                 onPress={() => setActiveCompanyTabs(prev => ({ ...prev, [c.id]: sCode }))}>
-                <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>🏢 {sName}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Ionicons name="business-outline" size={13} color={isActive ? colors.primary : colors.textSecondary} />
+                  <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>{sName}</Text>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -282,8 +285,8 @@ export const AdminHelpDeskScreen = () => {
           {groups[activeTab]?.map((u: any) => {
             return (
               <View key={u.talepAyarID} style={[styles.chip, u.yoneticiMi && styles.chipManager]}>
+                {u.yoneticiMi && <Ionicons name="star" size={12} color={colors.warning} style={{ marginRight: 4 }} />}
                 <Text style={[styles.chipText, u.yoneticiMi && styles.chipTextManager]}>
-                  {u.yoneticiMi ? '⭐ ' : ''}
                   {u.adSoyad}
                 </Text>
                 <TouchableOpacity
@@ -357,10 +360,10 @@ export const AdminHelpDeskScreen = () => {
 
                 <View style={styles.cardHeaderRight}>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => handleEditCategory(item)}>
-                    <Text style={styles.iconBtnText}>✏️</Text>
+                    <Ionicons name="pencil" size={18} color={colors.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => handleDeleteCategory(item)}>
-                    <Text style={styles.iconBtnText}>🗑️</Text>
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -482,7 +485,7 @@ export const AdminHelpDeskScreen = () => {
       <Modal visible={responsibleModal} transparent animationType="slide">
         <View style={styles.modalBg}>
           <View style={[styles.modalContent, { maxHeight: '85%' }]}>
-            <Text style={styles.modalTitle}>⭐ Sorumlu Personel Atama</Text>
+            <Text style={styles.modalTitle}>Sorumlu Personel Atama</Text>
             <Text style={styles.modalSubtitle}>Kategori: {selectedCategory?.tanim}</Text>
 
             <Text style={styles.inputLabel}>Şirket Seçimi *</Text>
