@@ -896,7 +896,7 @@ export const TicketScreen = () => {
                       {/* İşlemler (center floating) */}
                       <TouchableOpacity style={styles.centerTabItem} onPress={() => setIsActionsMenuOpen(true)}>
                         <View style={styles.centerPlusCircle}>
-                          <Ionicons name="add" size={32} color="#FFF" />
+                          <Ionicons name="ellipsis-horizontal" size={26} color="#FFF" />
                         </View>
                         <Text style={styles.centerTabLabel}>İşlemler</Text>
                       </TouchableOpacity>
@@ -1686,14 +1686,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
     height: 80,
-    marginTop: -18, // Ana sayfadaki BottomNavBar FAB taşmasıyla aynı
+    marginTop: 0,
   },
   centerPlusCircle: {
-    // Ana sayfadaki çentikli FAB görünümü: zemin renginde halka + içte mavi daire
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 6,
+    // İşlemler menüsü butonu: sade dolu daire, üç-nokta (⋯) ikonu — kurumsal
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 0,
     borderColor: colors.background,
     backgroundColor: colors.primary,
     justifyContent: 'center',
