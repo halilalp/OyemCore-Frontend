@@ -45,6 +45,12 @@ const extractImagesFromHtml = (html: string | null | undefined): string[] => {
   return images;
 };
 
+// Satır-içi IIFE render'ları ekranın kendi render'ında çalıştığı için ErrorBoundary
+// tarafından yakalanamaz. Bu sarmalayıcı, verilen render fonksiyonunu KENDİ render'ında
+// çalıştırır; böylece throw ErrorBoundary'nin alt ağacında olur ve yakalanır.
+// Tipi sabit olduğu için remount olmaz (TextInput odak kaybı yaşanmaz).
+const RenderCatch: React.FC<{ render: () => any }> = ({ render }) => render();
+
 const stripHtml = (html: string | null | undefined, maxLength?: number): string => {
   if (!html) return '';
   const hasImage = html.toLowerCase().includes('<img');
@@ -1381,7 +1387,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
       <Modal visible={isDetailOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsDetailOpen(false)}>
         <ErrorBoundary title="Talep detayı açılamadı" onClose={handleCloseDetail}>
-        {selectedRequest && (() => {
+        {selectedRequest && <RenderCatch render={() => {
           const isCreator = detailData?.talep?.kayitSicil === user?.sicilNo;
           const isManager = user?.yonetici === true;
           const canManage = isManager && !isCreator;
@@ -2318,7 +2324,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
             </Modal>
 
           </View>
-        )})()}
+        )}} />}
         </ErrorBoundary>
       </Modal>
 
