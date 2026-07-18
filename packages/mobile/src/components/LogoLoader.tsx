@@ -32,9 +32,9 @@ export const LogoLoader: React.FC<LogoLoaderProps> = ({ size = 96, style, fullsc
 
   const content = (
     <Animated.Image
-      source={require('../../assets/oyemcore.png')}
+      source={require('../../assets/icon.png')}
       resizeMode="contain"
-      style={{ width: size, height: size * 0.45, opacity, transform: [{ scale }] }}
+      style={{ width: size, height: size, opacity, transform: [{ scale }] }}
     />
   );
 
