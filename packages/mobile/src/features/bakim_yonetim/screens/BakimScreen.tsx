@@ -488,28 +488,50 @@ export const BakimScreen = () => {
         onFilterChange={() => {}}
         filters={[]}
       >
-        {/* Bakım sekmeleri: Planlı/Periyodik × (Plan/Uygulama) + Raporlar */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bakimTabsScroll} contentContainerStyle={styles.bakimTabsRow}>
+        {/* Ana bölümler (webportal mantığı): Bakım · Periyodik Kontrol · Rapor */}
+        <View style={styles.primaryTabsRow}>
           {[
-            { mod: 'plan', mode: 'plan', label: 'Planlı Bakım' },
-            { mod: 'plan', mode: 'uygula', label: 'Bakım Uygulama' },
-            { mod: 'periyodik', mode: 'plan', label: 'Periyodik Plan' },
-            { mod: 'periyodik', mode: 'uygula', label: 'Periyodik Uygulama' },
-            { mod: 'rapor', mode: 'plan', label: 'Raporlar' },
+            { mod: 'plan', label: 'Bakım', icon: 'build-outline' },
+            { mod: 'periyodik', label: 'Periyodik Kontrol', icon: 'repeat-outline' },
+            { mod: 'rapor', label: 'Rapor', icon: 'bar-chart-outline' },
           ].map(t => {
-            const isActive = activeTab === t.mod && (t.mod === 'rapor' || bakimMode === t.mode);
+            const isActive = activeTab === t.mod;
             return (
               <TouchableOpacity
-                key={t.label}
-                style={[styles.bakimTab, isActive && styles.bakimTabActive]}
-                onPress={() => { setActiveTab(t.mod as any); if (t.mod !== 'rapor') setBakimMode(t.mode as any); }}
+                key={t.mod}
+                style={[styles.primaryTab, isActive && styles.primaryTabActive]}
+                onPress={() => setActiveTab(t.mod as any)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.bakimTabText, isActive && styles.bakimTabTextActive]}>{t.label}</Text>
+                <Ionicons name={t.icon as any} size={16} color={isActive ? colors.primary : 'rgba(255,255,255,0.85)'} />
+                <Text style={[styles.primaryTabText, isActive && styles.primaryTabTextActive]} numberOfLines={1}>{t.label}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
+
+        {/* Alt mod: Planlama / İşlem (Bakım ve Periyodik için; Rapor hariç) */}
+        {activeTab !== 'rapor' && (
+          <View style={styles.segmentRow}>
+            {[
+              { mode: 'plan', label: 'Planlama', icon: 'calendar-outline' },
+              { mode: 'uygula', label: 'İşlem', icon: 'hammer-outline' },
+            ].map(s => {
+              const isActive = bakimMode === s.mode;
+              return (
+                <TouchableOpacity
+                  key={s.mode}
+                  style={[styles.segmentBtn, isActive && styles.segmentBtnActive]}
+                  onPress={() => setBakimMode(s.mode as any)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={s.icon as any} size={15} color={isActive ? colors.primary : 'rgba(255,255,255,0.85)'} />
+                  <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>{s.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {activeTab === 'plan' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
@@ -1626,6 +1648,67 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   bakimTabTextActive: {
     color: '#fff',
+    fontWeight: '800',
+  },
+  // Ana bölüm sekmeleri (Bakım / Periyodik Kontrol / Rapor)
+  primaryTabsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  primaryTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  primaryTabActive: {
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+  },
+  primaryTabText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  primaryTabTextActive: {
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  // Alt mod segmenti (Planlama / İşlem)
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    padding: 3,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  segmentBtnActive: {
+    backgroundColor: '#fff',
+  },
+  segmentText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  segmentTextActive: {
+    color: colors.primary,
     fontWeight: '800',
   },
   gateBar: {
