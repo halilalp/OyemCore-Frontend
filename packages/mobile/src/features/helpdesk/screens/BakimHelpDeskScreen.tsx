@@ -965,7 +965,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <View style={styles.formContainer}>
           <CreateModalHeader title="Yeni Talep" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
           <View style={styles.formContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
               
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
@@ -1459,7 +1459,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               <View style={styles.modalContentWrapper}>
               
               {/* Scrollable Main Detail Panel */}
-              <ScrollView contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
                 {detailData?.talep?.kilitli && (
                   <View style={[styles.banner, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
                     <Text style={[styles.bannerText, { color: colors.warning }]}>🔒 Bu talep kilitlenmiştir. {detailData?.talep?.kilitTarStr}</Text>
@@ -1960,7 +1960,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     </TouchableOpacity>
                   </View>
                   
-                  <ScrollView style={{ maxHeight: 360 }}>
+                  <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 360 }}>
                     {/* Primary Action: Complete */}
                     {canClose && (
                       <TouchableOpacity 
@@ -2357,7 +2357,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   <Ionicons name="close" size={24} color={slateTokens.textMuted} />
                 </TouchableOpacity>
               </View>
-              <ScrollView style={styles.modalBody}>
+              <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
                 <Text style={styles.formLabel}>İş Emri Türü</Text>
                 <TouchableOpacity style={styles.formInput} onPress={() => setIsWoTurSelectOpen(true)}>
                   <Text style={{ color: woFormTur ? slateTokens.text : slateTokens.textMuted }}>
@@ -2457,7 +2457,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   <Ionicons name="close" size={24} color={slateTokens.textMuted} />
                 </TouchableOpacity>
               </View>
-              <ScrollView style={styles.modalBody}>
+              <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
                 <Text style={styles.formLabel}>Kapatma Açıklaması</Text>
                 <TextInput
                   style={[styles.formInput, styles.textArea]}
@@ -2489,7 +2489,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 <Ionicons name="close" size={24} color={slateTokens.textMuted} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalBody}>
+            <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
               <Text style={{ marginBottom: 16, color: slateTokens.textMuted, fontSize: 13 }}>
                 Lütfen talebi onaylamadan önce aşağıdaki kontrolleri yapınız. Hepsini işaretlediğinizde talep kapatılacaktır.
               </Text>

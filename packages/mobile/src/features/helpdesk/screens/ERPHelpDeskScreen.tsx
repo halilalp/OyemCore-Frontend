@@ -838,7 +838,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <View style={styles.formContainer}>
           <CreateModalHeader title="Yeni Talep" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
           <View style={styles.formContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
               
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
@@ -1310,7 +1310,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               <View style={styles.modalContentWrapper}>
               
               {/* Scrollable Main Detail Panel */}
-              <ScrollView contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
                 {detailData?.talep?.kilitli && (
                   <View style={[styles.banner, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
                     <Text style={[styles.bannerText, { color: colors.warning }]}>🔒 Bu talep kilitlenmiştir. {detailData?.talep?.kilitTarStr}</Text>
@@ -1725,7 +1725,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     </TouchableOpacity>
                   </View>
                   
-                  <ScrollView style={{ maxHeight: 360 }}>
+                  <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 360 }}>
                     {/* Primary Action: Complete */}
                     {canClose && (
                       <TouchableOpacity 

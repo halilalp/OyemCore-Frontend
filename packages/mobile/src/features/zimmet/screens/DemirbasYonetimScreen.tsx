@@ -470,7 +470,7 @@ export const DemirbasYonetimScreen = () => {
           onFilterChange={() => {}}
           filters={[]}
         >
-          <ScrollView 
+          <ScrollView keyboardShouldPersistTaps="handled" 
             horizontal 
             showsHorizontalScrollIndicator={false} 
             style={styles.filtersScrollContainer}
@@ -606,7 +606,7 @@ export const DemirbasYonetimScreen = () => {
           )}
         </View>
 
-        <ScrollView contentContainerStyle={[styles.modalScroll, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
           {/* Info Card */}
           <View style={styles.detailCard}>
             <Text style={styles.detailName}>{selectedAsset.tanim}</Text>
@@ -743,7 +743,7 @@ export const DemirbasYonetimScreen = () => {
           colorTheme="purple"
         />
 
-        <ScrollView contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
           <View style={styles.formInfoBox}>
             <Text style={styles.formInfoBoxTitle}>Demirbaş Kayıt Formu</Text>
             <Text style={styles.formInfoBoxText}>Yıldızlı alanları doldurarak demirbaş kaydını oluşturun. Kategori, marka ve sorumlu bölümü seçebilirsiniz.</Text>
@@ -870,7 +870,7 @@ export const DemirbasYonetimScreen = () => {
           colorTheme="purple"
         />
 
-        <ScrollView contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
           {/* Personel Selector */}
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Personel *</Text>

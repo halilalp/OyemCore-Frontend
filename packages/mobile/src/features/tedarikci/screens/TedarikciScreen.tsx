@@ -402,7 +402,7 @@ export const TedarikciScreen = () => {
         onFilterChange={() => {}}
         filters={[]}
       >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
           <View style={styles.filterChipContainer}>
             {/* Supplier Filter */}
             <TouchableOpacity 
@@ -568,7 +568,7 @@ export const TedarikciScreen = () => {
             onClose={() => setIsNewRecordOpen(false)}
           />
           <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.modalScroll}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
               {/* Supplier Selection */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Tedarikçi *</Text>
@@ -592,7 +592,7 @@ export const TedarikciScreen = () => {
               {/* Mahsul Yılı */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Mahsul Yılı *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearScroll}>
+                <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearScroll}>
                   {yillar.map(yil => (
                     <TouchableOpacity
                       key={yil.toString()}
@@ -703,7 +703,7 @@ export const TedarikciScreen = () => {
               onClose={() => setIsDetailOpen(false)}
             />
             <View style={styles.modalContentWrapper}>
-              <ScrollView contentContainerStyle={styles.modalScroll}>
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
                 
                 {/* Header Information card */}
                 <View style={styles.detailCard}>
@@ -938,7 +938,7 @@ export const TedarikciScreen = () => {
               <View style={styles.backdrop}>
                 <View style={styles.dialogContainer}>
                   <Text style={styles.dialogTitle}>Değer Seçin: {activeSelectionParam?.tanim}</Text>
-                  <ScrollView style={{ maxHeight: 300 }}>
+                  <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 300 }}>
                     {activeSelectionParam?.detay?.map((d: any) => (
                       <TouchableOpacity
                         key={d.puan.toString()}
