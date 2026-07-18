@@ -350,15 +350,21 @@ export const BakimScreen = () => {
   };
 
   const handleSaveCtrl = async () => {
-    if (!formCtrlKodu.trim() || !formCtrlBolum || !formCtrlBaslangic.trim() || !formCtrlBitis.trim()) {
-      Alert.alert('Hata', 'Lütfen zorunlu alanları doldurun.');
+    // KontrolKodu sistem üretir (KON-{yıl}{ay}-{ID}); KontrolTuru referansta sabit
+    // "PERİYODİK KONTROL" (UI kaldırılmış). Zorunlu: şirket, bölüm, tarihler.
+    if (!gateSirket) {
+      Alert.alert('Hata', 'Lütfen önce şirket seçin.');
+      return;
+    }
+    if (!formCtrlBolum || !formCtrlBaslangic.trim() || !formCtrlBitis.trim()) {
+      Alert.alert('Hata', 'Lütfen zorunlu alanları doldurun (bölüm, tarihler).');
       return;
     }
     try {
       const res = await api.savePeriyodikKontrol({
-        kontrolKodu: formCtrlKodu,
+        kontrolKodu: '', // boş → backend KON-YYYYAA-ID olarak üretir
         bolumKodu: formCtrlBolum,
-        kontrolTuru: formCtrlTur,
+        kontrolTuru: 'PERİYODİK KONTROL', // referans sabit değer
         hedefBaslangic: toISODate(formCtrlBaslangic),
         hedefBitis: toISODate(formCtrlBitis),
         aciklama: formCtrlAciklama
@@ -366,9 +372,7 @@ export const BakimScreen = () => {
       if (res.success) {
         Alert.alert('Başarılı', 'Periyodik kontrol kaydı oluşturuldu.');
         setIsNewCtrlOpen(false);
-        setFormCtrlKodu('');
         setFormCtrlBolum('');
-        setFormCtrlTur('Elektrik');
         setFormCtrlBaslangic('');
         setFormCtrlBitis('');
         setFormCtrlAciklama('');
@@ -1347,16 +1351,8 @@ export const BakimScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Kontrol Kodu *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Örn: KNT-0001"
-                  placeholderTextColor={colors.placeholder}
-                  value={formCtrlKodu}
-                  onChangeText={setFormCtrlKodu}
-                />
-              </View>
+              {/* Kontrol Kodu sistem üretir (KON-YYYYAA-ID); Kontrol Türü referansta sabit
+                  "PERİYODİK KONTROL" — ikisi de kullanıcıya gösterilmez. */}
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Bölüm Seçimi *</Text>
@@ -1367,21 +1363,6 @@ export const BakimScreen = () => {
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Kontrol Türü *</Text>
-                <View style={styles.selectorGrid}>
-                  {['Elektrik', 'Mekanik', 'Bina', 'Müteahhit', 'Diğer'].map(t => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[styles.selectorItem, formCtrlTur === t && styles.selectorItemActive]}
-                      onPress={() => setFormCtrlTur(t)}
-                    >
-                      <Text style={[styles.selectorItemText, formCtrlTur === t && styles.selectorItemTextActive]}>{t}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
               </View>
 
               <View style={styles.formGroup}>
