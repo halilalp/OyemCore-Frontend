@@ -2110,6 +2110,21 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           <Ionicons name="help-circle-outline" size={20} color={colors.text} />
                           <Text style={styles.sheetItemText}>Soru Sor</Text>
                         </TouchableOpacity>
+
+                        {/* İş Emri Oluştur — sorumlu, talebe bağlı iş emri açar (referans BakimIslem) */}
+                        <TouchableOpacity
+                          style={styles.sheetItem}
+                          onPress={() => {
+                            setIsActionsMenuOpen(false);
+                            setWoFormTur(null);
+                            setWoFormTermin(null);
+                            setWoFormAciklama('');
+                            setIsWorkOrderCreateModalOpen(true);
+                          }}
+                        >
+                          <Ionicons name="construct-outline" size={20} color={colors.text} />
+                          <Text style={styles.sheetItemText}>İş Emri Oluştur</Text>
+                        </TouchableOpacity>
                       </>
                     )}
                   </ScrollView>
