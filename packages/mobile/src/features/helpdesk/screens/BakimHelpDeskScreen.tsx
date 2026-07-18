@@ -2033,11 +2033,13 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     )}
 
                     {/* Assign Specialist */}
-                    <TouchableOpacity 
-                      style={styles.sheetItem} 
+                    <TouchableOpacity
+                      style={styles.sheetItem}
                       onPress={() => {
+                        // iOS'ta bir modal kapanırken diğerini açmak güvenilmez; aksiyon
+                        // menüsü kapandıktan sonra seçiciyi aç (aksi halde açılmıyordu).
                         setIsActionsMenuOpen(false);
-                        setIsAssignOpen(true);
+                        setTimeout(() => setIsAssignOpen(true), 350);
                       }}
                     >
                       <Ionicons name="people-outline" size={20} color={colors.text} />
