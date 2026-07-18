@@ -21,6 +21,7 @@ export const TicketDashboardScreen = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [errMsg, setErrMsg] = useState('');
   const [filter, setFilter] = useState<DashboardFilterValue>({ sirket: '', yil: '', ay: '' });
 
   useEffect(() => {
@@ -34,12 +35,16 @@ export const TicketDashboardScreen = () => {
   const load = async () => {
     try {
       setLoading(true);
+      setErrMsg('');
       const fltYil = filter.yil ? parseInt(filter.yil) : 0;
       const fltAy = filter.ay ? parseInt(filter.ay) : 0;
       const res = await api.getTicketStats(filter.sirket || '', 0, fltYil, fltAy);
       setData(res);
-    } catch (e) {
+      // Sunucu boş/None döndürdüyse bunu sessizce 0 gösterme; sebebini belirt.
+      if (!res) setErrMsg('Sunucu boş yanıt döndürdü (kullanıcı/yetki bulunamadı olabilir).');
+    } catch (e: any) {
       setData(null);
+      setErrMsg(e?.response?.data?.message || e?.message || 'Veri alınamadı.');
     } finally {
       setLoading(false);
     }
@@ -102,6 +107,12 @@ export const TicketDashboardScreen = () => {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} />
+          {!!errMsg && (
+            <View style={styles.errBox}>
+              <Text style={styles.errTitle}>Veri alınamadı</Text>
+              <Text selectable style={styles.errText}>{errMsg}</Text>
+            </View>
+          )}
           <View style={styles.tilesGrid}>
             <StatTile label="Toplam" value={total} icon="albums-outline" color={colors.primary} />
             <StatTile label="Açık" value={open} icon="folder-open-outline" color="#f59e0b" />
@@ -213,6 +224,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
+  errBox: {
+    backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1,
+    borderRadius: 12, padding: 12, marginBottom: 14,
+  },
+  errTitle: { fontSize: 12, fontWeight: '800', color: '#b91c1c', marginBottom: 4 },
+  errText: { fontSize: 11, color: '#7f1d1d', lineHeight: 16 },
   catRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border + '60',

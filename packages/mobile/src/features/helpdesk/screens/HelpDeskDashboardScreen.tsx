@@ -23,6 +23,7 @@ export const HelpDeskDashboardScreen = () => {
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState('');
   const [filter, setFilter] = useState<DashboardFilterValue>({ yil: '', ay: '' });
 
   useEffect(() => { if (isFocused) load(); }, [isFocused, tur, filter.yil, filter.ay]);
@@ -30,13 +31,18 @@ export const HelpDeskDashboardScreen = () => {
   const load = async () => {
     try {
       setLoading(true);
+      setErrMsg('');
       const yil = filter.yil || new Date().getFullYear().toString();
       const ay = filter.ay || 'Tümü';
       const res = isBakim
         ? await api.getBakimHelpDeskPerformans({ yil, ay })
         : await api.getHelpDeskPerformans({ yil, ay, talepTur: tur });
       setData(res);
-    } catch (e) { setData(null); }
+      if (!res) setErrMsg('Sunucu boş yanıt döndürdü.');
+    } catch (e: any) {
+      setData(null);
+      setErrMsg(e?.response?.data?.message || e?.message || 'Veri alınamadı.');
+    }
     finally { setLoading(false); }
   };
 
@@ -63,6 +69,12 @@ export const HelpDeskDashboardScreen = () => {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <DashboardFilterBar value={filter} onChange={setFilter} showSirket={false} />
+          {!!errMsg && (
+            <View style={styles.errBox}>
+              <Text style={styles.errTitle}>Veri alınamadı</Text>
+              <Text selectable style={styles.errText}>{errMsg}</Text>
+            </View>
+          )}
           <View style={styles.tilesGrid}>
             <StatTile label="Toplam Talep" value={num(kpi, 'talepSayisi')} icon="albums-outline" color={colors.primary} />
             <StatTile label="Açık" value={num(kpi, 'acikTalep')} icon="folder-open-outline" color="#f59e0b" />
@@ -125,6 +137,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 12 },
+  errBox: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 14 },
+  errTitle: { fontSize: 12, fontWeight: '800', color: '#b91c1c', marginBottom: 4 },
+  errText: { fontSize: 11, color: '#7f1d1d', lineHeight: 16 },
   pendingBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 30 },
   pendingText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textAlign: 'center' },
   persRow: {
