@@ -1714,14 +1714,15 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                             const isLast = i === detailData.gelismeler.length - 1;
                             let iconName = 'chatbubble-outline';
                             let iconColor = '#6366f1';
-                            
-                            if (g.aciklama.toLowerCase().includes('kapat') || g.aciklama.toLowerCase().includes('çözüm')) {
+                            const ackLower = (g.aciklama || '').toLowerCase();
+
+                            if (ackLower.includes('kapat') || ackLower.includes('çözüm')) {
                                 iconName = 'time-outline';
                                 iconColor = slateTokens.textMuted;
-                            } else if (g.aciklama.toLowerCase().includes('atand') || g.aciklama.toLowerCase().includes('yönlendir')) {
+                            } else if (ackLower.includes('atand') || ackLower.includes('yönlendir')) {
                                 iconName = 'person-outline';
                                 iconColor = '#f59e0b'; // orange
-                            } else if (g.aciklama.toLowerCase().includes('oluşturuldu') || g.aciklama.toLowerCase().includes('açıldı')) {
+                            } else if (ackLower.includes('oluşturuldu') || ackLower.includes('açıldı')) {
                                 iconName = 'add-circle-outline';
                                 iconColor = '#6366f1'; // blue/purple
                             }
@@ -1736,7 +1737,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                 </View>
                                 <View style={styles.timelineRightCol}>
                                   <Text style={styles.timelineItemTitle}>{stripHtml(g.aciklama)}</Text>
-                                  <Text style={styles.timelineItemSub}>{g.adSoyad} • {g.kayitTarStr.split(' ')[1] || g.kayitTarStr}</Text>
+                                  <Text style={styles.timelineItemSub}>{g.adSoyad} • {(g.kayitTarStr || '').split(' ')[1] || g.kayitTarStr || ''}</Text>
                                   {(() => {
                                     const chatImages = extractImagesFromHtml(g.aciklama);
                                     if (chatImages.length === 0) return null;

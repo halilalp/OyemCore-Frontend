@@ -36,6 +36,8 @@ export const BakimScreen = () => {
   const [isBakimAdmin, setIsBakimAdmin] = useState(false);
   const [gateSirket, setGateSirket] = useState('');
   const [isGateSirketOpen, setIsGateSirketOpen] = useState(false);
+  // Create modalları içindeki Şirket seçici (iOS z-order: modalın İÇİNDE render edilmeli)
+  const [isFormSirketOpen, setIsFormSirketOpen] = useState(false);
 
   // --- TAB 1: Planlı Bakımlar ---
   const [plans, setPlans] = useState<BakimPlan[]>([]);
@@ -905,7 +907,7 @@ export const BakimScreen = () => {
                 <TouchableOpacity
                   style={[styles.selectBox, styles.dateInput, !isBakimAdmin && { opacity: 0.7 }]}
                   disabled={!isBakimAdmin}
-                  onPress={() => setIsGateSirketOpen(true)}
+                  onPress={() => setIsFormSirketOpen(true)}
                 >
                   <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
                   <Text style={[styles.selectBoxText, { flex: 1 }]}>
@@ -994,6 +996,20 @@ export const BakimScreen = () => {
           </View>
 
           {/* Picker modalları create modalının İÇİNDE — iOS'ta üstte açılır (arkada kalma/kilitlenme fix) */}
+          <SearchableSelectorModal
+            visible={isFormSirketOpen}
+            onClose={() => setIsFormSirketOpen(false)}
+            onSelect={(item) => {
+              const kod = item.sirketKodu || '';
+              setGateSirket(kod);
+              setPlanSirketFilter(kod);
+              setCtrlSirketFilter(kod);
+            }}
+            data={[{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(dropdowns?.sirkets || [])]}
+            keyExtractor={(item) => item.sirketKodu || 'all'}
+            labelExtractor={(item) => item.sirketAdi}
+            title="Şirket Seçin"
+          />
           <SearchableSelectorModal
             visible={isFormPlanHatOpen}
             onClose={() => setIsFormPlanHatOpen(false)}
@@ -1285,7 +1301,7 @@ export const BakimScreen = () => {
                 <TouchableOpacity
                   style={[styles.selectBox, styles.dateInput, !isBakimAdmin && { opacity: 0.7 }]}
                   disabled={!isBakimAdmin}
-                  onPress={() => setIsGateSirketOpen(true)}
+                  onPress={() => setIsFormSirketOpen(true)}
                 >
                   <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
                   <Text style={[styles.selectBoxText, { flex: 1 }]}>
@@ -1387,6 +1403,20 @@ export const BakimScreen = () => {
           </View>
 
           {/* Picker modalları create modalının İÇİNDE */}
+          <SearchableSelectorModal
+            visible={isFormSirketOpen}
+            onClose={() => setIsFormSirketOpen(false)}
+            onSelect={(item) => {
+              const kod = item.sirketKodu || '';
+              setGateSirket(kod);
+              setPlanSirketFilter(kod);
+              setCtrlSirketFilter(kod);
+            }}
+            data={[{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(dropdowns?.sirkets || [])]}
+            keyExtractor={(item) => item.sirketKodu || 'all'}
+            labelExtractor={(item) => item.sirketAdi}
+            title="Şirket Seçin"
+          />
           <SearchableSelectorModal
             visible={isFormCtrlBolumOpen}
             onClose={() => setIsFormCtrlBolumOpen(false)}
