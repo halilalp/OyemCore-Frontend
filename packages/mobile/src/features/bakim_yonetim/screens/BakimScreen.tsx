@@ -3,7 +3,7 @@ import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { api, BakimPlan, BakimPlanDetay, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
@@ -27,14 +27,22 @@ const bakimTurLabel = (v: string) => BAKIM_TURLERI.find(t => t.value === v)?.lab
 export const BakimScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user } = useAuthStore();
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, theme);
 
-  const [activeTab, setActiveTab] = useState<'plan' | 'periyodik' | 'rapor'>('plan');
+  // Bakım Yönetimi hub'ından deep-link: hangi bölüm/mod açılsın (initialTab/initialMode).
+  const [activeTab, setActiveTab] = useState<'plan' | 'periyodik' | 'rapor'>(route.params?.initialTab || 'plan');
   // Plan/Periyodik içinde iki mod: 'plan' = oluşturma/yönetim, 'uygula' = işleme alma
-  const [bakimMode, setBakimMode] = useState<'plan' | 'uygula'>('plan');
+  const [bakimMode, setBakimMode] = useState<'plan' | 'uygula'>(route.params?.initialMode || 'plan');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Hub'dan yeni parametreyle tekrar girildiğinde bölüm/mod'u güncelle.
+  useEffect(() => {
+    if (route.params?.initialTab) setActiveTab(route.params.initialTab);
+    if (route.params?.initialMode) setBakimMode(route.params.initialMode);
+  }, [route.params?.initialTab, route.params?.initialMode]);
 
   // Dropdown lists
   const [dropdowns, setDropdowns] = useState<any>(null);

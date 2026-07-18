@@ -40,6 +40,7 @@ import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScre
 import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
 import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
 import { BakimScreen } from './src/features/bakim_yonetim/screens/BakimScreen';
+import { BakimYonetimHubScreen } from './src/features/bakim_yonetim/screens/BakimYonetimHubScreen';
 import { ProfilScreen } from './src/features/profile/screens/ProfilScreen';
 import { PerformansScreen } from './src/features/profile/screens/PerformansScreen';
 import { ZimmetlerimScreen } from './src/features/zimmet/screens/ZimmetlerimScreen';
@@ -312,6 +313,7 @@ export default function App() {
               options={{ headerShown: false }}
             />
             <Stack.Screen name="TicketDashboard" component={TicketDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="BakimYonetim" component={BakimYonetimHubScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimDashboard" component={BakimDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="IzinDashboard" component={IzinDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="HelpDeskDashboard" component={HelpDeskDashboardScreen} options={{ headerShown: false }} />

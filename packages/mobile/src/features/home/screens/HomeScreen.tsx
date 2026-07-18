@@ -417,7 +417,7 @@ export const HomeScreen = () => {
                 { title: 'IT HelpDesk', icon: 'laptop-outline', color: '#3b82f6', bg: '#eff6ff', screen: 'HelpDeskDashboard', params: { tur: 'IT', title: 'IT HelpDesk' } },
                 { title: 'ERP HelpDesk', icon: 'cube-outline', color: '#f97316', bg: '#fff7ed', screen: 'HelpDeskDashboard', params: { tur: 'ERP', title: 'ERP HelpDesk' } },
                 { title: 'Bakım HD', icon: 'construct-outline', color: '#22c55e', bg: '#f0fdf4', screen: 'HelpDeskDashboard', params: { tur: 'BAKIM', title: 'Bakım HelpDesk' } },
-                { title: 'Bakım', icon: 'build-outline', color: '#8b5cf6', bg: '#f5f3ff', screen: 'BakimDashboard', params: undefined },
+                { title: 'Bakım', icon: 'build-outline', color: '#8b5cf6', bg: '#f5f3ff', screen: 'BakimYonetim', params: undefined },
                 { title: 'İK / İzin', icon: 'people-outline', color: '#14b8a6', bg: '#f0fdfa', screen: 'IzinDashboard', params: undefined },
                 { title: 'Demirbaş', icon: 'cube-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ZimmetDashboard', params: undefined },
                 { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined },
