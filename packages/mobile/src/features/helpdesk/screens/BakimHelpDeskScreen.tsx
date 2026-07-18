@@ -499,19 +499,19 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
   const promptDocumentPicker = (forProgress: boolean) => {
     setIsFilePickerForProgress(forProgress);
-    if (forProgress) {
-      setIsFilePickerOpen(true);
-    } else {
-      Alert.alert(
-        'Dosya Kaynağı',
-        'Nasıl eklemek istersiniz?',
-        [
-          { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
-          { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
-          { text: 'İptal', style: 'cancel' },
-        ]
-      );
-    }
+    // Her iki yol da (ana ek + gelişme notu eki) native Alert kullanır. Önceden gelişme
+    // yolu özel bir transparan Modal açıyordu; bu modal detay (fullScreen) modalının içinde
+    // olduğu için iOS'ta görünmüyor ve görünmez overlay alt butonların dokunuşlarını
+    // yutuyordu. Native Alert her durumda güvenli çalışır.
+    Alert.alert(
+      'Dosya Kaynağı',
+      'Nasıl eklemek istersiniz?',
+      [
+        { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
+        { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
+        { text: 'İptal', style: 'cancel' },
+      ]
+    );
   };
 
   const processFile = async (uri: string, name: string, forProgress: boolean, preBase64?: string) => {

@@ -374,19 +374,17 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
   const promptDocumentPicker = (forProgress: boolean) => {
     setIsFilePickerForProgress(forProgress);
-    if (forProgress) {
-      setIsFilePickerOpen(true);
-    } else {
-      Alert.alert(
-        'Dosya Kaynağı',
-        'Nasıl eklemek istersiniz?',
-        [
-          { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
-          { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
-          { text: 'İptal', style: 'cancel' },
-        ]
-      );
-    }
+    // Her iki yol da native Alert kullanır (gelişme yolundaki özel transparan Modal iOS'ta
+    // detay modalı içinde görünmüyor ve alt butonların dokunuşlarını yutuyordu).
+    Alert.alert(
+      'Dosya Kaynağı',
+      'Nasıl eklemek istersiniz?',
+      [
+        { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
+        { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
+        { text: 'İptal', style: 'cancel' },
+      ]
+    );
   };
 
   const processFile = async (uri: string, name: string, forProgress: boolean, preBase64?: string) => {

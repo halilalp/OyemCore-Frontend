@@ -409,21 +409,18 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
   const promptDocumentPicker = (forProgress: boolean) => {
     setIsFilePickerForProgress(forProgress);
-    if (forProgress) {
-      // Gelişme context: transparent Modal içinden sibling Modal sorunsuz açılır
-      setIsFilePickerOpen(true);
-    } else {
-      // Create form: fullScreen Modal içinden sibling Modal Android'de açılamaz, Alert kullan
-      Alert.alert(
-        'Dosya Kaynağı',
-        'Nasıl eklemek istersiniz?',
-        [
-          { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
-          { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
-          { text: 'İptal', style: 'cancel' },
-        ]
-      );
-    }
+    // Her iki yol da native Alert kullanır. Gelişme yolundaki özel transparan Modal, detay
+    // (fullScreen) modalı içinde iOS'ta görünmüyor ve görünmez overlay alt butonların
+    // dokunuşlarını yutuyordu. Native Alert her durumda güvenli çalışır.
+    Alert.alert(
+      'Dosya Kaynağı',
+      'Nasıl eklemek istersiniz?',
+      [
+        { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
+        { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
+        { text: 'İptal', style: 'cancel' },
+      ]
+    );
   };
 
   const processFile = async (uri: string, name: string, forProgress: boolean, preBase64?: string) => {
