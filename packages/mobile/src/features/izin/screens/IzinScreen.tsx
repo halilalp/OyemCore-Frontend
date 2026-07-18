@@ -365,7 +365,7 @@ export const IzinScreen = () => {
         onRequestClose={() => setIsModalOpen(false)}
       >
         <View style={styles.modalContainer}>
-          <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="gold" />
+          <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
             <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
@@ -483,15 +483,9 @@ export const IzinScreen = () => {
       {/* Detail Modal */}
       <Modal visible={isDetailModalOpen} animationType="slide" onRequestClose={handleCloseDetail}>
         {selectedDetailRequest && (
-          <SafeAreaView style={styles.modalContainer}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <CreateModalHeader title="İzin Talebi Detayı" onClose={handleCloseDetail} colorTheme="purple" />
             <View style={styles.modalContentWrapper}>
-              <View style={styles.modalHeader}>
-                <View style={{ width: 40 }} />
-                <Text style={styles.modalTitle}>İzin Talebi Detayı</Text>
-                <TouchableOpacity onPress={handleCloseDetail} style={styles.closeButton}>
-                  <Ionicons name="close" size={22} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
               <ScrollView contentContainerStyle={styles.modalScroll}>
                 <View style={styles.detailCard}>
                   <View style={styles.detailHeaderRow}>
@@ -605,7 +599,7 @@ export const IzinScreen = () => {
                 )}
               </ScrollView>
             </View>
-          </SafeAreaView>
+          </View>
         )}
       </Modal>
     </View>
@@ -687,7 +681,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   listContainer: {
     padding: 16,
-    gap: 16,
+    gap: 8,
+    paddingBottom: 32,
   },
   requestCard: {
     backgroundColor: colors.card,
