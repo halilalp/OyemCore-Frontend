@@ -255,7 +255,8 @@ export const api = {
   },
 
   uploadTicketFile: async (ticketID: number, fileData: { fileName: string, fileBase64: string }): Promise<{ success: boolean, message: string }> => {
-    const response = await apiClient.post<{ success: boolean, message: string }>(`/tickets/${ticketID}/file`, fileData);
+    // Backend route: POST api/tickets/{id}/upload-file (önceden /file idi → 404)
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/tickets/${ticketID}/upload-file`, fileData);
     return response.data;
   },
 
