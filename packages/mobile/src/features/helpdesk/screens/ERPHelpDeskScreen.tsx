@@ -809,6 +809,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   title={item.konu}
                   timeAgo={item.kayitTarStr || ''}
                   user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
+                  userSicil={item.sorumluSicil}
                   priorityLabel={priorityStyle.label}
                   priorityColor={priorityStyle.text}
                   priorityBg={priorityStyle.bg}
@@ -1387,9 +1388,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                       {/* Sorumlu Personel */}
                       <View style={styles.infoRow}>
                         <Text style={[styles.infoRowLabel, { color: slateTokens.textDark, fontWeight: '700', marginLeft: 0 }]}>Sorumlu Personel</Text>
-                        <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary, fontWeight: '500' }]}>
-                          {selectedRequest.sorumluAd || 'Atanmadı'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          {selectedRequest.sorumluSicil ? <UserAvatar sicilNo={selectedRequest.sorumluSicil} name={selectedRequest.sorumluAd} size={22} /> : null}
+                          <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary, fontWeight: '500' }]}>
+                            {selectedRequest.sorumluAd || 'Atanmadı'}
+                          </Text>
+                        </View>
                       </View>
                       <View style={[styles.detailDivider, { borderStyle: 'dashed' }]} />
 

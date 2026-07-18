@@ -487,6 +487,7 @@ export const TicketScreen = () => {
         title={item.baslik}
         timeAgo={item.kayitTarihiStr || ''}
         user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
+        userSicil={item.sorumluSicilNo}
         priorityLabel={priStyle.label}
         priorityColor={priStyle.text}
         priorityBg={priStyle.bg}

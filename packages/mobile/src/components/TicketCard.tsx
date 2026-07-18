@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { slateTokens } from '@oyemcore/shared';
+import { UserAvatar } from './UserAvatar';
 
 export interface TicketCardProps {
   id: string | number;
@@ -9,6 +10,7 @@ export interface TicketCardProps {
   title: string;
   timeAgo: string; // e.g., '2 sa önce'
   user: string; // e.g., 'Ahmet K.'
+  userSicil?: string; // sorumlu sicil no — profil resmi için
   priorityLabel: string;
   priorityColor: string; // e.g., '#ef4444' for red
   priorityBg: string; // e.g., '#fef2f2'
@@ -27,6 +29,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   title,
   timeAgo,
   user,
+  userSicil,
   priorityLabel,
   priorityColor,
   priorityBg,
@@ -65,7 +68,9 @@ export const TicketCard: React.FC<TicketCardProps> = ({
               </View>
               <View style={styles.footerDivider} />
               <View style={styles.footerItem}>
-                <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} />
+                {userSicil
+                  ? <UserAvatar sicilNo={userSicil} name={user} size={18} style={{ marginRight: 4 }} />
+                  : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} />}
                 <Text style={styles.footerText}>{user}</Text>
               </View>
             </View>
