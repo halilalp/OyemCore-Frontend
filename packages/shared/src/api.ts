@@ -705,6 +705,12 @@ export const api = {
     return response.data;
   },
 
+  // Giriş yapan kullanıcının profil resmini günceller (AVATAR/{sicilNo}.jpg üzerine yazar).
+  uploadAvatar: async (fileBase64: string): Promise<{ success: boolean, fileName: string }> => {
+    const response = await apiClient.post<{ success: boolean, fileName: string }>('/auth/avatar', { fileBase64 });
+    return response.data;
+  },
+
   toggleTalepLock: async (id: number): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(`/talep/${id}/lock`);
     return response.data;

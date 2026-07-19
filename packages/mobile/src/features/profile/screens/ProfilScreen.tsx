@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { BottomNavBar } from '../../../components/BottomNavBar';
@@ -9,10 +10,56 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@oyemcore/shared';
 
 export const ProfilScreen = () => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, setAvatarRefreshKey } = useAuthStore();
   const { colors, theme, toggleTheme } = useThemeStore();
   const styles = createStyles(colors);
   const [sirketAdi, setSirketAdi] = React.useState<string>('');
+  const [avatarUploading, setAvatarUploading] = React.useState(false);
+
+  // Profil resmini değiştir: kamera/galeri → kare kırp → base64 → yükle → avatar'ı yenile.
+  const handleChangeAvatar = () => {
+    Alert.alert('Profil Fotoğrafı', 'Yeni fotoğrafı nasıl eklemek istersiniz?', [
+      { text: 'Kamera', onPress: () => pickAvatar('camera') },
+      { text: 'Galeri', onPress: () => pickAvatar('gallery') },
+      { text: 'İptal', style: 'cancel' },
+    ]);
+  };
+
+  const pickAvatar = async (source: 'camera' | 'gallery') => {
+    try {
+      const perm = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('İzin Gerekli', source === 'camera' ? 'Kamera izni gerekiyor.' : 'Galeri izni gerekiyor.');
+        return;
+      }
+      const opts: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      };
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync(opts)
+        : await ImagePicker.launchImageLibraryAsync(opts);
+      if (result.canceled || !result.assets?.[0]?.base64) return;
+
+      setAvatarUploading(true);
+      const res = await api.uploadAvatar(result.assets[0].base64);
+      if (res?.success) {
+        setAvatarRefreshKey(Date.now()); // UserAvatar'ları cache-bust ile yenile
+        Alert.alert('Başarılı', 'Profil fotoğrafınız güncellendi.');
+      } else {
+        Alert.alert('Hata', 'Fotoğraf güncellenemedi.');
+      }
+    } catch (e: any) {
+      Alert.alert('Hata', e?.response?.data?.message || e?.message || 'Fotoğraf güncellenemedi.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   React.useEffect(() => {
     const fetchCompany = async () => {
@@ -78,10 +125,15 @@ export const ProfilScreen = () => {
 
         {/* Profile Details Card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity style={styles.avatarContainer} onPress={handleChangeAvatar} activeOpacity={0.8} disabled={avatarUploading}>
             <UserAvatar sicilNo={user?.sicilNo} name={user?.adSoyad} size={90} style={styles.avatarBorder} />
             <View style={styles.onlineBadge} />
-          </View>
+            <View style={styles.avatarEditBadge}>
+              {avatarUploading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Ionicons name="camera" size={16} color="#fff" />}
+            </View>
+          </TouchableOpacity>
 
           <Text style={styles.profileName}>{user?.adSoyad || 'Halil Alp Çalışan'}</Text>
           <Text style={styles.profileTitle}>
@@ -198,6 +250,19 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: colors.card,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileName: {
     fontSize: 22,
