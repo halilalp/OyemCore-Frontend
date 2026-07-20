@@ -35,6 +35,7 @@ interface HelpdeskState {
 
 export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
   requests: [],
+  currentType: '',
   categories: [],
   personnelList: [],
   allActivePersonnelList: [],
