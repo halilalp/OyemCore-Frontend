@@ -143,7 +143,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   // Search Filters States
   const [selectedFilterCategory, setSelectedFilterCategory] = useState('');
   const [selectedFilterAltCategory, setSelectedFilterAltCategory] = useState('');
-  const [selectedFilterStatus, setSelectedFilterStatus] = useState('');
+  const [selectedFilterStatus, setSelectedFilterStatus] = useState('BEKLEMEDE');
   const [filterStartDate, setFilterStartDate] = useState(getOneMonthAgoDateStr());
   const [filterEndDate, setFilterEndDate] = useState(getTodayDateStr());
 
@@ -775,7 +775,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     if (activeTab === 'open') {
       tabMatch = r.durum !== 'Kapalı' && r.durum !== 'KAPATILDI';
     } else if (activeTab === 'mine') {
-      tabMatch = r.sorumluSicil === user?.sicilNo && r.durum !== 'Kapalı' && r.durum !== 'KAPATILDI';
+      tabMatch = r.sorumluSicil === user?.sicilNo;
     } else if (activeTab === 'closed') {
       tabMatch = r.durum === 'Kapalı' || r.durum === 'KAPATILDI';
     }
@@ -893,6 +893,23 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         filters={[]} // Boş bırak, children render edilecek
       >
         {/* Advanced Filters inside ListHeader */}
+        {/* Tümü / Bana Atanan */}
+        <View style={styles.helpTabsRow}>
+          {[{ id: 'all', label: 'Tümü' }, { id: 'mine', label: 'Bana Atanan' }].map(t => {
+            const isActive = activeTab === t.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.helpTabBtn, isActive && styles.helpTabBtnActive]}
+                onPress={() => setActiveTab(t.id as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.helpTabText, isActive && styles.helpTabTextActive]}>{t.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <View style={styles.headerFiltersRow}>
           <TouchableOpacity style={styles.headerFilterBtn} onPress={() => setIsFilterStatusSelectorOpen(true)}>
             <Text style={styles.headerFilterBtnText} numberOfLines={1}>
@@ -2626,7 +2643,12 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
       width: '100%',
       alignSelf: 'center',
     },
-    headerFiltersRow: {
+    helpTabsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  helpTabBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+  helpTabBtnActive: { backgroundColor: '#fff', borderColor: '#fff' },
+  helpTabText: { fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
+  helpTabTextActive: { color: colors.primary, fontWeight: '800' },
+  headerFiltersRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       gap: 8,
