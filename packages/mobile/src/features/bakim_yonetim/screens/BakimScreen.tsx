@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform } from 'react-native';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
@@ -935,6 +936,7 @@ export const BakimScreen = () => {
             </View>
           </SafeAreaView>
         )}
+        <KeyboardDismissBar />
       </Modal>
 
       {/* NEW PLAN MODAL */}
@@ -1070,6 +1072,7 @@ export const BakimScreen = () => {
             title="Plan Hedef Bitiş Tarihi Seçin"
           />
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* PERIODIC CONTROL DETAILS MODAL */}
@@ -1320,6 +1323,7 @@ export const BakimScreen = () => {
             />
           </SafeAreaView>
         )}
+        <KeyboardDismissBar />
       </Modal>
 
       {/* NEW PERIODIC CONTROL MODAL */}
@@ -1454,6 +1458,7 @@ export const BakimScreen = () => {
             title="Kontrol Hedef Bitiş Tarihi Seçin"
           />
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* ======================================================== */}

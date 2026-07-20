@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar } from 'react-native';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -453,6 +454,7 @@ export const DemirbasYonetimScreen = () => {
         </View>
         </View>
         )}
+        <KeyboardDismissBar />
       </Modal>
     );
   };
@@ -973,8 +975,10 @@ export const DemirbasYonetimScreen = () => {
               {/* Personel seçici atama modalının İÇİNDE */}
               {renderSelectorModal('assign')}
             </View>
+            <KeyboardDismissBar />
           </Modal>
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* Kayıt/Güncelleme Modal */}
@@ -992,6 +996,7 @@ export const DemirbasYonetimScreen = () => {
           {/* Kategori/Marka/Departman seçicileri create modalının İÇİNDE */}
           {renderSelectorModal('create')}
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
     </View>

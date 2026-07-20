@@ -148,6 +148,24 @@ export const HomeScreen = () => {
       mobilePages.push(m);
     }
   });
+
+  // Kullanıcının yetkili olduğu mobil sayfa url'leri — Panolar bu sete göre filtrelenir
+  // (önceden panolar herkese açıktı).
+  const allowedMobilUrls = new Set(
+    mobilePages.map(m => m.mobilUrl).filter(Boolean) as string[]
+  );
+
+  const allDashboards = [
+    { title: 'Ticket', icon: 'albums-outline', color: '#6366f1', bg: '#eef2ff', screen: 'TicketDashboard', params: undefined, requires: ['Ticket'] },
+    { title: 'IT HelpDesk', icon: 'laptop-outline', color: '#3b82f6', bg: '#eff6ff', screen: 'HelpDeskDashboard', params: { tur: 'IT', title: 'IT HelpDesk' }, requires: ['ITHelpDesk'] },
+    { title: 'ERP HelpDesk', icon: 'cube-outline', color: '#f97316', bg: '#fff7ed', screen: 'HelpDeskDashboard', params: { tur: 'ERP', title: 'ERP HelpDesk' }, requires: ['ERPHelpDesk'] },
+    { title: 'Bakım HD', icon: 'construct-outline', color: '#22c55e', bg: '#f0fdf4', screen: 'HelpDeskDashboard', params: { tur: 'BAKIM', title: 'Bakım HelpDesk' }, requires: ['BakimHelpDesk'] },
+    { title: 'Bakım', icon: 'build-outline', color: '#8b5cf6', bg: '#f5f3ff', screen: 'BakimYonetim', params: undefined, requires: ['Bakim'] },
+    { title: 'İK / İzin', icon: 'people-outline', color: '#14b8a6', bg: '#f0fdfa', screen: 'IzinDashboard', params: undefined, requires: ['Izin'] },
+    { title: 'Demirbaş', icon: 'cube-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ZimmetDashboard', params: undefined, requires: ['DemirbasYonetim', 'Zimmetlerim'] },
+    { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined, requires: ['Tedarikci'] },
+  ];
+  const allowedDashboards = allDashboards.filter(d => d.requires.some(r => allowedMobilUrls.has(r)));
   
   // Modulleri Projeye gore grupla (Modal icin)
   const groupedModules = mobilePages.reduce((acc, m) => {
@@ -405,23 +423,15 @@ export const HomeScreen = () => {
             </ScrollView>
           </View>
 
-          {/* Panolar (Dashboard'lar) — ayrı sayfalar olarak buradan açılır */}
+          {/* Panolar (Dashboard'lar) — yalnızca yetkili olunan modüller gösterilir */}
+          {allowedDashboards.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderIconRow}>
               <Ionicons name="stats-chart-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Panolar</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll} contentContainerStyle={styles.modulesScrollContent}>
-              {[
-                { title: 'Ticket', icon: 'albums-outline', color: '#6366f1', bg: '#eef2ff', screen: 'TicketDashboard', params: undefined },
-                { title: 'IT HelpDesk', icon: 'laptop-outline', color: '#3b82f6', bg: '#eff6ff', screen: 'HelpDeskDashboard', params: { tur: 'IT', title: 'IT HelpDesk' } },
-                { title: 'ERP HelpDesk', icon: 'cube-outline', color: '#f97316', bg: '#fff7ed', screen: 'HelpDeskDashboard', params: { tur: 'ERP', title: 'ERP HelpDesk' } },
-                { title: 'Bakım HD', icon: 'construct-outline', color: '#22c55e', bg: '#f0fdf4', screen: 'HelpDeskDashboard', params: { tur: 'BAKIM', title: 'Bakım HelpDesk' } },
-                { title: 'Bakım', icon: 'build-outline', color: '#8b5cf6', bg: '#f5f3ff', screen: 'BakimYonetim', params: undefined },
-                { title: 'İK / İzin', icon: 'people-outline', color: '#14b8a6', bg: '#f0fdfa', screen: 'IzinDashboard', params: undefined },
-                { title: 'Demirbaş', icon: 'cube-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ZimmetDashboard', params: undefined },
-                { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined },
-              ].map((d, idx) => (
+              {allowedDashboards.map((d, idx) => (
                 <TouchableOpacity
                   key={`dash-${idx}`}
                   style={styles.moduleItemHoriz}
@@ -436,6 +446,7 @@ export const HomeScreen = () => {
               ))}
             </ScrollView>
           </View>
+          )}
 
           {/* Takvim — Etkinlikler (Calendar Önizlemeli) */}
           <View style={styles.section}>

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useHelpdeskStore } from '../store/useHelpdeskStore';
@@ -1341,6 +1342,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           labelExtractor={(item) => item.label}
           title="İş Güvenliği (İSG) Önceliği"
         />
+        <KeyboardDismissBar />
       </Modal>
 
       {/* Category Filter Selector */}
@@ -2167,6 +2169,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
+              <KeyboardDismissBar />
             </Modal>
 
             {/* Ask Question selection & text input modal */}
@@ -2210,6 +2213,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   </TouchableOpacity>
                 </View>
               </View>
+              <KeyboardDismissBar />
             </Modal>
 
             {/* File Picker Modal */}
@@ -2246,6 +2250,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   </View>
                 </View>
               </TouchableOpacity>
+              <KeyboardDismissBar />
             </Modal>
 
 
@@ -2325,6 +2330,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   </View>
                 </View>
               </View>
+              <KeyboardDismissBar />
             </Modal>
 
             {/* Approval Comment Input Modal */}
@@ -2369,11 +2375,13 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   </View>
                 </View>
               </View>
+              <KeyboardDismissBar />
             </Modal>
 
           </View>
         )}} />}
         </ErrorBoundary>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* ----------------- WORK ORDER CREATE MODAL ----------------- */}
@@ -2422,6 +2430,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
             </View>
           </KeyboardAvoidingView>
         </View>
+        <KeyboardDismissBar />
       </Modal>
       
       {/* ----------------- WORK ORDER TUR SELECT MODAL ----------------- */}
@@ -2444,6 +2453,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
             />
           </View>
         </TouchableOpacity>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* ----------------- DATE PICKER MODAL (TEMPORARY PLACEHOLDER) ----------------- */}
@@ -2474,6 +2484,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
             />
           </View>
         </TouchableOpacity>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* ----------------- WORK ORDER CLOSE MODAL ----------------- */}
@@ -2507,6 +2518,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
             </View>
           </KeyboardAvoidingView>
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
       {/* ----------------- KONTROL FORMU MODAL ----------------- */}
@@ -2553,6 +2565,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
             </View>
           </View>
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
       <BottomNavBar 

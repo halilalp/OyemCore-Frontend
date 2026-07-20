@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useIzinStore } from '../store/useIzinStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -477,6 +478,7 @@ export const IzinScreen = () => {
             title="İşe Başlama Tarihi Seçin"
           />
         </View>
+        <KeyboardDismissBar />
       </Modal>
 
 
@@ -601,6 +603,7 @@ export const IzinScreen = () => {
             </View>
           </View>
         )}
+        <KeyboardDismissBar />
       </Modal>
     </View>
   );

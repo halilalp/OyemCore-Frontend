@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -687,6 +688,7 @@ export const TedarikciScreen = () => {
           onSelectDate={setNewIstekTar}
           title="İstenen Teslim Tarihi Seçin"
         />
+        <KeyboardDismissBar />
       </Modal>
 
       {/* DETAIL VIEW MODAL */}
@@ -971,6 +973,7 @@ export const TedarikciScreen = () => {
                   </TouchableOpacity>
                 </View>
               </View>
+              <KeyboardDismissBar />
             </Modal>
 
             <DatePickerModal
@@ -988,6 +991,7 @@ export const TedarikciScreen = () => {
             />
           </View>
         )}
+        <KeyboardDismissBar />
       </Modal>
 
       {/* Filter Supplier Selector */}

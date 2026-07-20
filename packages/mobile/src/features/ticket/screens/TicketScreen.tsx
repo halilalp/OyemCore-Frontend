@@ -5,6 +5,7 @@ import {
   ActivityIndicator, Modal, TextInput, SafeAreaView, Alert,
   FlatList, Platform, StatusBar, Image, KeyboardAvoidingView
 } from 'react-native';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api, Ticket, Company, Personel, slateTokens } from '@oyemcore/shared';
@@ -1051,6 +1052,7 @@ export const TicketScreen = () => {
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
+              <KeyboardDismissBar />
             </Modal>
 
             {/* ── Yorum Modal (transparent, fade) ──────────────────────────── */}
@@ -1133,10 +1135,12 @@ export const TicketScreen = () => {
                   </View>
                 </View>
               </View>
+              <KeyboardDismissBar />
             </Modal>
 
           </View>
         )}
+        <KeyboardDismissBar />
       </Modal>
 
       {/* ═══ CREATE MODAL ══════════════════════════════════════════════════════ */}
@@ -1307,6 +1311,7 @@ export const TicketScreen = () => {
             outputFormat="yyyy-MM-dd"
           />
         </View>
+        <KeyboardDismissBar />
       </Modal>
     </View>
   );
