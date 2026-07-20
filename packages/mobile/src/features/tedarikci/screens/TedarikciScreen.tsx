@@ -378,8 +378,9 @@ export const TedarikciScreen = () => {
     }
   };
 
+  // Durum renkleri diğer modüllerle aynı: tamamlandı=yeşil, iptal=kırmızı, beklemede=turuncu
   const getStatusColor = (durum: string) => {
-    if (durum === "TAMAMLANDI") return colors.primary;
+    if (durum === "TAMAMLANDI") return colors.success;
     if (durum === "İPTAL EDİLDİ") return colors.danger;
     return colors.warning;
   };
@@ -497,6 +498,7 @@ export const TedarikciScreen = () => {
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.evalCard} onPress={() => openDetail(item.belgeNo)}>
+                <View style={styles.evalCardInner}>
                 <View style={styles.cardHeader}>
                   <View>
                     <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
@@ -534,6 +536,9 @@ export const TedarikciScreen = () => {
                     <Text style={[styles.scoreValue, { color: item.sinif === 'A' ? colors.primary : colors.warning }]}>{item.sinif || '-'}</Text>
                   </View>
                 </View>
+                </View>
+                {/* Durum renkli alt çizgi (diğer listelerle aynı) */}
+                <View style={[styles.evalBottomLine, { backgroundColor: getStatusColor(item.durum) }]} />
               </TouchableOpacity>
             )}
             ListEmptyComponent={
@@ -1119,9 +1124,16 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   evalCard: {
     backgroundColor: colors.card,
     borderRadius: 14,
-    padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden', // alt çizginin köşelere düzgün oturması için
+  },
+  evalCardInner: {
+    padding: 16,
+  },
+  evalBottomLine: {
+    height: 3,
+    width: '100%',
   },
   cardHeader: {
     flexDirection: 'row',
