@@ -1283,7 +1283,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               
               {/* New Dark Blue Header for Detail */}
               <LinearGradient
-                colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
+                colors={['#4338CA', slateTokens.brandPurple]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.newDetailHeader, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : Math.max(insets.top, StatusBar.currentHeight || 24) + 12, paddingBottom: 16 }]}
@@ -1451,19 +1451,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         </Text>
                       </View>
 
-                      {/* Diğer İşlemler for Managers */}
-                      {canManage && (
-                        <>
-                          <View style={[styles.detailDivider, { borderStyle: 'dashed' }]} />
-                          <TouchableOpacity 
-                            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 6 }}
-                            onPress={() => setIsActionsMenuOpen(true)}
-                          >
-                            <Ionicons name="ellipsis-horizontal-circle-outline" size={18} color={colors.primary} />
-                            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Diğer İşlemler</Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
                     </View>
                   );
                 })()}

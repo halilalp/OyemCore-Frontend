@@ -657,7 +657,7 @@ export const TicketScreen = () => {
             >
               {/* ── Gradient Header ─────────────────────────────────────────── */}
               <LinearGradient
-                colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
+                colors={['#4338CA', slateTokens.brandPurple]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[

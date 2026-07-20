@@ -1432,7 +1432,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
               {/* New Dark Blue Header for Detail */}
               <LinearGradient
-                colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
+                colors={['#4338CA', slateTokens.brandPurple]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[styles.newDetailHeader, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : Math.max(insets.top, StatusBar.currentHeight || 24) + 12, paddingBottom: 16 }]}
