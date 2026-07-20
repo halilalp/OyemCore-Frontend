@@ -11,6 +11,10 @@ export interface TicketCardProps {
   timeAgo: string; // e.g., '2 sa önce'
   user: string; // e.g., 'Ahmet K.'
   userSicil?: string; // sorumlu sicil no — profil resmi için
+  requesterSicil?: string; // talep eden sicil no — profil resmi için
+  requesterName?: string; // talep eden ad soyad
+  puan?: number | null;    // BAKIM talep puanı (referans: TalepPuan)
+  puanRenk?: string | null; // puana karşılık gelen renk (referans: BakimPuanRenk)
   priorityLabel: string;
   priorityColor: string; // e.g., '#ef4444' for red
   priorityBg: string; // e.g., '#fef2f2'
@@ -30,6 +34,10 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   timeAgo,
   user,
   userSicil,
+  requesterSicil,
+  requesterName,
+  puan,
+  puanRenk,
   priorityLabel,
   priorityColor,
   priorityBg,
@@ -50,7 +58,13 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         {/* Content */}
         <View style={styles.contentContainer}>
           <View style={styles.headerRow}>
-            <Text style={styles.codeText}>{code}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+              {/* BAKIM talep puanı — referanstaki renkli top göstergesi */}
+              {!!puanRenk && (
+                <View style={[styles.puanDot, { backgroundColor: puanRenk }]} />
+              )}
+              <Text style={styles.codeText}>{code}</Text>
+            </View>
             <View style={[styles.badge, { backgroundColor: priorityBg }]}>
               <Text style={[styles.badgeText, { color: priorityColor }]}>{priorityLabel}</Text>
             </View>
@@ -66,6 +80,18 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                 <Ionicons name="time-outline" size={14} color={slateTokens.textMuted} />
                 <Text style={styles.footerText}>{timeAgo}</Text>
               </View>
+              {/* Talep eden (kaydı açan) — profil resmiyle */}
+              {!!requesterSicil && (
+                <>
+                  <View style={styles.footerDivider} />
+                  <View style={styles.footerItem}>
+                    <UserAvatar sicilNo={requesterSicil} name={requesterName} size={18} style={{ marginRight: 4 }} />
+                    <Text style={styles.footerText} numberOfLines={1}>
+                      {(requesterName || '').split(' ')[0]}
+                    </Text>
+                  </View>
+                </>
+              )}
               <View style={styles.footerDivider} />
               <View style={styles.footerItem}>
                 {userSicil
@@ -91,7 +117,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFF',
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: slateTokens.border,
     overflow: 'hidden',
@@ -113,6 +139,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
+  },
+  // BAKIM talep puanı göstergesi (referanstaki 15px renkli daire)
+  puanDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   codeText: {
     fontSize: 12,
@@ -162,8 +196,6 @@ const styles = StyleSheet.create({
   },
   bottomLine: {
     height: 3,
-    width: '40%', // As seen in the image, it's a partial line
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
+    width: '100%', // Durum çizgisi kartın tamamını kaplar (yarıda kalmaz)
   },
 });

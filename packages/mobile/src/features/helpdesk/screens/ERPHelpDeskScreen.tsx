@@ -854,6 +854,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   timeAgo={item.kayitTarStr || ''}
                   user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
                   userSicil={item.sorumluSicil}
+                  requesterSicil={item.kayitSicil}
+                  requesterName={item.kayitYapanAd}
+                  puan={item.talepPuan}
+                  puanRenk={item.puanRenk}
                   priorityLabel={priorityStyle.label}
                   priorityColor={priorityStyle.text}
                   priorityBg={priorityStyle.bg}
@@ -2275,7 +2279,7 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   },
   listContainer: {
     padding: 16,
-    gap: 8,
+    gap: 0,
     paddingBottom: 32,
   },
   requestCard: {

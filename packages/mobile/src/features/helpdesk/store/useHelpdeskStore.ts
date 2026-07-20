@@ -14,7 +14,9 @@ interface HelpdeskState {
   isSubmitting: boolean;
   error: string | null;
 
+  currentType: string;
   loadInitialData: (type: string) => Promise<void>;
+  refreshRequests: () => Promise<void>;
   loadRequestDetails: (id: number) => Promise<void>;
   createRequest: (request: { talep: Partial<Talep>; bakim?: any }) => Promise<{ success: boolean; code: string; message: string }>;
   updateRequestStatus: (id: number, status: string) => Promise<void>;
@@ -58,10 +60,20 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
         bakimDropdowns = await helpdeskService.getBakimDropdowns();
       }
 
-      set({ requests, categories, personnelList, allActivePersonnelList, bakimDropdowns, isLoading: false });
+      set({ requests, currentType: type, categories, personnelList, allActivePersonnelList, bakimDropdowns, isLoading: false });
     } catch (err: any) {
       set({ isLoading: false, error: err.message || 'Veriler yüklenemedi.' });
     }
+  },
+
+  // Aksiyon sonrası listeyi anlık tazeler (sayfaya girip çıkmaya gerek kalmasın).
+  refreshRequests: async () => {
+    try {
+      const type = get().currentType;
+      if (!type) return;
+      const requests = await helpdeskService.getRequests(type);
+      set({ requests });
+    } catch { /* sessiz: liste tazeleme hatası aksiyonu bozmasın */ }
   },
 
   loadRequestDetails: async (id) => {
@@ -79,6 +91,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
     try {
       const res = await helpdeskService.createRequest(request);
       set({ isSubmitting: false });
+      await get().refreshRequests(); // yeni talep listede anlık görünsün
       return res;
     } catch (err: any) {
       set({ isSubmitting: false, error: err.message || 'Talep oluşturulamadı.' });
@@ -144,6 +157,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       if (res.success) {
         // Refresh details list
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Yorum eklenirken hata oluştu.' });
@@ -159,6 +173,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.toggleLock(id);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Kilit işlemi yapılamadı.' });
@@ -174,6 +189,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.sendApproval(id, amirSicil);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Onaya gönderilemedi.' });
@@ -189,6 +205,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.retractApproval(id);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Onay geri çekilemedi.' });
@@ -204,6 +221,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.approveReject(id, approve, comment);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Onay/Ret işlemi başarısız.' });
@@ -219,6 +237,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.askQuestion(id, targetSicil, questionText);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Soru sorulamadı.' });
@@ -234,6 +253,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.addHelper(id, helperSicil);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Yardımcı personel eklenemedi.' });
@@ -249,6 +269,7 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       const res = await helpdeskService.deleteHelper(id, helperSicil);
       if (res.success) {
         await get().loadRequestDetails(id);
+        await get().refreshRequests();
       }
     } catch (err: any) {
       set({ error: err.message || 'Yardımcı personel silinemedi.' });
