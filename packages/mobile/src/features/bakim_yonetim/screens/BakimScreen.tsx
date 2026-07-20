@@ -546,6 +546,20 @@ export const BakimScreen = () => {
           </View>
         )}
 
+        {/* Planlama modunda görünür "yeni kayıt" butonu (alttaki FAB'a ek olarak) */}
+        {activeTab !== 'rapor' && bakimMode === 'plan' && (
+          <TouchableOpacity
+            style={styles.newRecordBtn}
+            activeOpacity={0.85}
+            onPress={() => (activeTab === 'plan' ? setIsNewPlanOpen(true) : setIsNewCtrlOpen(true))}
+          >
+            <Ionicons name="add-circle" size={18} color={colors.primary} />
+            <Text style={styles.newRecordBtnText}>
+              {activeTab === 'plan' ? 'Yeni Bakım Planı' : 'Yeni Periyodik Kontrol'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {activeTab === 'plan' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanBolumFltOpen(true)}>
@@ -827,15 +841,9 @@ export const BakimScreen = () => {
       {/* PLAN DETAILS MODAL */}
       <Modal visible={selectedPlan !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedPlan(null)}>
         {selectedPlan && (
-          <SafeAreaView style={styles.modalContainer}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <CreateModalHeader title="Bakım Planı Detayı" onClose={() => setSelectedPlan(null)} colorTheme="purple" />
             <View style={styles.modalContentWrapper}>
-              <View style={styles.modalHeader}>
-                <View style={{ width: 40 }} />
-                <Text style={styles.modalTitle}>Bakım Planı Detayı</Text>
-                <TouchableOpacity onPress={() => setSelectedPlan(null)} style={styles.closeButton}>
-                  <Ionicons name="close" size={22} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
               <ScrollView contentContainerStyle={styles.modalScroll}>
                 <View style={styles.detailCard}>
                   <View style={styles.detailRow}>
@@ -934,7 +942,7 @@ export const BakimScreen = () => {
                 </View>
               </ScrollView>
             </View>
-          </SafeAreaView>
+          </View>
         )}
         <KeyboardDismissBar />
       </Modal>
@@ -1078,15 +1086,9 @@ export const BakimScreen = () => {
       {/* PERIODIC CONTROL DETAILS MODAL */}
       <Modal visible={selectedCtrl !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedCtrl(null)}>
         {selectedCtrl && (
-          <SafeAreaView style={styles.modalContainer}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <CreateModalHeader title="Kontrol Detayı" onClose={() => setSelectedCtrl(null)} colorTheme="purple" />
             <View style={styles.modalContentWrapper}>
-              <View style={styles.modalHeader}>
-                <View style={{ width: 40 }} />
-                <Text style={styles.modalTitle}>Kontrol Detayı</Text>
-                <TouchableOpacity onPress={() => setSelectedCtrl(null)} style={styles.closeButton}>
-                  <Ionicons name="close" size={22} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
               <ScrollView contentContainerStyle={styles.modalScroll}>
                 <View style={styles.detailCard}>
                   <View style={styles.detailRow}>
@@ -1321,7 +1323,7 @@ export const BakimScreen = () => {
                 setCtrlDosyaName(file.fileName);
               }}
             />
-          </SafeAreaView>
+          </View>
         )}
         <KeyboardDismissBar />
       </Modal>
@@ -1674,6 +1676,22 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   primaryTabTextActive: {
     color: colors.primary,
     fontWeight: '800',
+  },
+  // Planlama modundaki görünür "yeni kayıt" butonu
+  newRecordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+  },
+  newRecordBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
   },
   // Alt mod segmenti (Planlama / İşlem)
   segmentRow: {
