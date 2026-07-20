@@ -593,20 +593,13 @@ export const DemirbasYonetimScreen = () => {
     if (!selectedAsset) return null;
     return (
       <>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => { setCurrentView('list'); setSelectedAsset(null); }} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Demirbaş Detayı</Text>
-          {isAdmin ? (
-            <TouchableOpacity onPress={() => handleEditAsset(selectedAsset)} style={styles.backButton}>
-              <Ionicons name="create-outline" size={22} color={colors.primary} />
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 40 }} />
-          )}
-        </View>
+        {/* Standart mor detay header'ı (diğer modüllerle aynı) */}
+        <CreateModalHeader
+          title="Demirbaş Detayı"
+          onClose={() => { setCurrentView('list'); setSelectedAsset(null); }}
+          rightIcon={isAdmin ? 'create-outline' : undefined}
+          onRightPress={isAdmin ? () => handleEditAsset(selectedAsset) : undefined}
+        />
 
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
           {/* Info Card */}
@@ -700,12 +693,6 @@ export const DemirbasYonetimScreen = () => {
             )}
           </View>
 
-          {/* Confirm Barcode button for managers */}
-          {!selectedAsset.barkodOnay && (
-            <TouchableOpacity style={styles.confirmBarcodeBtn} onPress={() => handleConfirmBarcode(selectedAsset.aygitID)}>
-              <Text style={styles.confirmBarcodeBtnText}>Barkodu Onayla</Text>
-            </TouchableOpacity>
-          )}
         </ScrollView>
 
         {/* Operations Buttons at the bottom of Detail view */}

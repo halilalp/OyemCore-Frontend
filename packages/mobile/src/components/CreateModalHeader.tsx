@@ -9,12 +9,17 @@ interface CreateModalHeaderProps {
   title: string;
   onClose: () => void;
   colorTheme?: 'purple' | 'gold';
+  /** Opsiyonel sağ aksiyon (ör. detayda "düzenle") — kapat butonunun solunda görünür. */
+  rightIcon?: keyof typeof Ionicons.glyphMap;
+  onRightPress?: () => void;
 }
 
 export const CreateModalHeader: React.FC<CreateModalHeaderProps> = ({
   title,
   onClose,
   colorTheme = 'purple',
+  rightIcon,
+  onRightPress,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -41,6 +46,11 @@ export const CreateModalHeader: React.FC<CreateModalHeaderProps> = ({
             <Text style={styles.title}>{title}</Text>
           </View>
           <View style={styles.topRight}>
+            {!!rightIcon && !!onRightPress && (
+              <TouchableOpacity onPress={onRightPress} style={styles.closeButton}>
+                <Ionicons name={rightIcon} size={22} color="#FFF" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
