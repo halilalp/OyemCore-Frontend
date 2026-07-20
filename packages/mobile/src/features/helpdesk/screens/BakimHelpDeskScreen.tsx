@@ -1679,11 +1679,33 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 })()}
 
 
-                      {/* IS EMIRLERI (WORK ORDERS) */}
-                      {detailData?.isEmriList && detailData.isEmriList.length > 0 && (
-                        <View style={{ marginTop: 24 }}>
-                          <Text style={styles.detailCardTitle}>🛠️ Talebe Bağlı İş Emirleri</Text>
-                          {detailData.isEmriList.map((wo, i) => (
+                      {/* IS EMIRLERI — referans: panel her zaman görünür; "Yeni İş Emri" sadece
+                          talep tamamlanmadıysa, kapanış onayında değilse ve giriş SORUMLU ise. */}
+                      <View style={{ marginTop: 24 }}>
+                        <View style={styles.woHeaderRow}>
+                          <Text style={styles.detailCardTitle}>Talebe Bağlı İş Emirleri</Text>
+                          {detailData?.girisTur === 'SORUMLU'
+                            && getStatusStyle(selectedRequest.durum, !!detailData?.onayBilgisi).label !== 'TAMAMLANDI'
+                            && !detailData?.onayBilgisi && (
+                            <TouchableOpacity
+                              style={styles.newWoBtn}
+                              activeOpacity={0.85}
+                              onPress={() => {
+                                setWoFormTur(null);
+                                setWoFormTermin(null);
+                                setWoFormAciklama('');
+                                setIsWorkOrderCreateModalOpen(true);
+                              }}
+                            >
+                              <Ionicons name="add-circle" size={16} color={colors.primary} />
+                              <Text style={styles.newWoBtnText}>Yeni İş Emri</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        {(!detailData?.isEmriList || detailData.isEmriList.length === 0) && (
+                          <Text style={styles.emptyChatText}>Bu talebe bağlı iş emri bulunmuyor.</Text>
+                        )}
+                        {(detailData?.isEmriList || []).map((wo, i) => (
                             <View key={i} style={[styles.historyCard, { marginBottom: 12 }]}>
                               <View style={styles.historyCardHeader}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1733,9 +1755,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                 )}
                               </View>
                             </View>
-                          ))}
-                        </View>
-                      )}
+                        ))}
+                      </View>
 
                 {/* Collapsible Gelişmeler Panel (gelişme varsa adetiyle) */}
                 <View style={styles.historySection}>
@@ -3950,6 +3971,9 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   activeFilterChipText: {
     color: '#fff',
   },
+  woHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  newWoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.primaryLight },
+  newWoBtnText: { fontSize: 12, fontWeight: '800', color: colors.primary },
   historySection: {
     marginTop: 8,
     backgroundColor: colors.card,
