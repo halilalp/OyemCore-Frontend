@@ -418,6 +418,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       'Nasıl eklemek istersiniz?',
       [
         { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
+        { text: 'Galeri', onPress: () => handlePickGallery(forProgress) },
         { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
         { text: 'İptal', style: 'cancel' },
       ]
@@ -454,6 +455,31 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Hata', `Dosya işlenirken hata oluştu: ${err?.message || JSON.stringify(err)}\n\nLütfen cihazınızın dosya erişim izinlerini kontrol ediniz.`);
     } finally {
       setIsUploadingFile(false);
+    }
+  };
+
+  // Galeriden (önceden çekilmiş) fotoğraf seçimi
+  const handlePickGallery = async (forProgress: boolean) => {
+    setIsFilePickerOpen(false);
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Hata', 'Galeri izni gereklidir.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const filename = asset.uri.split('/').pop() || 'photo.jpg';
+        await processFile(asset.uri, filename, forProgress, asset.base64 ?? undefined);
+      }
+    } catch (err) {
+      console.error('Galeri hatası:', err);
     }
   };
 

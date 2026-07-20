@@ -268,6 +268,7 @@ export const TicketScreen = () => {
       'Nasıl eklemek istersiniz?',
       [
         { text: 'Kamera', onPress: () => handlePickImage() },
+        { text: 'Galeri', onPress: () => handlePickGallery() },
         { text: 'Dosya Seç', onPress: () => handlePickDocument() },
         { text: 'İptal', style: 'cancel' },
       ]
@@ -292,6 +293,26 @@ export const TicketScreen = () => {
       Alert.alert('Hata', `Dosya işlenirken hata oluştu: ${err?.message || ''}`);
     } finally {
       setIsUploadingFile(false);
+    }
+  };
+
+  // Galeriden (önceden çekilmiş) fotoğraf seçimi
+  const handlePickGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Hata', 'Galeri izni gereklidir.'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'] as any,
+        quality: 0.5,
+        base64: true,
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        const asset = result.assets[0];
+        const filename = asset.uri.split('/').pop() || 'photo.jpg';
+        await processCommentFile(asset.uri, filename, asset.base64 ?? undefined);
+      }
+    } catch (err) {
+      console.error('Galeri hatası:', err);
     }
   };
 
