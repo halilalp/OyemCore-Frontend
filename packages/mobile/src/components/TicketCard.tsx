@@ -97,6 +97,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                   </Text>
                 </View>
               )}
+              {/* Kayıt ile Sorumlu arasında dikey ayırıcı */}
+              {!!requesterSicil && <View style={styles.footerDivider} />}
               <View style={styles.footerItem}>
                 <Text style={styles.footerLabel}>Sorumlu</Text>
                 {userSicil
@@ -207,9 +209,9 @@ const styles = StyleSheet.create({
   },
   footerDivider: {
     width: 1,
-    height: 12,
+    height: 14,
     backgroundColor: slateTokens.border,
-    marginHorizontal: 8,
+    // Yatay boşluğu kapsayıcıdaki gap veriyor
   },
   bottomLine: {
     height: 3,
