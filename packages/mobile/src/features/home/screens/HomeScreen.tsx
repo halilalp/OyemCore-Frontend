@@ -431,7 +431,7 @@ export const HomeScreen = () => {
               </View>
               {newsItems.length > 3 && (
                 <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Announcement' as never)}>
-                  <Text style={styles.seeAllText}>Tümünü gör ({newsItems.length})</Text>
+                  <Text style={styles.seeAllText}>Tümünü gör</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -489,7 +489,7 @@ export const HomeScreen = () => {
               </View>
               {trainingItems.length > 3 && (
                 <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Training' as never)}>
-                  <Text style={styles.seeAllText}>Tümünü gör ({trainingItems.length})</Text>
+                  <Text style={styles.seeAllText}>Tümünü gör</Text>
                 </TouchableOpacity>
               )}
             </View>

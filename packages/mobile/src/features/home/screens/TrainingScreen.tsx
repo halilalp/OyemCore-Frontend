@@ -3,6 +3,7 @@ import { CustomIcon } from '../../../components/CustomIcon';
 import { StyleSheet, Text, View, FlatList, TextInput, TouchableOpacity, Alert, Platform, Modal, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { formatApiDateLong } from '../../../utils/apiDate';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { api } from '@oyemcore/shared';
 import { Training, TrainingCategory } from '@oyemcore/shared';
@@ -225,9 +226,7 @@ export const TrainingScreen = () => {
   };
 
   const renderItem = ({ item }: { item: Training }) => {
-    const formattedDate = item.tarih
-      ? new Date(item.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
-      : '';
+    const formattedDate = formatApiDateLong(item.tarih);
 
     const isAdmin = user?.kullaniciAdi === 'admin' || (user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('ADMIN'));
     const isOwner = item.kayitEposta?.trim() === user?.eposta?.trim() || isAdmin;

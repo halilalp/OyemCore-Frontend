@@ -3,6 +3,7 @@ import { CustomIcon } from '../../../components/CustomIcon';
 import { StyleSheet, Text, View, FlatList, TextInput, TouchableOpacity, Alert, Platform, StatusBar, Modal, KeyboardAvoidingView, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { formatApiDateLong } from '../../../utils/apiDate';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { api, Announcement } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
@@ -265,9 +266,7 @@ export const AnnouncementScreen = () => {
   };
 
   const renderItem = ({ item }: { item: Announcement }) => {
-    const formattedDate = item.tarih
-      ? new Date(item.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
-      : '';
+    const formattedDate = formatApiDateLong(item.tarih);
 
     const isAdmin = user?.kullaniciAdi === 'admin' || (user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('ADMIN'));
     const isOwner = item.kayitEposta?.trim() === user?.eposta?.trim() || isAdmin;
@@ -554,7 +553,7 @@ export const AnnouncementScreen = () => {
                 <View style={styles.metaDot} />
                 <CustomIcon name="calendar-outline" size={12} color={colors.textSecondary} />
                 <Text style={styles.detailMetaText}>
-                  {selectedNews?.tarih ? new Date(selectedNews.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  {formatApiDateLong(selectedNews?.tarih, true)}
                 </Text>
               </View>
               <Text style={styles.detailBody}>
