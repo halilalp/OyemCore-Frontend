@@ -173,6 +173,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const [isAskQuestionModalOpen, setIsAskQuestionModalOpen] = useState(false);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const [isGelismelerExpanded, setIsGelismelerExpanded] = useState(false);
+  const [isIsEmriExpanded, setIsIsEmriExpanded] = useState(false);
   const [isAddCommentModalOpen, setIsAddCommentModalOpen] = useState(false);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isApproveAction, setIsApproveAction] = useState(true);
@@ -1692,33 +1693,30 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 })()}
 
 
-                      {/* IS EMIRLERI — referans: panel her zaman görünür; "Yeni İş Emri" sadece
-                          talep tamamlanmadıysa, kapanış onayında değilse ve giriş SORUMLU ise. */}
-                      <View style={{ marginTop: 24 }}>
-                        <View style={styles.woHeaderRow}>
-                          <Text style={styles.detailCardTitle}>Talebe Bağlı İş Emirleri</Text>
-                          {detailData?.girisTur === 'SORUMLU'
-                            && getStatusStyle(selectedRequest.durum, !!detailData?.onayBilgisi).label !== 'TAMAMLANDI'
-                            && !detailData?.onayBilgisi && (
-                            <TouchableOpacity
-                              style={styles.newWoBtn}
-                              activeOpacity={0.85}
-                              onPress={() => {
-                                setWoFormTur(null);
-                                setWoFormTermin(null);
-                                setWoFormAciklama('');
-                                setIsWorkOrderCreateModalOpen(true);
-                              }}
-                            >
-                              <Ionicons name="add-circle" size={16} color={colors.primary} />
-                              <Text style={styles.newWoBtnText}>Yeni İş Emri</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                        {(!detailData?.isEmriList || detailData.isEmriList.length === 0) && (
+                      {/* IS EMIRLERI — Gelişmeler paneliyle aynı katlanabilir yapı.
+                          "Yeni İş Emri" İşlemler menüsüne taşındı. */}
+                      <View style={styles.historySection}>
+                        <TouchableOpacity
+                          style={styles.historyHeader}
+                          onPress={() => setIsIsEmriExpanded(!isIsEmriExpanded)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.historyTitle}>Talebe Bağlı İş Emirleri</Text>
+                            {(detailData?.isEmriList?.length ?? 0) > 0 && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                                <Ionicons name="construct-outline" size={11} color={colors.primary} />
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{detailData?.isEmriList?.length ?? 0}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Ionicons name={isIsEmriExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+
+                        {isIsEmriExpanded && (!detailData?.isEmriList || detailData.isEmriList.length === 0) && (
                           <Text style={styles.emptyChatText}>Bu talebe bağlı iş emri bulunmuyor.</Text>
                         )}
-                        {(detailData?.isEmriList || []).map((wo, i) => (
+                        {isIsEmriExpanded && (detailData?.isEmriList || []).map((wo, i) => (
                             <View key={i} style={[styles.historyCard, { marginBottom: 12 }]}>
                               <View style={styles.historyCardHeader}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -2049,6 +2047,26 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   </View>
                   
                   <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 360 }}>
+                    {/* Yeni İş Emri — referans kuralı: giriş SORUMLU, talep tamamlanmamış,
+                        kapanış onayında değil. Panel başlığından buraya taşındı. */}
+                    {detailData?.girisTur === 'SORUMLU'
+                      && getStatusStyle(selectedRequest.durum, !!detailData?.onayBilgisi).label !== 'TAMAMLANDI'
+                      && !detailData?.onayBilgisi && (
+                      <TouchableOpacity
+                        style={styles.sheetItem}
+                        onPress={() => {
+                          setIsActionsMenuOpen(false);
+                          setWoFormTur(null);
+                          setWoFormTermin(null);
+                          setWoFormAciklama('');
+                          setIsWorkOrderCreateModalOpen(true);
+                        }}
+                      >
+                        <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                        <Text style={styles.sheetItemText}>Yeni İş Emri</Text>
+                      </TouchableOpacity>
+                    )}
+
                     {/* Primary Action: Complete */}
                     {canClose && (
                       <TouchableOpacity 
@@ -3790,6 +3808,80 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  // Bu stiller kullanılıyordu ama hiç tanımlanmamıştı; undefined döndükleri
+  // için İş Emri Oluştur modali zeminsiz/düzensiz çiziliyordu (@ts-nocheck
+  // yüzünden derleyici de uyarmıyordu).
+  modalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: colors.background,
+    color: colors.text,
+    fontSize: 14,
+    minHeight: 46,
+    justifyContent: 'center',
   },
   actionSheetWrapper: {
     backgroundColor: colors.card,
