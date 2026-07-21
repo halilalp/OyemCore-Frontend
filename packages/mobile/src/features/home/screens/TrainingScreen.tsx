@@ -7,7 +7,7 @@ import { formatApiDateLong } from '../../../utils/apiDate';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { api } from '@oyemcore/shared';
 import { Training, TrainingCategory } from '@oyemcore/shared';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LoadingIndicator } from '../../../components/LoadingIndicator';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
@@ -21,6 +21,10 @@ export const TrainingScreen = () => {
   const { user } = useAuthStore();
   const styles = createStyles(colors);
   const navigation = useNavigation();
+  const route = useRoute<any>();
+  // Anasayfadan "Tümünü gör" ile gelindiğinde salt görüntüleme; ekleme,
+  // düzenleme ve silme gizlenir. Bu işlemler menüdeki Eğitim İşlemleri'nden yapılır.
+  const readOnly = route.params?.readOnly === true;
 
   // Training & Category States
   const [trainings, setTrainings] = useState<Training[]>([]);
@@ -247,7 +251,7 @@ export const TrainingScreen = () => {
             <Text style={styles.metaText}>{formattedDate}</Text>
           </View>
 
-          {isOwner && (
+          {isOwner && !readOnly && (
             <View style={styles.cardActions}>
               <TouchableOpacity
                 style={[styles.cardActionBtn, styles.editBtn]}
@@ -456,11 +460,11 @@ export const TrainingScreen = () => {
 
       <BottomNavBar 
         currentScreen="Home" 
-        customAction={{
+        customAction={readOnly ? undefined : {
           icon: 'add-outline',
           label: 'Yeni Eğitim',
           onPress: openAddModal
-        }} 
+        }}
       />
     </View>
   );

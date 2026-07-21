@@ -6,7 +6,7 @@ import { useThemeStore } from '../../../store/useThemeStore';
 import { formatApiDateLong } from '../../../utils/apiDate';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { api, Announcement } from '@oyemcore/shared';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LoadingIndicator } from '../../../components/LoadingIndicator';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
@@ -19,6 +19,10 @@ export const AnnouncementScreen = () => {
   const { user } = useAuthStore();
   const styles = createStyles(colors);
   const navigation = useNavigation();
+  const route = useRoute<any>();
+  // Anasayfadan "Tümünü gör" ile gelindiğinde salt görüntüleme; ekleme,
+  // düzenleme ve silme gizlenir. Bu işlemler menüdeki Haber İşlemleri'nden yapılır.
+  const readOnly = route.params?.readOnly === true;
 
   // Announcements List States
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -302,7 +306,7 @@ export const AnnouncementScreen = () => {
               <CustomIcon name="chevron-forward" size={12} color={colors.primary} />
             </TouchableOpacity>
 
-            {isOwner && (
+            {isOwner && !readOnly && (
               <View style={styles.ownerActions}>
                 <TouchableOpacity
                   style={[styles.cardActionBtn, styles.editBtn]}
@@ -685,13 +689,13 @@ export const AnnouncementScreen = () => {
         </View>
       </Modal>
 
-      <BottomNavBar 
-        currentScreen="Home" 
-        customAction={{
+      <BottomNavBar
+        currentScreen="Home"
+        customAction={readOnly ? undefined : {
           icon: 'add-outline',
           label: 'Yeni Duyuru',
           onPress: openAddModal
-        }} 
+        }}
       />
     </View>
   );

@@ -430,7 +430,7 @@ export const HomeScreen = () => {
                 <Text style={styles.sectionTitle}>Duyurular</Text>
               </View>
               {newsItems.length > 3 && (
-                <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Announcement' as never)}>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Announcement' as never, { readOnly: true } as never)}>
                   <Text style={styles.seeAllText}>Tümünü gör</Text>
                 </TouchableOpacity>
               )}
@@ -488,7 +488,7 @@ export const HomeScreen = () => {
                 <Text style={styles.sectionTitle}>Eğitimler</Text>
               </View>
               {trainingItems.length > 3 && (
-                <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Training' as never)}>
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Training' as never, { readOnly: true } as never)}>
                   <Text style={styles.seeAllText}>Tümünü gör</Text>
                 </TouchableOpacity>
               )}
