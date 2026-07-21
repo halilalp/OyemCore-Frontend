@@ -98,7 +98,7 @@ export const ProfilScreen = () => {
         months += 12;
       }
       
-      const parts = [];
+      const parts: string[] = [];
       if (years > 0) parts.push(`${years} Yıl`);
       if (months > 0) parts.push(`${months} Ay`);
       if (days > 0) parts.push(`${days} Gün`);

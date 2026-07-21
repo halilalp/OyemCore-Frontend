@@ -112,7 +112,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
                   <TouchableOpacity
                     key={filter.id}
                     style={[styles.filterChip, isActive && styles.filterChipActive]}
-                    onPress={() => onFilterChange(filter.id)}
+                    onPress={() => onFilterChange?.(filter.id)}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
