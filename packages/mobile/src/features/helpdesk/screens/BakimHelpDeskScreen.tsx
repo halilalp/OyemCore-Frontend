@@ -234,6 +234,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const [isWoTurSelectOpen, setIsWoTurSelectOpen] = useState(false);
   const [isWoTerminPickerOpen, setIsWoTerminPickerOpen] = useState(false);
   const [woFormSaat, setWoFormSaat] = useState('');
+  const [isWoSaatSelectOpen, setIsWoSaatSelectOpen] = useState(false);
 
   // Kontrol Formu States
   const [isKontrolFormOpen, setIsKontrolFormOpen] = useState(false);
@@ -1757,19 +1758,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                     butonuyla aynı kural (referans: SORUMLU). Önceden
                                     isMine (talep sahibi) kontrol ediliyordu, sorumlu
                                     kendi iş emrini atayıp kapatamıyordu. */}
+                                {/* İş emri başkasına atanmaz — "Ata" butonu kaldırıldı. */}
                                 {detailData?.girisTur === 'SORUMLU' && !wo.durum && (
                                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, gap: 8 }}>
-                                    <TouchableOpacity 
-                                      style={[styles.smallBtn, { backgroundColor: slateTokens.primary + '1A' }]}
-                                      onPress={() => { setSelectedWorkOrder(wo); setIsWorkOrderAssignModalOpen(true); }}
-                                    >
-                                      <Text style={[styles.smallBtnText, { color: slateTokens.primary }]}>Ata</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                       style={[styles.smallBtn, { backgroundColor: slateTokens.success + '1A' }]}
                                       onPress={() => { setSelectedWorkOrder(wo); setIsWorkOrderCloseModalOpen(true); }}
                                     >
-                                      <Text style={[styles.smallBtnText, { color: slateTokens.success }]}>Kapat</Text>
+                                      <Text style={[styles.smallBtnText, { color: slateTokens.success }]}>Tamamla</Text>
                                     </TouchableOpacity>
                                   </View>
                                 )}
@@ -2493,23 +2489,15 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         : 'Tarih Seçin'}
                     </Text>
                   </TouchableOpacity>
-                  {/* Saat ayrı alan — paylaşılan DatePickerModal saat desteklemiyor */}
-                  <TextInput
-                    style={[styles.formInput, { flex: 1, textAlign: 'center' }]}
-                    value={woFormSaat}
-                    onChangeText={(t) => {
-                      const sadeceRakam = t.replace(/[^0-9]/g, '').slice(0, 4);
-                      setWoFormSaat(
-                        sadeceRakam.length > 2
-                          ? `${sadeceRakam.slice(0, 2)}:${sadeceRakam.slice(2)}`
-                          : sadeceRakam
-                      );
-                    }}
-                    placeholder="SS:DD"
-                    placeholderTextColor={slateTokens.textMuted}
-                    keyboardType="number-pad"
-                    maxLength={5}
-                  />
+                  {/* Saat seçimi — paylaşılan DatePickerModal saat desteklemiyor */}
+                  <TouchableOpacity
+                    style={[styles.formInput, { flex: 1 }]}
+                    onPress={() => setIsWoSaatSelectOpen(true)}
+                  >
+                    <Text style={{ color: woFormSaat ? slateTokens.text : slateTokens.textMuted, textAlign: 'center' }}>
+                      {woFormSaat || 'Saat Seç'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 <Text style={[styles.formLabel, { marginTop: 16 }]}>Açıklama</Text>
@@ -2524,8 +2512,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 />
                 <View style={{ height: 40 }} />
               </ScrollView>
-              {/* Diğer kayıt formlarıyla aynı düzen: İptal + Kaydet yan yana */}
-              <View style={styles.formActionsRow}>
+              {/* Diğer kayıt formlarıyla aynı düzen: İptal + Kaydet yan yana.
+                  ScrollView dışında olduğu için yatay boşluk burada veriliyor. */}
+              <View style={[styles.formActionsRow, { paddingHorizontal: 20 }]}>
                 <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsWorkOrderCreateModalOpen(false)}>
                   <Text style={styles.formCancelBtnText}>İptal</Text>
                 </TouchableOpacity>
@@ -2539,6 +2528,33 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <KeyboardDismissBar />
       </Modal>
       
+      {/* ----------------- WORK ORDER SAAT SELECT MODAL ----------------- */}
+      <Modal visible={isWoSaatSelectOpen} transparent animationType="fade" onRequestClose={() => setIsWoSaatSelectOpen(false)}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setIsWoSaatSelectOpen(false)}>
+          <View style={styles.dropdownContainer}>
+            <View style={styles.dropdownHeader}>
+              <Text style={styles.dropdownTitle}>Saat Seçin</Text>
+            </View>
+            <FlatList
+              data={Array.from({ length: 48 }, (_, i) => {
+                const s = Math.floor(i / 2);
+                const d = i % 2 === 0 ? '00' : '30';
+                return `${s.toString().padStart(2, '0')}:${d}`;
+              })}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.dropdownItem}
+                  onPress={() => { setWoFormSaat(item); setIsWoSaatSelectOpen(false); }}
+                >
+                  <Text style={styles.dropdownItemText}>{item}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ----------------- WORK ORDER TUR SELECT MODAL ----------------- */}
       <Modal visible={isWoTurSelectOpen} transparent animationType="fade" onRequestClose={() => setIsWoTurSelectOpen(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setIsWoTurSelectOpen(false)}>
