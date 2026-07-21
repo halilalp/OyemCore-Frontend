@@ -2465,7 +2465,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       <Modal visible={isWorkOrderCreateModalOpen} animationType="slide" onRequestClose={() => setIsWorkOrderCreateModalOpen(false)}>
         <View style={{ flex: 1, backgroundColor: colors.card }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <View style={styles.modalContent}>
+            <View style={styles.fullPageContent}>
               {/* Standart tema: diğer kayıt formlarıyla aynı mor başlık */}
               <CreateModalHeader
                 title="İş Emri Oluştur"
@@ -2616,16 +2616,16 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       </Modal>
 
       {/* ----------------- WORK ORDER CLOSE MODAL ----------------- */}
-      <Modal visible={isWorkOrderCloseModalOpen} transparent animationType="slide" onRequestClose={() => setIsWorkOrderCloseModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>İş Emrini Kapat</Text>
-                <TouchableOpacity onPress={() => setIsWorkOrderCloseModalOpen(false)} style={styles.modalCloseButton}>
-                  <Ionicons name="close" size={24} color={slateTokens.textMuted} />
-                </TouchableOpacity>
-              </View>
+      {/* Tam sayfa + standart mor başlık (iş emri oluşturma formuyla aynı) */}
+      <Modal visible={isWorkOrderCloseModalOpen} animationType="slide" onRequestClose={() => setIsWorkOrderCloseModalOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.card }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <View style={styles.fullPageContent}>
+              <CreateModalHeader
+                title="İş Emrini Tamamla"
+                onClose={() => setIsWorkOrderCloseModalOpen(false)}
+                colorTheme="purple"
+              />
               <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
                 <Text style={styles.formLabel}>Kapatma Açıklaması</Text>
                 <TextInput
@@ -2638,9 +2638,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   onChangeText={setWoFormAciklama}
                 />
               </ScrollView>
-              <View style={styles.modalFooter}>
-                <TouchableOpacity style={[styles.modalButton, styles.modalButtonSuccess]} onPress={handleCloseWorkOrder}>
-                  <Text style={styles.modalButtonText}>Kapat</Text>
+              <View style={[styles.formActionsRow, { paddingHorizontal: 20 }]}>
+                <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsWorkOrderCloseModalOpen(false)}>
+                  <Text style={styles.formCancelBtnText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.formSubmitBtn} onPress={handleCloseWorkOrder}>
+                  <Text style={styles.formSubmitBtnText}>Tamamla</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3865,8 +3868,17 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   },
   // Bu stiller kullanılıyordu ama hiç tanımlanmamıştı; undefined döndükleri
   // yüzünden derleyici de uyarmıyordu).
+  // Alt sayfa (varsayılan) — birden fazla modal bunu kullanıyor
   modalContent: {
-    // Tam sayfa: alt sayfa olarak yarım ekranda sıkışıyordu
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+    overflow: 'hidden',
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+  },
+  // Tam sayfa formlar (iş emri oluştur / tamamla)
+  fullPageContent: {
     flex: 1,
     backgroundColor: colors.card,
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
