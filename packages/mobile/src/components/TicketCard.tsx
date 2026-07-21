@@ -80,32 +80,33 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             {title}
           </Text>
 
+          {/* Tarih | Kayıt eden | Sorumlu — üçü satıra eşit dağılır */}
           <View style={styles.footerRow}>
-            {/* Solda tarih, sağa yaslı Kayıt / Sorumlu */}
-            <View style={styles.footerItem}>
+            <View style={styles.footerCell}>
               <Ionicons name="time-outline" size={14} color={slateTokens.textMuted} />
-              <Text style={styles.footerText}>{timeAgo}</Text>
+              <Text style={styles.footerText} numberOfLines={1}>{timeAgo}</Text>
             </View>
 
-            <View style={styles.footerPeople}>
-              {!!requesterSicil && (
-                <View style={styles.footerItem}>
-                  <Text style={styles.footerLabel}>Kayıt</Text>
-                  <UserAvatar sicilNo={requesterSicil} name={requesterName} size={18} style={{ marginRight: 4 }} />
-                  <Text style={styles.footerText} numberOfLines={1}>
-                    {(requesterName || '').split(' ')[0]}
-                  </Text>
-                </View>
-              )}
-              {/* Kayıt ile Sorumlu arasında dikey ayırıcı */}
-              {!!requesterSicil && <View style={styles.footerDivider} />}
-              <View style={styles.footerItem}>
-                <Text style={styles.footerLabel}>Sorumlu</Text>
-                {userSicil
-                  ? <UserAvatar sicilNo={userSicil} name={user} size={18} style={{ marginRight: 4 }} />
-                  : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} style={{ marginRight: 4 }} />}
-                <Text style={styles.footerText}>{user}</Text>
-              </View>
+            <View style={styles.footerDivider} />
+
+            <View style={styles.footerCell}>
+              <Text style={styles.footerLabel}>Kayıt</Text>
+              {requesterSicil
+                ? <UserAvatar sicilNo={requesterSicil} name={requesterName} size={18} style={{ marginRight: 4 }} />
+                : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} style={{ marginRight: 4 }} />}
+              <Text style={styles.footerText} numberOfLines={1}>
+                {(requesterName || '-').split(' ')[0]}
+              </Text>
+            </View>
+
+            <View style={styles.footerDivider} />
+
+            <View style={styles.footerCell}>
+              <Text style={styles.footerLabel}>Sorumlu</Text>
+              {userSicil
+                ? <UserAvatar sicilNo={userSicil} name={user} size={18} style={{ marginRight: 4 }} />
+                : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} style={{ marginRight: 4 }} />}
+              <Text style={[styles.footerText, { flexShrink: 1 }]} numberOfLines={1}>{user}</Text>
             </View>
           </View>
         </View>
@@ -178,18 +179,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  // Kayıt / Sorumlu bloğu sağa yaslanır. İnce, düşük kontrastlı çerçeve:
-  // grubu belli eder ama karttaki rozet/çizgi yoğunluğunu artırmaz.
-  footerPeople: {
+  // Üç alan eşit paylaşır; içerik ortalanır
+  // Her alan kendi genisligini alir; satira space-between ile dagilirlar.
+  // Esit ucte bir verilince tam tarih+saat sigmiyor ve isimler kisaliyordu.
+  footerCell: {
+    flexShrink: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flexShrink: 1,
-    borderWidth: 1,
-    borderColor: slateTokens.border,
-    borderRadius: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
   },
   footerLabel: {
     fontSize: 10,
@@ -211,7 +208,7 @@ const styles = StyleSheet.create({
     width: 1,
     height: 14,
     backgroundColor: slateTokens.border,
-    // Yatay boşluğu kapsayıcıdaki gap veriyor
+    flexShrink: 0,        // sikisip kaybolmasin
   },
   bottomLine: {
     height: 3,
