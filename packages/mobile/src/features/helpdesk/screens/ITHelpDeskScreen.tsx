@@ -374,7 +374,20 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   };
 
-  const handleCloseTicket = async () => {
+  // Talep kapatma geri alinamaz bir islem: once onay sorulur.
+  const handleCloseTicket = () => {
+    if (!selectedRequest) return;
+    Alert.alert(
+      'Talebi Tamamla',
+      `${selectedRequest.talepKodu || 'Talep'} kapatılacak. Emin misiniz?`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: 'Evet, tamamla', style: 'destructive', onPress: () => closeTicketConfirmed() },
+      ]
+    );
+  };
+
+  const closeTicketConfirmed = async () => {
     if (!selectedRequest) return;
     try {
       await updateRequestStatus(selectedRequest.talepID, 'KAPATILDI');
@@ -1726,7 +1739,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           style={styles.tabItem}
                           onPress={() => setIsAddCommentModalOpen(true)}
                         >
-                          <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
+                          <Ionicons name="chatbubble-ellipses-outline" size={30} color={colors.primary} />
                         </TouchableOpacity>
 
                         {/* Center Plus Tab Item (Floating Action style) */}
@@ -1746,8 +1759,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           onPress={handleCloseTicket}
                         >
                           <Ionicons 
-                            name="checkmark-circle-outline" 
-                            size={24} 
+                            name="checkmark-circle-outline"
+                            size={30} 
                             color={canClose ? colors.success : '#94a3b8'} 
                           />
                         </TouchableOpacity>

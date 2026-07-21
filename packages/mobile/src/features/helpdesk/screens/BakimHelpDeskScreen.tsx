@@ -485,7 +485,20 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   };
 
-  const handleCloseTicket = async () => {
+  // Talep kapatma geri alinamaz bir islem: once onay sorulur.
+  const handleCloseTicket = () => {
+    if (!selectedRequest) return;
+    Alert.alert(
+      'Talebi Tamamla',
+      `${selectedRequest.talepKodu || 'Talep'} kapatılacak. Emin misiniz?`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: 'Evet, tamamla', style: 'destructive', onPress: () => closeTicketConfirmed() },
+      ]
+    );
+  };
+
+  const closeTicketConfirmed = async () => {
     if (!selectedRequest) return;
     try {
       await updateRequestStatus(selectedRequest.talepID, 'KAPATILDI');
@@ -1737,7 +1750,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                 </View>
 
                                 {/* Work Order Actions for Owner */}
-                                {selectedRequest?.isMine && !wo.durum && (
+                                {/* İş emri işlemleri sorumluya aittir — "Yeni İş Emri"
+                                    butonuyla aynı kural (referans: SORUMLU). Önceden
+                                    isMine (talep sahibi) kontrol ediliyordu, sorumlu
+                                    kendi iş emrini atayıp kapatamıyordu. */}
+                                {detailData?.girisTur === 'SORUMLU' && !wo.durum && (
                                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, gap: 8 }}>
                                     <TouchableOpacity 
                                       style={[styles.smallBtn, { backgroundColor: slateTokens.primary + '1A' }]}
@@ -1953,7 +1970,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           style={styles.tabItem}
                           onPress={() => setIsAddCommentModalOpen(true)}
                         >
-                          <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
+                          <Ionicons name="chatbubble-ellipses-outline" size={30} color={colors.primary} />
                         </TouchableOpacity>
 
                         {/* Center Plus Tab Item (Floating Action style) */}
@@ -1973,8 +1990,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           onPress={handleCloseTicket}
                         >
                           <Ionicons 
-                            name="checkmark-circle-outline" 
-                            size={24} 
+                            name="checkmark-circle-outline"
+                            size={30} 
                             color={canClose ? colors.success : '#94a3b8'} 
                           />
                         </TouchableOpacity>
