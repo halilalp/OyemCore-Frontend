@@ -23,19 +23,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { BottomNavBar } from '../../../components/BottomNavBar';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
+import EventMonthCalendar from '../../../components/EventMonthCalendar';
+import { getEventDayRange } from '../../../utils/calendarEvents';
 
-LocaleConfig.locales['tr'] = {
-  monthNames: [
-    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-  ],
-  monthNamesShort: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
-  dayNames: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
-  dayNamesShort: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'],
-  today: 'Bugün'
-};
-LocaleConfig.defaultLocale = 'tr';
 
 const stripHtml = (html: string | null | undefined): string => {
   if (!html) return '';
@@ -141,9 +131,10 @@ export const HomeScreen = () => {
   const mobilePages: typeof rawMobilePages = [];
   rawMobilePages.forEach(m => {
     if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
-      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
+      // ikon (proje ikonu) korunur — proje kartı onu kullanır; sayfa ikonu mobilIcon'dur.
+      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'HelpDesk', mobilIcon: 'laptop-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'HelpDesk', mobilIcon: 'server-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'HelpDesk', mobilIcon: 'construct-outline' });
     } else {
       mobilePages.push(m);
     }
@@ -175,6 +166,26 @@ export const HomeScreen = () => {
     return acc;
   }, {} as Record<string, typeof mobilePages>);
 
+  // Proje kartları — webportal WebServiceDashboard.ProjeGetir karşılığı.
+  // Hedef sayfa: projenin AnaSayfa'sı (yetki varsa), yoksa projenin ilk sayfası.
+  const projects = Object.entries(groupedModules).map(([name, pages]: [string, any[]]) => {
+    const anaSayfaUrl = (pages[0]?.projeAnaSayfa || '').toLowerCase();
+    const anaSayfaPage =
+      pages.find(p => !!p.sayfaUrl && anaSayfaUrl.endsWith(String(p.sayfaUrl).toLowerCase())) || pages[0];
+
+    // tb_Proje.Ikon Metronic sınıfıdır ("ki-outline ki-wrench"); HelpDesk gibi
+    // türetilmiş satırlarda doğrudan Ionicons adı taşınır.
+    const rawIcon = pages[0]?.ikon || '';
+    const icon = rawIcon.includes('ki-') ? mapKeenIconToIonicons(rawIcon) : (rawIcon || 'grid-outline');
+
+    return {
+      name,
+      icon: icon as any,
+      bildirim: (pages[0]?.projeBildirim || '') as string,
+      anaSayfa: anaSayfaPage?.mobilUrl || 'Home',
+    };
+  });
+
   // Map backend menu items to UI modules format
   const dynamicModules = mobilePages.map((m, index) => {
     const pastelBgs = [colors.pastelBlueBg, colors.pastelOrangeBg, colors.pastelGreenBg, colors.pastelPurpleBg];
@@ -191,34 +202,6 @@ export const HomeScreen = () => {
       projeAdi: m.projeAdi || 'Genel'
     };
   });
-
-  const markedDates = React.useMemo(() => {
-    const marks: any = {};
-    
-    calendarEvents.forEach((e: any) => {
-      const d = new Date(e.basTar || e.BasTar || '');
-      if (!isNaN(d.getTime())) {
-        const yyyy = d.getFullYear();
-        const mm = (d.getMonth() + 1).toString().padStart(2, '0');
-        const dd = d.getDate().toString().padStart(2, '0');
-        const dateStr = `${yyyy}-${mm}-${dd}`;
-        
-        marks[dateStr] = {
-          marked: true,
-          dotColor: e.bgColor || e.BgColor || '#3445C5',
-        };
-      }
-    });
-
-    marks[selectedCalendarDate] = {
-      ...marks[selectedCalendarDate],
-      selected: true,
-      selectedColor: '#3445C5',
-      selectedTextColor: '#FFFFFF',
-    };
-
-    return marks;
-  }, [calendarEvents, selectedCalendarDate]);
 
   const formattedEventDate = React.useMemo(() => {
     if (!selectedEvent) return '';
@@ -313,11 +296,13 @@ export const HomeScreen = () => {
               <Text style={styles.metricLabel}>BU AY</Text>
               <Text style={styles.metricValue}>
                 {calendarEvents ? calendarEvents.filter(ev => {
-                  const dStr = ev.basTar || ev.BasTar;
-                  if (!dStr) return false;
-                  const d = new Date(dStr);
+                  // Aya taşan etkinlikler de sayılır (aralık bu ayla kesişiyorsa)
+                  const range = getEventDayRange(ev);
+                  if (!range) return false;
                   const now = new Date();
-                  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+                  const ayBas = new Date(now.getFullYear(), now.getMonth(), 1);
+                  const aySon = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                  return range.first <= aySon && range.last >= ayBas;
                 }).length : '-'}
               </Text>
               <Text style={styles.metricSub}>Etkinlik</Text>
@@ -356,23 +341,26 @@ export const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Category Tabs (Projeler) */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.categoryScrollContent}>
-              {['Tümü', ...Object.keys(groupedModules)].map((cat: string) => (
+            {/* Projeler — webportal Dashboard/index.js renderAppCreativeItem2026 karşılığı:
+                proje ikonu + adı + bildirim rozeti, tıklayınca projenin anasayfasına gider. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.projectCardsContent}>
+              {projects.map(proj => (
                 <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.categoryTab,
-                    activeCategory === cat && styles.categoryTabActive
-                  ]}
-                  onPress={() => setActiveCategory(cat)}
-                  activeOpacity={0.7}
+                  key={proj.name}
+                  style={styles.projectCard}
+                  onPress={() => navigation.navigate(proj.anaSayfa as never)}
+                  activeOpacity={0.85}
                 >
-                  <Text style={[
-                    styles.categoryTabText,
-                    activeCategory === cat && styles.categoryTabTextActive
-                  ]}>
-                    {cat}
+                  {!!proj.bildirim && (
+                    <View style={styles.projectBadge}>
+                      <Text style={styles.projectBadgeText}>{proj.bildirim}</Text>
+                    </View>
+                  )}
+                  <View style={styles.projectIconBox}>
+                    <Ionicons name={proj.icon} size={24} color={colors.primary} />
+                  </View>
+                  <Text style={styles.projectCardText} numberOfLines={2}>
+                    {proj.name}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -455,128 +443,15 @@ export const HomeScreen = () => {
               <Text style={styles.sectionTitle}>Takvim & Etkinlikler</Text>
             </View>
             
-            <Calendar
-              current={selectedCalendarDate}
-              onDayPress={(day) => {
-                setSelectedCalendarDate(day.dateString);
-              }}
-              markedDates={markedDates}
-              dayComponent={({ date, state, marking }) => {
-                const dayStr = date?.day ? String(date.day) : '';
-                const dateStr = date?.dateString || '';
-                
-                // Get events for this date
-                const dayEvents = calendarEvents.filter((e: any) => {
-                  const d = new Date(e.basTar || e.BasTar || '');
-                  if (isNaN(d.getTime())) return false;
-                  const yyyy = d.getFullYear();
-                  const mm = (d.getMonth() + 1).toString().padStart(2, '0');
-                  const dd = d.getDate().toString().padStart(2, '0');
-                  return `${yyyy}-${mm}-${dd}` === dateStr;
-                });
-                
-                const isSelected = selectedCalendarDate === dateStr;
-                const isToday = state === 'today';
-                const isDisabled = state === 'disabled';
-                
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setSelectedCalendarDate(dateStr);
-                      if (dayEvents.length > 0) {
-                        setSelectedEvent(dayEvents[0]);
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      minHeight: 52,
-                      alignItems: 'center',
-                      justifyContent: 'flex-start',
-                      paddingTop: 4,
-                      borderRadius: 10,
-                      backgroundColor: isSelected ? colors.primaryAlpha08 : 'transparent',
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        backgroundColor: isSelected ? colors.primary : (isToday ? colors.primaryAlpha15 : 'transparent'),
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: isSelected || isToday ? '700' : '500',
-                          color: isSelected ? '#FFFFFF' : (isToday ? colors.primary : (isDisabled ? colors.textMuted : colors.text)),
-                        }}
-                      >
-                        {dayStr}
-                      </Text>
-                    </View>
-
-                    {/* Event Preview Text directly in the cell */}
-                    <View style={{ width: '100%', paddingHorizontal: 2, marginTop: 2, gap: 1 }}>
-                      {dayEvents.slice(0, 2).map((e: any, idx: number) => (
-                        <View
-                          key={idx}
-                          style={{
-                            backgroundColor: e.bgColor || e.BgColor || colors.primary,
-                            borderRadius: 3,
-                            paddingHorizontal: 2,
-                            paddingVertical: 1,
-                            width: '100%',
-                          }}
-                        >
-                          <Text
-                            numberOfLines={1}
-                            style={{
-                              fontSize: 7.5,
-                              color: '#FFFFFF',
-                              fontWeight: '700',
-                              textAlign: 'center',
-                            }}
-                          >
-                            {e.konu || e.Konu}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-              theme={{
-                calendarBackground: colors.card,
-                textSectionTitleColor: colors.textSecondary,
-                selectedDayBackgroundColor: colors.primary,
-                selectedDayTextColor: '#ffffff',
-                todayTextColor: colors.primary,
-                dayTextColor: colors.text,
-                textDisabledColor: colors.textMuted,
-                dotColor: colors.primary,
-                selectedDotColor: '#ffffff',
-                arrowColor: colors.primary,
-                monthTextColor: colors.text,
-                indicatorColor: colors.primary,
-                textDayFontWeight: '500',
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: '600',
-                textDayFontSize: 14,
-                textMonthFontSize: 16,
-                textDayHeaderFontSize: 12,
-              }}
-              style={{
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: colors.border,
-                overflow: 'hidden',
-                marginBottom: 16,
-              }}
-            />
+            <View style={styles.calendarCard}>
+              <EventMonthCalendar
+                events={calendarEvents}
+                selectedDate={selectedCalendarDate}
+                onSelectDate={setSelectedCalendarDate}
+                onSelectEvent={setSelectedEvent}
+                colors={colors}
+              />
+            </View>
           </View>
 
           {/* Duyurular */}
@@ -1026,6 +901,16 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       alignItems: 'center',
       marginBottom: 16,
     },
+    calendarCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 8,
+      paddingTop: 12,
+      paddingBottom: 8,
+      marginBottom: 16,
+    },
     sectionHeaderIconRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1077,6 +962,57 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     categoryScrollContent: {
       paddingHorizontal: 20,
       gap: 10,
+    },
+    // Proje kartları (webportal görünümü: ikon + ad + adet rozeti)
+    projectCardsContent: {
+      gap: 10,
+      paddingRight: 16,
+      paddingTop: 8,
+    },
+    projectCard: {
+      width: 104,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 14,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    projectIconBox: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.primary + '15',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    projectCardText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 14,
+    },
+    projectBadge: {
+      position: 'absolute',
+      top: -6,
+      right: -4,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      paddingHorizontal: 5,
+      backgroundColor: colors.danger,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 2,
+    },
+    projectBadgeText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#fff',
     },
     categoryTab: {
       backgroundColor: colors.card,

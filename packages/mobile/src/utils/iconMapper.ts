@@ -25,6 +25,17 @@ export const mapKeenIconToIonicons = (keenIconClass: string): any => {
   if (keenIconClass.includes('ki-abstract-6')) return 'bulb-outline';
   if (keenIconClass.includes('ki-element-equal')) return 'git-network-outline';
   if (keenIconClass.includes('ki-people')) return 'people-outline';
+  // tb_Proje.Ikon'da kullanilan diger degerler (webportal ile birebir)
+  if (keenIconClass.includes('ki-setting')) return 'settings-outline';
+  if (keenIconClass.includes('ki-profile-user')) return 'person-add-outline';
+  if (keenIconClass.includes('ki-cloud')) return 'cloud-outline';
+  if (keenIconClass.includes('ki-bank')) return 'business-outline';
+  if (keenIconClass.includes('ki-archive')) return 'archive-outline';
+  if (keenIconClass.includes('ki-briefcase')) return 'briefcase-outline';
+  if (keenIconClass.includes('ki-address-book')) return 'reader-outline';
+  if (keenIconClass.includes('ki-teacher')) return 'school-outline';
+  if (keenIconClass.includes('ki-wallet')) return 'wallet-outline';
+  if (keenIconClass.includes('ki-chart')) return 'stats-chart-outline';
 
   // Default fallback
   return 'grid-outline';
