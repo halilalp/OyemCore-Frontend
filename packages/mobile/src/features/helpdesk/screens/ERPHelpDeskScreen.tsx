@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
@@ -534,11 +533,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Hata', 'Lütfen kategori, konu ve açıklama alanlarını doldurunuz.');
       return;
     }
-    
-    if (type === 'BAKIM' && (!formSirket || !formBolum || !formMakine)) {
-      Alert.alert('Hata', 'Lütfen Şiriket, Bölüm ve Makine alanlarını doldurunuz.');
-      return;
-    }
 
     try {
       const payload: any = {
@@ -552,17 +546,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           dosyaUrl: formDosyaUrl || null,
         }
       };
-
-      if (type === 'BAKIM') {
-        payload.bakim = {
-          sirketKodu: formSirket,
-          bolumKodu: formBolum,
-          makineKodu: formMakine,
-          uretimDurusu: formDurus,
-          gidaGuvOncelik: formGida,
-          isGuvOncelik: formIsg,
-        };
-      }
 
       await createRequest(payload);
       Alert.alert('Başarılı', 'Talebiniz başarıyla oluşturulmuştur.');
@@ -753,7 +736,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
         <ListHeader
         compact
-          title={type === 'IT' ? 'IT HelpDesk' : type === 'ERP' ? 'ERP HelpDesk' : 'Bakım HelpDesk'}
+          title={'ERP HelpDesk'}
           subtitle={`Diğer Sayfalar`}
         />
         <ModuleSubNav 
@@ -772,7 +755,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <ListHeader
-        title={type === 'IT' ? 'IT HelpDesk' : type === 'ERP' ? 'ERP HelpDesk' : 'Bakım HelpDesk'}
+        title={'ERP HelpDesk'}
         subtitle={`${filteredRequests.length} talep`}
         searchValue={searchText}
         onSearchChange={setSearchText}
@@ -948,85 +931,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               </View>
 
               {/* Bakım Özel Alanları */}
-              {type === 'BAKIM' && (
-                <View style={styles.bakimFieldsCard}>
-                  <Text style={styles.bakimTitle}>🛠️ Bakım Özel Detayları</Text>
-                  
-                  {/* Şirket */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Şirket *</Text>
-                    <TouchableOpacity style={styles.selectBox} onPress={() => setIsSirketSelectOpen(true)}>
-                      <Text style={styles.selectBoxText}>
-                        🏢 {(bakimDropdowns?.sirkets || []).find((c: any) => c.sirketKodu === formSirket)?.sirketAdi || 'Şirket Seçiniz'}
-                      </Text>
-                      <Text style={styles.selectBoxArrow}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Bölüm */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Bölüm *</Text>
-                    <TouchableOpacity 
-                      style={[styles.selectBox, !formSirket && { opacity: 0.5 }]} 
-                      onPress={() => formSirket && setIsBolumSelectOpen(true)}
-                      disabled={!formSirket}
-                    >
-                      <Text style={styles.selectBoxText}>
-                        🏬 {(bakimDropdowns?.bolums || []).find((b: any) => b.bolumKodu === formBolum)?.bolumAdi || 'Bölüm Seçiniz'}
-                      </Text>
-                      <Text style={styles.selectBoxArrow}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Makine */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Makine *</Text>
-                    <TouchableOpacity 
-                      style={[styles.selectBox, !formBolum && { opacity: 0.5 }]} 
-                      onPress={() => formBolum && setIsMakineSelectOpen(true)}
-                      disabled={!formBolum}
-                    >
-                      <Text style={styles.selectBoxText}>
-                        ⚙️ {(bakimDropdowns?.makines || []).find((m: any) => m.makineKodu === formMakine)?.makineAdi || 'Makine Seçiniz'}
-                      </Text>
-                      <Text style={styles.selectBoxArrow}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Üretim Duruşu */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Üretim Duruşu *</Text>
-                    <TouchableOpacity style={styles.selectBox} onPress={() => setIsDurusSelectOpen(true)}>
-                      <Text style={styles.selectBoxText}>
-                        ⏱️ {formDurus === 'H' ? 'DURUŞ YOK' : (formDurus === 'EMAK' ? 'MAKİNE DURDU' : 'HAT DURDU')}
-                      </Text>
-                      <Text style={styles.selectBoxArrow}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Gıda Güvenliği Önceliği */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Gıda Güvenliği Önceliği</Text>
-                    <TouchableOpacity style={styles.selectBox} onPress={() => setIsGidaSelectOpen(true)}>
-                      <Text style={styles.selectBoxText}>
-                        🍎 {formGida === 'D' ? 'DÜŞÜK' : (formGida === 'O' ? 'ORTA' : 'YÜKSEK')}
-                      </Text>
-                      <Text style={styles.selectBoxArrow}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* İş Güvenliği Önceliği */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>İş Güvenliği (İSG) Önceliği</Text>
-                    <TouchableOpacity style={styles.selectBox} onPress={() => setIsIsgSelectOpen(true)}>
-                      <Text style={styles.selectBoxText}>
-                        🛡️ {formIsg === 'D' ? 'DÜŞÜK' : (formIsg === 'O' ? 'ORTA' : 'YÜKSEK')}
-                      </Text>
-                      <Text style={styles.selectBoxArrow}>▼</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
 
               {/* Konu */}
               <View style={styles.formGroup}>
@@ -1560,7 +1464,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         <View style={styles.timelineContainer}>
                           {detailData.gelismeler.map((g, i) => {
                             const isLast = i === detailData.gelismeler.length - 1;
-                            let iconName = 'chatbubble-outline';
+                            let iconName: keyof typeof Ionicons.glyphMap = 'chatbubble-outline';
                             let iconColor = '#6366f1';
                             
                             if (g.aciklama.toLowerCase().includes('kapat') || g.aciklama.toLowerCase().includes('çözüm')) {
@@ -2535,6 +2439,18 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     fontSize: 11,
     color: colors.textSecondary,
     lineHeight: 16,
+  },
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   formGroup: {
     marginBottom: 6,
