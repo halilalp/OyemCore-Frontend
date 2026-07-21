@@ -2463,12 +2463,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>İş Emri Oluştur</Text>
-                <TouchableOpacity onPress={() => setIsWorkOrderCreateModalOpen(false)} style={styles.modalCloseButton}>
-                  <Ionicons name="close" size={24} color={slateTokens.textMuted} />
-                </TouchableOpacity>
-              </View>
+              {/* Standart tema: diğer kayıt formlarıyla aynı mor başlık */}
+              <CreateModalHeader
+                title="İş Emri Oluştur"
+                onClose={() => setIsWorkOrderCreateModalOpen(false)}
+                colorTheme="purple"
+              />
               <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
                 <Text style={styles.formLabel}>İş Emri Türü</Text>
                 <TouchableOpacity style={styles.formInput} onPress={() => setIsWoTurSelectOpen(true)}>
