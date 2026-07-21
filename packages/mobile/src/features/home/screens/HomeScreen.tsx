@@ -599,8 +599,18 @@ export const HomeScreen = () => {
               </Text>
             </View>
             <View style={styles.modalBody}>
+              {/* Duyuruda görsel varsa en üstte gösterilir, içerik altında kalır.
+                  Eğitimlerde ek bir doküman olur, o aşağıdaki butonla açılır. */}
+              {selectedItem?.type === 'news' && selectedItem?.fileUrl ? (
+                <Image
+                  source={{ uri: selectedItem.fileUrl }}
+                  style={styles.detailImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+
               <Text style={styles.modalTitle}>{selectedItem?.title}</Text>
-              
+
               {selectedItem?.categoryOrAuthor ? (
                 <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>
                   {selectedItem.type === 'news' ? `Yayınlayan: ${selectedItem.categoryOrAuthor}` : `Kategori: ${selectedItem.categoryOrAuthor}`}
@@ -617,8 +627,8 @@ export const HomeScreen = () => {
                 </Text>
               </ScrollView>
 
-              {/* Attachment / File viewer - "GÖSTER" button */}
-              {selectedItem?.fileUrl ? (
+              {/* Ek doküman — duyuru görseli yukarıda gösterildiği için yalnızca eğitimlerde */}
+              {selectedItem?.type === 'training' && selectedItem?.fileUrl ? (
                 <TouchableOpacity
                   style={{
                     backgroundColor: colors.primary,
@@ -1189,6 +1199,14 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     modalBody: {
       padding: 20,
+    },
+    // Duyuru detayında en üstteki görsel
+    detailImage: {
+      width: '100%',
+      height: 180,
+      borderRadius: 12,
+      marginBottom: 14,
+      backgroundColor: colors.border,
     },
     modalTitle: {
       fontSize: 18,
