@@ -104,18 +104,21 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
     set({ isSubmitting: true });
     try {
       const res = await helpdeskService.updateStatus(id, status);
-      if (res.success) {
-        // Update requests list locally
-        const updatedRequests = get().requests.map(r => 
-          r.talepID === id ? { ...r, durum: status } : r
-        );
-        set({ requests: updatedRequests });
-        
-        // Update selected request if applicable
-        const selected = get().selectedRequest;
-        if (selected && selected.talepID === id) {
-          set({ selectedRequest: { ...selected, durum: status } });
-        }
+      // Sunucu success:false donerse ekranin "Başarılı" demesini engelle.
+      if (!res.success) {
+        throw new Error('Talep durumu güncellenemedi.');
+      }
+
+      // Update requests list locally
+      const updatedRequests = get().requests.map(r =>
+        r.talepID === id ? { ...r, durum: status } : r
+      );
+      set({ requests: updatedRequests });
+
+      // Update selected request if applicable
+      const selected = get().selectedRequest;
+      if (selected && selected.talepID === id) {
+        set({ selectedRequest: { ...selected, durum: status } });
       }
     } catch (err: any) {
       set({ error: err.message || 'Durum güncellenirken hata oluştu.' });
