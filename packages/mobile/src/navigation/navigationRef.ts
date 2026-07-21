@@ -27,7 +27,9 @@ export function navigateFromNotificationData(data: any, _retry = 0) {
     else if (data.type === 'BAKIM') targetScreen = 'BakimHelpDesk';
     else targetScreen = 'ITHelpDesk';
   }
-  if (targetScreen === 'BakimScreen') targetScreen = 'Bakim';
+  // Tek dev Bakım ekranı 4 ayrı sayfaya bölündü; bildirim hangi akışı
+  // kastettiğini söylemediği için menü hub'ına düşürüyoruz.
+  if (targetScreen === 'BakimScreen' || targetScreen === 'Bakim') targetScreen = 'BakimYonetim';
   if (targetScreen === 'TicketScreen') targetScreen = 'Ticket';
   if (targetScreen === 'HomeScreen') targetScreen = 'Home';
   if (targetScreen === 'ZimmetlerimScreen' || targetScreen === 'ZimmetScreen' || targetScreen === 'Zimmet') targetScreen = 'Zimmetlerim';

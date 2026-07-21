@@ -42,7 +42,6 @@ import { ZimmetDashboardScreen } from './src/features/zimmet/screens/ZimmetDashb
 import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScreen';
 import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
 import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
-import { BakimScreen } from './src/features/bakim_yonetim/screens/BakimScreen';
 import { BakimYonetimHubScreen } from './src/features/bakim_yonetim/screens/BakimYonetimHubScreen';
 import { ProfilScreen } from './src/features/profile/screens/ProfilScreen';
 import { PerformansScreen } from './src/features/profile/screens/PerformansScreen';
@@ -309,11 +308,6 @@ export default function App() {
               options={{ 
                 headerShown: false
               }} 
-            />
-            <Stack.Screen
-              name="Bakim"
-              component={BakimScreen}
-              options={{ headerShown: false }}
             />
             <Stack.Screen name="TicketDashboard" component={TicketDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimYonetim" component={BakimYonetimHubScreen} options={{ headerShown: false }} />
