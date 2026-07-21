@@ -2514,12 +2514,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               </ScrollView>
               {/* Diğer kayıt formlarıyla aynı düzen: İptal + Kaydet yan yana.
                   ScrollView dışında olduğu için yatay boşluk burada veriliyor. */}
-              <View style={[styles.formActionsRow, { paddingHorizontal: 20 }]}>
-                <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsWorkOrderCreateModalOpen(false)}>
-                  <Text style={styles.formCancelBtnText}>İptal</Text>
+              <View style={styles.pageFormActionsRow}>
+                <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => setIsWorkOrderCreateModalOpen(false)}>
+                  <Text style={styles.pageFormCancelBtnText}>İptal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.formSubmitBtn} onPress={handleCreateWorkOrder}>
-                  <Text style={styles.formSubmitBtnText}>Kaydet</Text>
+                <TouchableOpacity style={styles.pageFormSubmitBtn} onPress={handleCreateWorkOrder}>
+                  <Text style={styles.pageFormSubmitBtnText}>Kaydet</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -2638,12 +2638,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   onChangeText={setWoFormAciklama}
                 />
               </ScrollView>
-              <View style={[styles.formActionsRow, { paddingHorizontal: 20 }]}>
-                <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsWorkOrderCloseModalOpen(false)}>
-                  <Text style={styles.formCancelBtnText}>İptal</Text>
+              <View style={styles.pageFormActionsRow}>
+                <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => setIsWorkOrderCloseModalOpen(false)}>
+                  <Text style={styles.pageFormCancelBtnText}>İptal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.formSubmitBtn} onPress={handleCloseWorkOrder}>
-                  <Text style={styles.formSubmitBtnText}>Tamamla</Text>
+                <TouchableOpacity style={styles.pageFormSubmitBtn} onPress={handleCloseWorkOrder}>
+                  <Text style={styles.pageFormSubmitBtnText}>Tamamla</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -4186,6 +4186,45 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     gap: 12,
     marginTop: 20,
     marginBottom: 20,
+  },
+  // Tam sayfa form altı butonları. Bu dosyadaki formCancelBtn/formSubmitBtn
+  // başlık çubuğu butonlarıdır (küçük, zeminsiz) — form altında kullanılamaz.
+  pageFormActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  pageFormCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageFormCancelBtnText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  pageFormSubmitBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageFormSubmitBtnText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   formCancelBtnBottom: {
     flex: 1,
