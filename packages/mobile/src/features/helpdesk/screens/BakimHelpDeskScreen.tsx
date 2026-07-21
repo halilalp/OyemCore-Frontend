@@ -2524,9 +2524,13 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 />
                 <View style={{ height: 40 }} />
               </ScrollView>
-              <View style={styles.modalFooter}>
-                <TouchableOpacity style={[styles.modalButton, styles.modalButtonPrimary]} onPress={handleCreateWorkOrder}>
-                  <Text style={styles.modalButtonText}>Kaydet</Text>
+              {/* Diğer kayıt formlarıyla aynı düzen: İptal + Kaydet yan yana */}
+              <View style={styles.formActionsRow}>
+                <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsWorkOrderCreateModalOpen(false)}>
+                  <Text style={styles.formCancelBtnText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.formSubmitBtn} onPress={handleCreateWorkOrder}>
+                  <Text style={styles.formSubmitBtnText}>Kaydet</Text>
                 </TouchableOpacity>
               </View>
             </View>
