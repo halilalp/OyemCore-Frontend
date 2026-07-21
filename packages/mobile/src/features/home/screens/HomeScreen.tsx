@@ -95,8 +95,10 @@ export const HomeScreen = () => {
 
         setMenuItems(menuRes || []);
         setCalendarEvents(takvimRes || []);
-        setNewsItems((newsRes || []).slice(0, 5));
-        setTrainingItems((trainingRes || []).slice(0, 5));
+        // Tamamı saklanır; anasayfada yalnızca ilk 3'ü gösterilir, kalanına
+        // "Tümünü gör" ile Duyurular/Eğitimler ekranlarından erişilir (FlatList + arama).
+        setNewsItems(newsRes || []);
+        setTrainingItems(trainingRes || []);
 
         const activeTalepler = (talepRes || []).filter((t: any) => t.durum !== 'Kapalı' && t.durum !== 'İptal').slice(0, 5);
         setTasks(activeTalepler.map((t: any) => ({
@@ -422,15 +424,22 @@ export const HomeScreen = () => {
 
           {/* Duyurular */}
           <View style={styles.section}>
-            <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="megaphone-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.sectionTitle}>Duyurular</Text>
+            <View style={[styles.sectionHeaderIconRow, { justifyContent: 'space-between' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="megaphone-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.sectionTitle}>Duyurular</Text>
+              </View>
+              {newsItems.length > 3 && (
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Announcement' as never)}>
+                  <Text style={styles.seeAllText}>Tümünü gör ({newsItems.length})</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {newsItems.length === 0 ? (
               <View style={[styles.taskCard, { opacity: 0.5 }]}>
                 <Text style={[styles.taskSub, { fontStyle: 'italic' }]}>Henüz duyuru yok</Text>
               </View>
-            ) : newsItems.map((item: any, idx: number) => {
+            ) : newsItems.slice(0, 3).map((item: any, idx: number) => {
               const hasFile = item.profilUrl && item.profilUrl !== 'duyuru.jpg';
               return (
                 <TouchableOpacity
@@ -473,15 +482,22 @@ export const HomeScreen = () => {
 
           {/* Eğitimler */}
           <View style={styles.section}>
-            <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="school-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.sectionTitle}>Eğitimler</Text>
+            <View style={[styles.sectionHeaderIconRow, { justifyContent: 'space-between' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="school-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.sectionTitle}>Eğitimler</Text>
+              </View>
+              {trainingItems.length > 3 && (
+                <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Training' as never)}>
+                  <Text style={styles.seeAllText}>Tümünü gör ({trainingItems.length})</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {trainingItems.length === 0 ? (
               <View style={[styles.taskCard, { opacity: 0.5 }]}>
                 <Text style={[styles.taskSub, { fontStyle: 'italic' }]}>Henüz eğitim yok</Text>
               </View>
-            ) : trainingItems.map((item: any, idx: number) => {
+            ) : trainingItems.slice(0, 3).map((item: any, idx: number) => {
               const hasFile = !!(item.dosyaUrl || item.DosyaUrl);
               return (
                 <TouchableOpacity
