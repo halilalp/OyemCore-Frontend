@@ -65,8 +65,14 @@ export const TicketCard: React.FC<TicketCardProps> = ({
               )}
               <Text style={styles.codeText}>{code}</Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: priorityBg }]}>
-              <Text style={[styles.badgeText, { color: priorityColor }]}>{priorityLabel}</Text>
+            {/* Sağ üstte durum, hemen solunda önem seviyesi */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={[styles.badge, { backgroundColor: priorityBg }]}>
+                <Text style={[styles.badgeText, { color: priorityColor }]}>{priorityLabel}</Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: statusBg }]}>
+                <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+              </View>
             </View>
           </View>
 
@@ -99,9 +105,6 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                   : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} />}
                 <Text style={styles.footerText}>{user}</Text>
               </View>
-            </View>
-            <View style={[styles.badge, { backgroundColor: statusBg }]}>
-              <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
           </View>
         </View>
