@@ -1444,7 +1444,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   })()}
 
                   {detailData?.talep?.dosyaUrl && (
-                    <AttachmentPreview dosyaUrl={detailData.talep.dosyaUrl} module={type} />
+                    <AttachmentPreview dosyaUrl={detailData?.talep?.dosyaUrl || ""} module={type} />
                   )}
                 </View>
 

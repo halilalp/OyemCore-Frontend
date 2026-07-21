@@ -1550,7 +1550,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   })()}
 
                   {detailData?.talep?.dosyaUrl && (
-                    <AttachmentPreview dosyaUrl={detailData.talep.dosyaUrl} module={type} />
+                    <AttachmentPreview dosyaUrl={detailData?.talep?.dosyaUrl || ""} module={type} />
                   )}
                 </View>
 
@@ -1920,7 +1920,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     const canClose = detailData?.girisTur === 'SAHIP' || detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'HAVUZ';
 
 
-                    if (detailData.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo) {
+                    if (detailData?.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo) {
                       return (
                         <View style={styles.footerActionRow}>
                           <TouchableOpacity 
