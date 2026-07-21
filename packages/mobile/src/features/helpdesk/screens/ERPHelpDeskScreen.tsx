@@ -1685,7 +1685,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           onPress={() => setIsAddCommentModalOpen(true)}
                         >
                           <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
-                          <Text style={styles.tabLabel}>Gelişme</Text>
                         </TouchableOpacity>
 
                         {/* Center Plus Tab Item (Floating Action style) */}
@@ -1696,7 +1695,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           <View style={styles.centerPlusCircle}>
                             <Ionicons name="ellipsis-horizontal" size={30} color="#FFF" />
                           </View>
-                          <Text style={styles.centerTabLabel}>İşlemler</Text>
                         </TouchableOpacity>
 
                         {/* Talebi Kapat Tab Item (Right) */}
@@ -1710,7 +1708,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                             size={24} 
                             color={canClose ? colors.success : '#94a3b8'} 
                           />
-                          <Text style={[styles.tabLabel, { color: canClose ? colors.text : '#94a3b8' }]}>Kapat</Text>
                         </TouchableOpacity>
                       </View>
                     );
@@ -3085,18 +3082,15 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   },
 
   fixedComposerWrapper: {
+    // Saydam: yüzen kapsül kendi beyaz zeminini ve gölgesini taşıyor.
+    // Buraya beyaz panel + üst çizgi konunca kapsülün arkasında ikinci bir
+    // yüzey oluşuyor ve butonlar yukarıda kalmış gibi görünüyordu.
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    backgroundColor: 'transparent',
     paddingTop: 8,
-    elevation: 10,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
     shadowRadius: 6,
   },
   bottomTabBar: {
