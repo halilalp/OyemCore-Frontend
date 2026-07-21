@@ -22,8 +22,8 @@ type MenuItem = {
 const MENU: MenuItem[] = [
   { key: 'talep', title: 'Talep İşlemleri', desc: 'Bakım talepleri (arıza/iş talebi) listesi ve detay', icon: 'construct-outline', color: '#22c55e', screen: 'BakimHelpDesk' },
   { key: 'dashboard', title: 'Dashboard', desc: 'Bakım özet göstergeleri ve grafikler', icon: 'bar-chart-outline', color: '#3b82f6', screen: 'BakimDashboard' },
-  { key: 'plan', title: 'Bakım Planı', desc: 'Hat bazlı periyodik/kestirimci bakım planlaması', icon: 'calendar-outline', color: '#8b5cf6', screen: 'Bakim', params: { initialTab: 'plan', initialMode: 'plan' } },
-  { key: 'plan-islem', title: 'Bakım Planı İşlem', desc: 'Planlanan bakımı başlat, işle ve kapat', icon: 'hammer-outline', color: '#8b5cf6', screen: 'Bakim', params: { initialTab: 'plan', initialMode: 'uygula' } },
+  { key: 'plan', title: 'Bakım Planı', desc: 'Hat bazlı periyodik/kestirimci bakım planlaması', icon: 'calendar-outline', color: '#8b5cf6', screen: 'BakimPlan', params: { mode: 'plan' } },
+  { key: 'plan-islem', title: 'Bakım Planı İşlem', desc: 'Planlanan bakımı başlat, işle ve kapat', icon: 'hammer-outline', color: '#8b5cf6', screen: 'BakimPlan', params: { mode: 'uygula' } },
   { key: 'periyodik', title: 'Periyodik Kontrol Planı', desc: 'Periyodik kontrol takvimi ve planlaması', icon: 'repeat-outline', color: '#f59e0b', screen: 'Bakim', params: { initialTab: 'periyodik', initialMode: 'plan' } },
   { key: 'periyodik-islem', title: 'Periyodik Kontrol İşlem', desc: 'Periyodik kontrolü başlat, işle ve kapat', icon: 'checkmark-done-outline', color: '#f59e0b', screen: 'Bakim', params: { initialTab: 'periyodik', initialMode: 'uygula' } },
   { key: 'rapor', title: 'Raporlar', desc: 'Bakım ve personel performans raporları', icon: 'document-text-outline', color: '#0ea5e9', screen: 'BakimRapor' },
