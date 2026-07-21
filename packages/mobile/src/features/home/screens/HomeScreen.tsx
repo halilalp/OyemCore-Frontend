@@ -163,7 +163,10 @@ export const HomeScreen = () => {
 
   // Proje kartları — webportal WebServiceDashboard.ProjeGetir karşılığı.
   // Hedef sayfa: projenin AnaSayfa'sı (yetki varsa), yoksa projenin ilk sayfası.
-  const projects = Object.entries(groupedModules).map(([name, pages]: [string, any[]]) => {
+  const projectPastelBgs = [colors.pastelBlueBg, colors.pastelOrangeBg, colors.pastelGreenBg, colors.pastelPurpleBg];
+  const projectPastelIcons = [colors.pastelBlueIcon, colors.pastelOrangeIcon, colors.pastelGreenIcon, colors.pastelPurpleIcon];
+
+  const projects = Object.entries(groupedModules).map(([name, pages]: [string, any[]], projIndex) => {
     const anaSayfaUrl = (pages[0]?.projeAnaSayfa || '').toLowerCase();
     const anaSayfaPage =
       pages.find(p => !!p.sayfaUrl && anaSayfaUrl.endsWith(String(p.sayfaUrl).toLowerCase())) || pages[0];
@@ -178,6 +181,9 @@ export const HomeScreen = () => {
       icon: icon as any,
       bildirim: (pages[0]?.projeBildirim || '') as string,
       anaSayfa: anaSayfaPage?.mobilUrl || 'Home',
+      // Panolar kutucuklarıyla aynı pastel dönüşümü
+      bg: projectPastelBgs[projIndex % 4],
+      color: projectPastelIcons[projIndex % 4],
     };
   });
 
@@ -321,25 +327,27 @@ export const HomeScreen = () => {
 
             {/* Projeler — webportal Dashboard/index.js renderAppCreativeItem2026 karşılığı:
                 proje ikonu + adı + bildirim rozeti, tıklayınca projenin anasayfasına gider. */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.projectCardsContent}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modulesScrollContent}>
               {projects
                 .filter(p => moduleSearch === '' || p.name.toLowerCase().includes(moduleSearch.toLowerCase()))
                 .map(proj => (
                 <TouchableOpacity
                   key={proj.name}
-                  style={styles.projectCard}
+                  style={styles.moduleItemHoriz}
                   onPress={() => navigation.navigate(proj.anaSayfa as never)}
-                  activeOpacity={0.85}
+                  activeOpacity={0.7}
                 >
-                  {!!proj.bildirim && (
-                    <View style={styles.projectBadge}>
-                      <Text style={styles.projectBadgeText}>{proj.bildirim}</Text>
+                  <View>
+                    <View style={[styles.moduleIconBox, { backgroundColor: proj.bg }]}>
+                      <Ionicons name={proj.icon} size={28} color={proj.color} />
                     </View>
-                  )}
-                  <View style={styles.projectIconBox}>
-                    <Ionicons name={proj.icon} size={24} color={colors.primary} />
+                    {!!proj.bildirim && (
+                      <View style={styles.projectBadge}>
+                        <Text style={styles.projectBadgeText}>{proj.bildirim}</Text>
+                      </View>
+                    )}
                   </View>
-                  <Text style={styles.projectCardText} numberOfLines={2}>
+                  <Text style={styles.moduleLabel} numberOfLines={2}>
                     {proj.name}
                   </Text>
                 </TouchableOpacity>
@@ -851,7 +859,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
 
     // SECTION
     section: {
-      marginBottom: 32,
+      marginBottom: 20,
     },
     sectionHeaderRow: {
       flexDirection: 'row',
@@ -921,43 +929,11 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       paddingHorizontal: 20,
       gap: 10,
     },
-    // Proje kartları (webportal görünümü: ikon + ad + adet rozeti)
-    projectCardsContent: {
-      gap: 10,
-      paddingRight: 16,
-      paddingTop: 8,
-    },
-    projectCard: {
-      width: 104,
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      borderRadius: 14,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    projectIconBox: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.primary + '15',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    projectCardText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 14,
-    },
+    // Proje kutucuğundaki bildirim rozeti (ikon kutusunun sağ üstüne oturur)
     projectBadge: {
       position: 'absolute',
       top: -6,
-      right: -4,
+      right: -6,
       minWidth: 20,
       height: 20,
       borderRadius: 10,
