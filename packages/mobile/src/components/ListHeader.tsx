@@ -72,7 +72,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
           </View>
           <View style={styles.topRight}>
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -181,6 +181,10 @@ const styles = StyleSheet.create({
   topLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    // Uzun başlık sağdaki alt yazıya bitişiyordu ('Planı1 kontrol'). Kısa
+    // başlıklarda bir şey değişmez; yalnızca taşma olduğunda başlık kısalır.
+    flex: 1,
+    minWidth: 0,
   },
   backButton: {
     width: 40,
@@ -195,16 +199,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#FFF',
+    flexShrink: 1,
   },
   topRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
   },
   subtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     fontWeight: '500',
     marginRight: 10,
+    // Uzun başlıklarda alt yazı başlığa bitişiyordu ('Planı1 kontrol').
+    marginLeft: 12,
   },
   searchToggleButton: {
     width: 36,
