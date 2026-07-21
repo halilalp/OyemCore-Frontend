@@ -176,12 +176,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  // Kayıt / Sorumlu bloğu sağa yaslanır
+  // Kayıt / Sorumlu bloğu sağa yaslanır. İnce, düşük kontrastlı çerçeve:
+  // grubu belli eder ama karttaki rozet/çizgi yoğunluğunu artırmaz.
   footerPeople: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     flexShrink: 1,
+    borderWidth: 1,
+    borderColor: slateTokens.border,
+    borderRadius: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
   },
   footerLabel: {
     fontSize: 10,
