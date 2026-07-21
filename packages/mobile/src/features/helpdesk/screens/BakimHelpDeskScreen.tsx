@@ -6,6 +6,7 @@ import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native'
 import { useHelpdeskStore } from '../store/useHelpdeskStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { apiHataMesaji } from '../../../utils/apiError';
 import { Talep, api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
@@ -314,7 +315,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Başarılı', 'Kilit durumu güncellendi.');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Kilit durumu değiştirilemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Kilit durumu değiştirilemedi.'));
     }
   };
 
@@ -326,7 +327,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Başarılı', 'İşlem onayı için amire gönderildi.');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Onaya gönderilemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Onaya gönderilemedi.'));
     }
   };
 
@@ -337,7 +338,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Başarılı', 'Onay isteği geri çekildi.');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Onay isteği geri çekilemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Onay isteği geri çekilemedi.'));
     }
   };
 
@@ -349,7 +350,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       setApprovalComment('');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'İşlem tamamlanamadı.');
+      Alert.alert('Hata', apiHataMesaji(err, 'İşlem tamamlanamadı.'));
     }
   };
 
@@ -361,7 +362,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       setQuestionResponse('');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Cevap eklenemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Cevap eklenemedi.'));
     }
   };
 
@@ -373,7 +374,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Başarılı', 'Yardımcı personel eklendi.');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Yardımcı eklenemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Yardımcı eklenemedi.'));
     }
   };
 
@@ -384,7 +385,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       Alert.alert('Başarılı', 'Yardımcı personel kaldırıldı.');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Yardımcı kaldırılamadı.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Yardımcı kaldırılamadı.'));
     }
   };
 
@@ -398,7 +399,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         await loadRequestDetails(selectedRequest.talepID);
       }
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Sorumlu atanamadı.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Sorumlu atanamadı.'));
     }
   };
 
@@ -515,7 +516,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       }
       loadInitialData(type);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Talep tamamlanamadı.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Talep tamamlanamadı.'));
     }
   };
 
@@ -644,7 +645,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       setProgressDosyaName(null);
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Yorum eklenemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Yorum eklenemedi.'));
     }
   };
 
@@ -658,7 +659,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       setQuestionTargetSicil('');
       await loadRequestDetails(selectedRequest.talepID);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Soru gönderilemedi.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Soru gönderilemedi.'));
     }
   };
 
@@ -716,7 +717,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       
       loadInitialData(type);
     } catch (err: any) {
-      Alert.alert('Hata', err.message || 'Talep oluşturulamadı.');
+      Alert.alert('Hata', apiHataMesaji(err, 'Talep oluşturulamadı.'));
     }
   };
 
