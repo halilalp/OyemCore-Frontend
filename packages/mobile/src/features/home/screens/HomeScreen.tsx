@@ -23,6 +23,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { BottomNavBar } from '../../../components/BottomNavBar';
+import { LogoLoader } from '../../../components/LogoLoader';
 import EventMonthCalendar from '../../../components/EventMonthCalendar';
 import { getEventDayRange } from '../../../utils/calendarEvents';
 
@@ -77,21 +78,57 @@ export const HomeScreen = () => {
     return `${yyyy}-${mm}-${dd}`;
   });
 
-  React.useEffect(() => {
-    const fetchData = async () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchData = React.useCallback(async () => {
+      setIsLoading(true);
+      setLoadError(null);
       try {
         const now = new Date();
         const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
         const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
 
-        const [menuRes, takvimRes, talepRes, statsRes, newsRes, trainingRes] = await Promise.all([
-          api.getDashboardMenu().catch(() => []),
-          api.getTakvimEvents(prevMonth, nextMonth).catch(() => []), // JSON henüz oluşturulmamışsa DB'den doğrudan al
-          api.getTaleps('').catch(() => []),
-          api.getDashboardStats().catch(() => null),
-          api.getDashboardNews().catch(() => []),
-          api.getDashboardTrainings().catch(() => []),
+        // allSettled kullanılıyor: önceden her çağrıda .catch(() => []) vardı,
+        // hata sessizce yutulup boş değer atanıyordu — bağlantı koptuğunda bile
+        // ekran normal açılmış gibi görünüyordu.
+        // getTaleps boş 'tur' ile çağrılıyordu; backend türü zorunlu tuttuğu için
+        // her seferinde 400 dönüyordu ve bu sessizce yutulduğu için "Bugünün
+        // görevleri" hep boş görünüyordu. Üç tür ayrı çekilip birleştiriliyor.
+        const sonuclar = await Promise.allSettled([
+          api.getDashboardMenu(),
+          api.getTakvimEvents(prevMonth, nextMonth),
+          api.getTaleps('IT'),
+          api.getDashboardStats(),
+          api.getDashboardNews(),
+          api.getDashboardTrainings(),
+          api.getTaleps('ERP'),
+          api.getTaleps('BAKIM'),
         ]);
+
+        const deger = <T,>(i: number, varsayilan: T): T =>
+          sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
+
+        const adlar = ['menu', 'takvim', 'talep-IT', 'stats', 'duyurular', 'egitimler', 'talep-ERP', 'talep-BAKIM'];
+        sonuclar.forEach((r, i) => {
+          if (r.status === 'rejected') {
+            console.error(`ANASAYFA_YUKLEME_HATASI [${adlar[i]}]:`, (r as PromiseRejectedResult).reason?.message || r);
+          }
+        });
+
+        const basarisiz = sonuclar.filter(r => r.status === 'rejected').length;
+        if (basarisiz === sonuclar.length) {
+          setLoadError('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
+        } else if (basarisiz > 0) {
+          setLoadError('Bazı veriler yüklenemedi. Gösterilen bilgiler eksik olabilir.');
+        }
+
+        const menuRes = deger<any[]>(0, []);
+        const takvimRes = deger<any[]>(1, []);
+        const talepRes = [...deger<any[]>(2, []), ...deger<any[]>(6, []), ...deger<any[]>(7, [])];
+        const statsRes = deger<any>(3, null);
+        const newsRes = deger<any[]>(4, []);
+        const trainingRes = deger<any[]>(5, []);
 
         setMenuItems(menuRes || []);
         setCalendarEvents(takvimRes || []);
@@ -108,14 +145,18 @@ export const HomeScreen = () => {
           dot: colors.primary
         })));
 
-        console.log("DASHBOARD_STATS_DEBUG:", statsRes);
         setStats(statsRes);
       } catch (err) {
         console.error("Dashboard data fetch error:", err);
+        setLoadError('Veriler yüklenirken bir hata oluştu.');
+      } finally {
+        setIsLoading(false);
       }
-    };
-    fetchData();
   }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const styles = createStyles(colors);
 
@@ -303,7 +344,26 @@ export const HomeScreen = () => {
 
         {/* ── İÇERİK (Beyaz Overlap Alanı) ──────────────────── */}
         <View style={styles.bodyContainer}>
-          
+
+          {/* Bağlantı/veri hatası uyarısı — önceden hatalar sessizce yutuluyordu */}
+          {!isLoading && loadError ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="cloud-offline-outline" size={20} color={colors.danger} />
+              <Text style={styles.errorBannerText}>{loadError}</Text>
+              <TouchableOpacity style={styles.errorRetryBtn} onPress={fetchData}>
+                <Text style={styles.errorRetryText}>Tekrar dene</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {isLoading ? (
+            <View style={styles.homeLoading}>
+              <LogoLoader size={72} />
+              <Text style={styles.homeLoadingText}>Yükleniyor...</Text>
+            </View>
+          ) : (
+          <>
+
           {/* Hızlı İşlemler */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
@@ -553,6 +613,8 @@ export const HomeScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          </>
+          )}
           
         </View>
       </ScrollView>
@@ -886,6 +948,46 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     // SECTION
     section: {
       marginBottom: 20,
+    },
+    homeLoading: {
+      paddingVertical: 60,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    homeLoadingText: {
+      marginTop: 12,
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    errorBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginHorizontal: 20,
+      marginBottom: 16,
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: colors.danger + '12',
+      borderWidth: 1,
+      borderColor: colors.danger + '35',
+    },
+    errorBannerText: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.text,
+      lineHeight: 17,
+    },
+    errorRetryBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: colors.danger,
+    },
+    errorRetryText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '700',
     },
     sectionHeaderRow: {
       flexDirection: 'row',
