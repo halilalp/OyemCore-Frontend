@@ -38,7 +38,7 @@ export const BakimYonetimHubScreen = () => {
     <View style={styles.container}>
       <ListHeader
         title="Bakım Yönetimi"
-        subtitle="Planlama, uygulama ve talep işlemleri"
+        subtitle={`${MENU.length} bölüm`}
         searchValue=""
         onSearchChange={() => {}}
         searchPlaceholder=""

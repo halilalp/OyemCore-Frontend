@@ -75,7 +75,7 @@ export const BakimRaporScreen = () => {
     <View style={styles.container}>
       <ListHeader
         title="Bakım Raporları"
-        subtitle="Bakım ve personel performans raporları"
+        subtitle={`${raporPersonel.length} personel`}
         searchValue=""
         onSearchChange={() => {}}
         searchPlaceholder=""
