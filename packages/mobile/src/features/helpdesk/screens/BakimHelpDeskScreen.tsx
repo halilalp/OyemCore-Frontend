@@ -53,6 +53,10 @@ const extractImagesFromHtml = (html: string | null | undefined): string[] => {
 // Tipi sabit olduğu için remount olmaz (TextInput odak kaybı yaşanmaz).
 const RenderCatch: React.FC<{ render: () => any }> = ({ render }) => render();
 
+// Yüklenen dosyanın hangi forma yazılacağı. Üç ayrı formun da kendi eki var:
+// yeni talep, gelişme notu ve iş emri.
+type DosyaHedefi = 'form' | 'gelisme' | 'isemri';
+
 const stripHtml = (html: string | null | undefined, maxLength?: number): string => {
   if (!html) return '';
   const hasImage = html.toLowerCase().includes('<img');
@@ -220,7 +224,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
   // File picker modal
   const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
-  const [isFilePickerForProgress, setIsFilePickerForProgress] = useState(false);
+  // Seçilen dosyanın hangi forma yazılacağı. Önceden boolean'dı (forProgress);
+  // iş emri üçüncü hedef olarak eklenince ad verilen birliğe çevrildi.
+  const [filePickerHedef, setFilePickerHedef] = useState<DosyaHedefi>('form');
 
   // Work Order (İş Emri) States
   const [isEmriTurleri, setIsEmriTurleri] = useState<{isEmriTurID: number, tanim: string}[]>([]);
@@ -236,6 +242,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const [isWoTerminPickerOpen, setIsWoTerminPickerOpen] = useState(false);
   const [woFormSaat, setWoFormSaat] = useState('');
   const [isWoSaatSelectOpen, setIsWoSaatSelectOpen] = useState(false);
+  // Referans: IsEmriKaydet(..., DosyaUrl) — iş emrine dosya eklenebiliyor.
+  const [woFormDosyaUrl, setWoFormDosyaUrl] = useState<string | null>(null);
+  const [woFormDosyaName, setWoFormDosyaName] = useState<string | null>(null);
 
   // Kontrol Formu States
   const [isKontrolFormOpen, setIsKontrolFormOpen] = useState(false);
@@ -404,6 +413,17 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   };
 
 
+  // Tek yerden temizlik: alanlar dağınık sıfırlanınca saat ve dosya bir sonraki
+  // iş emrine taşınıyordu.
+  const resetWorkOrderForm = () => {
+    setWoFormAciklama('');
+    setWoFormTur(null);
+    setWoFormTermin(null);
+    setWoFormSaat('');
+    setWoFormDosyaUrl(null);
+    setWoFormDosyaName(null);
+  };
+
   const handleCreateWorkOrder = async () => {
     if (!woFormTur || !woFormTermin || !woFormAciklama) {
       Alert.alert('Hata', 'Lütfen tür, termin ve açıklama alanlarını doldurun.');
@@ -421,14 +441,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         isEmriTurID: woFormTur,
         terminTar: formattedTermin,
         aciklama: woFormAciklama,
-        dosyaUrl: null
+        dosyaUrl: woFormDosyaUrl
       });
       if (res.success) {
         Alert.alert('Başarılı', 'İş emri oluşturuldu.');
         setIsWorkOrderCreateModalOpen(false);
-        setWoFormAciklama('');
-        setWoFormTur(null);
-        setWoFormTermin(null);
+        resetWorkOrderForm();
         if (selectedRequest?.talepID) loadRequestDetails(selectedRequest.talepID);
       }
     } catch (e: any) {
@@ -520,8 +538,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   };
 
-  const promptDocumentPicker = (forProgress: boolean) => {
-    setIsFilePickerForProgress(forProgress);
+  const promptDocumentPicker = (hedef: DosyaHedefi) => {
+    setFilePickerHedef(hedef);
     // Her iki yol da (ana ek + gelişme notu eki) native Alert kullanır. Önceden gelişme
     // yolu özel bir transparan Modal açıyordu; bu modal detay (fullScreen) modalının içinde
     // olduğu için iOS'ta görünmüyor ve görünmez overlay alt butonların dokunuşlarını
@@ -530,15 +548,15 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       'Dosya Kaynağı',
       'Nasıl eklemek istersiniz?',
       [
-        { text: 'Kamera', onPress: () => handlePickImage(forProgress) },
-        { text: 'Galeri', onPress: () => handlePickGallery(forProgress) },
-        { text: 'Dosya Seç', onPress: () => handlePickDocument(forProgress) },
+        { text: 'Kamera', onPress: () => handlePickImage(hedef) },
+        { text: 'Galeri', onPress: () => handlePickGallery(hedef) },
+        { text: 'Dosya Seç', onPress: () => handlePickDocument(hedef) },
         { text: 'İptal', style: 'cancel' },
       ]
     );
   };
 
-  const processFile = async (uri: string, name: string, forProgress: boolean, preBase64?: string) => {
+  const processFile = async (uri: string, name: string, hedef: DosyaHedefi, preBase64?: string) => {
     setIsUploadingFile(true);
     try {
       const base64Data = preBase64 ?? await getBase64FromFileUri(uri);
@@ -551,9 +569,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
       if (uploadRes.success) {
         const storedFileName = uploadRes.filePath.split('/').pop() || uploadRes.filePath;
-        if (forProgress) {
+        if (hedef === 'gelisme') {
           setProgressDosyaUrl(storedFileName);
           setProgressDosyaName(uploadRes.fileName);
+        } else if (hedef === 'isemri') {
+          setWoFormDosyaUrl(storedFileName);
+          setWoFormDosyaName(uploadRes.fileName);
         } else {
           setFormDosyaUrl(storedFileName);
           setFormDosyaName(uploadRes.fileName);
@@ -571,7 +592,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   };
 
   // Galeriden (önceden çekilmiş) fotoğraf seçimi
-  const handlePickGallery = async (forProgress: boolean) => {
+  const handlePickGallery = async (hedef: DosyaHedefi) => {
     setIsFilePickerOpen(false);
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -588,14 +609,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         const filename = asset.uri.split('/').pop() || 'photo.jpg';
-        await processFile(asset.uri, filename, forProgress, asset.base64 ?? undefined);
+        await processFile(asset.uri, filename, hedef, asset.base64 ?? undefined);
       }
     } catch (err) {
       console.error('Galeri hatası:', err);
     }
   };
 
-  const handlePickImage = async (forProgress: boolean) => {
+  const handlePickImage = async (hedef: DosyaHedefi) => {
     setIsFilePickerOpen(false);
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
@@ -612,14 +633,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         const filename = asset.uri.split('/').pop() || 'photo.jpg';
-        await processFile(asset.uri, filename, forProgress, asset.base64 ?? undefined);
+        await processFile(asset.uri, filename, hedef, asset.base64 ?? undefined);
       }
     } catch (err) {
       console.error('Kamera hatası:', err);
     }
   };
 
-  const handlePickDocument = async (forProgress: boolean) => {
+  const handlePickDocument = async (hedef: DosyaHedefi) => {
     setIsFilePickerOpen(false);
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -629,7 +650,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        await processFile(asset.uri, asset.name, forProgress);
+        await processFile(asset.uri, asset.name, hedef);
       }
     } catch (err) {
       console.error('Seçme hatası:', err);
@@ -1216,7 +1237,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TouchableOpacity 
                     style={[styles.uploadBtn, { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBg }]} 
-                    onPress={() => promptDocumentPicker(false)}
+                    onPress={() => promptDocumentPicker('form')}
                     disabled={isUploadingFile}
                   >
                     {isUploadingFile ? (
@@ -1750,6 +1771,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                   </View>
                                 </View>
 
+                                {/* İş emrine eklenen dosya — gelişme notlarındaki ile aynı önizleme */}
+                                {wo.dosyaUrl && (
+                                  <AttachmentPreview dosyaUrl={wo.dosyaUrl} module={type} />
+                                )}
+
                                 {/* Work Order Actions for Owner */}
                                 {/* İş emri işlemleri sorumluya aittir — "Yeni İş Emri"
                                     butonuyla aynı kural (referans: SORUMLU). Önceden
@@ -2054,10 +2080,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         style={styles.sheetItem}
                         onPress={() => {
                           setIsActionsMenuOpen(false);
-                          setWoFormTur(null);
-                          setWoFormTermin(null);
-                          setWoFormSaat('');
-                          setWoFormAciklama('');
+                          resetWorkOrderForm();
                           setIsWorkOrderCreateModalOpen(true);
                         }}
                       >
@@ -2224,9 +2247,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           style={styles.sheetItem}
                           onPress={() => {
                             setIsActionsMenuOpen(false);
-                            setWoFormTur(null);
-                            setWoFormTermin(null);
-                            setWoFormAciklama('');
+                            resetWorkOrderForm();
                             setIsWorkOrderCreateModalOpen(true);
                           }}
                         >
@@ -2300,7 +2321,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}
                     onPress={() => {
                       setIsFilePickerOpen(false);
-                      handlePickImage(isFilePickerForProgress);
+                      handlePickImage(filePickerHedef);
                     }}
                   >
                     <Ionicons name="camera-outline" size={24} color={colors.primary} />
@@ -2310,7 +2331,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}
                     onPress={() => {
                       setIsFilePickerOpen(false);
-                      handlePickDocument(isFilePickerForProgress);
+                      handlePickDocument(filePickerHedef);
                     }}
                   >
                     <Ionicons name="document-outline" size={24} color={colors.primary} />
@@ -2358,7 +2379,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     <TouchableOpacity 
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }} 
                       onPress={() => {
-                        promptDocumentPicker(true);
+                        promptDocumentPicker('gelisme');
                       }}
                       disabled={isUploadingFile}
                     >
@@ -2459,14 +2480,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
       {/* ----------------- WORK ORDER CREATE MODAL ----------------- */}
       {/* Tam sayfa form — yarım ekran alt sayfa olarak sıkışıyordu */}
-      <Modal visible={isWorkOrderCreateModalOpen} animationType="slide" onRequestClose={() => setIsWorkOrderCreateModalOpen(false)}>
+      <Modal visible={isWorkOrderCreateModalOpen} animationType="slide" onRequestClose={() => { resetWorkOrderForm(); setIsWorkOrderCreateModalOpen(false); }}>
         <View style={{ flex: 1, backgroundColor: colors.card }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <View style={styles.fullPageContent}>
               {/* Standart tema: diğer kayıt formlarıyla aynı mor başlık */}
               <CreateModalHeader
                 title="İş Emri Oluştur"
-                onClose={() => setIsWorkOrderCreateModalOpen(false)}
+                onClose={() => { resetWorkOrderForm(); setIsWorkOrderCreateModalOpen(false); }}
                 colorTheme="purple"
               />
               <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
@@ -2507,12 +2528,40 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   value={woFormAciklama}
                   onChangeText={setWoFormAciklama}
                 />
+
+                {/* Dosya Ekle — referanstaki IsEmriKaydet DosyaUrl parametresinin karşılığı */}
+                <Text style={[styles.formLabel, { marginTop: 16 }]}>Dosya Ekle</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity
+                    style={[styles.uploadBtn, { paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.inputBg }]}
+                    onPress={() => promptDocumentPicker('isemri')}
+                    disabled={isUploadingFile}
+                  >
+                    {isUploadingFile ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="attach-outline" size={18} color={colors.primary} />
+                        <Text style={{ color: colors.primary, fontWeight: '700' }}>Dosya Seç</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {woFormDosyaName && (
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 10, gap: 4 }}>
+                      <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
+                      <Text style={{ color: colors.textSecondary, flex: 1 }} numberOfLines={1}>
+                        {woFormDosyaName}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
                 <View style={{ height: 40 }} />
               </ScrollView>
               {/* Diğer kayıt formlarıyla aynı düzen: İptal + Kaydet yan yana.
                   ScrollView dışında olduğu için yatay boşluk burada veriliyor. */}
               <View style={styles.pageFormActionsRow}>
-                <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => setIsWorkOrderCreateModalOpen(false)}>
+                <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => { resetWorkOrderForm(); setIsWorkOrderCreateModalOpen(false); }}>
                   <Text style={styles.pageFormCancelBtnText}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.pageFormSubmitBtn} onPress={handleCreateWorkOrder}>
