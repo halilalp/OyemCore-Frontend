@@ -262,12 +262,8 @@ export const AnnouncementScreen = () => {
     }
   };
 
-  const resolveImageSource = (url: string) => {
-    if (!url || url === 'duyuru.jpg') {
-      return require('../../../../assets/oyemcore-menu.png'); // placeholder fallback
-    }
-    return { uri: api.downloadFileUrl(url, 'HABERIMG') };
-  };
+  // 'duyuru.jpg' varsayılan değerdir, gerçek bir yükleme değil.
+  const hasImage = (url?: string | null) => !!url && url !== 'duyuru.jpg';
 
   const renderItem = ({ item }: { item: Announcement }) => {
     const formattedDate = formatApiDateLong(item.tarih);
@@ -276,12 +272,23 @@ export const AnnouncementScreen = () => {
     const isOwner = item.kayitEposta?.trim() === user?.eposta?.trim() || isAdmin;
 
     return (
-      <View style={styles.card}>
-        <Image
-          source={resolveImageSource(item.profilUrl)}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.8}
+        onPress={() => setSelectedNews(item)}
+      >
+        {hasImage(item.profilUrl) ? (
+          <Image
+            source={{ uri: api.downloadFileUrl(item.profilUrl!, 'HABERIMG') }}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
+        ) : (
+          // Görseli olmayan duyuruda logoyu kırparak göstermek yerine sade ikon
+          <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
+            <CustomIcon name="megaphone-outline" size={26} color={colors.textMuted} />
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.title} numberOfLines={2}>{item.konu}</Text>
           <Text style={styles.descriptionText} numberOfLines={2}>
@@ -326,7 +333,7 @@ export const AnnouncementScreen = () => {
             )}
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -786,6 +793,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     height: '100%',
     minHeight: 120,
     backgroundColor: colors.border,
+  },
+  cardImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
   },
   cardContent: {
     flex: 1,

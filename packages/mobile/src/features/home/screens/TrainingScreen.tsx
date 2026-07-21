@@ -49,6 +49,9 @@ export const TrainingScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
+  // Detay modali — karta dokununca açılır (önceden detay gösterimi hiç yoktu)
+  const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
+
   useEffect(() => {
     loadTrainings();
     loadCategories();
@@ -236,7 +239,11 @@ export const TrainingScreen = () => {
     const isOwner = item.kayitEposta?.trim() === user?.eposta?.trim() || isAdmin;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.8}
+        onPress={() => setSelectedTraining(item)}
+      >
         <View style={styles.cardLeft}>
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryBadgeText}>{item.kategori || 'Genel'}</Text>
@@ -278,7 +285,7 @@ export const TrainingScreen = () => {
             module="HABERDOCS"
           />
         ) : null}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -458,8 +465,51 @@ export const TrainingScreen = () => {
         </View>
       </Modal>
 
-      <BottomNavBar 
-        currentScreen="Home" 
+      {/* Detay modali — karta dokununca */}
+      <Modal
+        visible={!!selectedTraining}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTraining(null)}
+      >
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailContainer}>
+            <View style={styles.detailHeader}>
+              <Text style={styles.detailHeaderTitle} numberOfLines={1}>Eğitim Detayı</Text>
+              <TouchableOpacity onPress={() => setSelectedTraining(null)}>
+                <CustomIcon name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryBadgeText}>{selectedTraining?.kategori || 'Genel'}</Text>
+              </View>
+              <Text style={styles.detailTitle}>{selectedTraining?.konu}</Text>
+              <View style={styles.metaRow}>
+                <CustomIcon name="person-outline" size={13} color={colors.textSecondary} />
+                <Text style={styles.metaText}>{selectedTraining?.adSoyad || 'Eğitmen'}</Text>
+                <View style={styles.metaDot} />
+                <CustomIcon name="calendar-outline" size={13} color={colors.textSecondary} />
+                <Text style={styles.metaText}>{formatApiDateLong(selectedTraining?.tarih)}</Text>
+              </View>
+              <Text style={styles.detailBody}>
+                {selectedTraining?.aciklama || 'Açıklama bulunmuyor.'}
+              </Text>
+              {selectedTraining?.dosyaUrl ? (
+                <AttachmentPreview dosyaUrl={selectedTraining.dosyaUrl} module="HABERDOCS" />
+              ) : null}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.detailCloseBtn} onPress={() => setSelectedTraining(null)}>
+              <Text style={styles.detailCloseBtnText}>Kapat</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <BottomNavBar
+        currentScreen="Home"
         customAction={readOnly ? undefined : {
           icon: 'add-outline',
           label: 'Yeni Eğitim',
@@ -535,6 +585,61 @@ const createStyles = (colors: any) => StyleSheet.create({
   listContainer: {
     padding: 16,
     gap: 12,
+  },
+  // Detay modali
+  detailOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  detailContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    maxHeight: '80%',
+    overflow: 'hidden',
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  detailHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  detailScroll: {
+    padding: 16,
+  },
+  detailTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  detailBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.textSecondary,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  detailCloseBtn: {
+    margin: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+  detailCloseBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
   card: {
     flexDirection: 'row',
