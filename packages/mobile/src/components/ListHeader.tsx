@@ -24,10 +24,14 @@ interface ListHeaderProps {
   onBack?: () => void;
   // Başlık sağında opsiyonel aksiyon butonu (ör. dashboard/pano girişi)
   rightAction?: { icon: any; onPress: () => void };
+  /** Alt boşluğu daraltmak icin (varsayilan 30). Ortak bilesen oldugu icin
+   *  global degistirmek yerine ekran bazinda gecilir. */
+  bottomSpacing?: number;
   children?: React.ReactNode;
 }
 
 export const ListHeader: React.FC<ListHeaderProps> = ({
+  bottomSpacing,
   title,
   subtitle,
   searchPlaceholder = 'Ara...',
@@ -50,7 +54,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }, bottomSpacing !== undefined && { paddingBottom: bottomSpacing }]}>
       <LinearGradient
         colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
         start={{ x: 0, y: 0 }}

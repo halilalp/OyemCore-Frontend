@@ -792,6 +792,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     return (
       <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
         <ListHeader
+        bottomSpacing={12}
           title={type === 'IT' ? 'IT HelpDesk' : type === 'ERP' ? 'ERP HelpDesk' : 'Bakım HelpDesk'}
           subtitle={`Diğer Sayfalar`}
         />
