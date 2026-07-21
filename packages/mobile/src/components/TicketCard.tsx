@@ -81,28 +81,27 @@ export const TicketCard: React.FC<TicketCardProps> = ({
           </Text>
 
           <View style={styles.footerRow}>
-            <View style={styles.footerLeft}>
-              <View style={styles.footerItem}>
-                <Ionicons name="time-outline" size={14} color={slateTokens.textMuted} />
-                <Text style={styles.footerText}>{timeAgo}</Text>
-              </View>
-              {/* Talep eden (kaydı açan) — profil resmiyle */}
+            {/* Solda tarih, sağa yaslı Kayıt / Sorumlu */}
+            <View style={styles.footerItem}>
+              <Ionicons name="time-outline" size={14} color={slateTokens.textMuted} />
+              <Text style={styles.footerText}>{timeAgo}</Text>
+            </View>
+
+            <View style={styles.footerPeople}>
               {!!requesterSicil && (
-                <>
-                  <View style={styles.footerDivider} />
-                  <View style={styles.footerItem}>
-                    <UserAvatar sicilNo={requesterSicil} name={requesterName} size={18} style={{ marginRight: 4 }} />
-                    <Text style={styles.footerText} numberOfLines={1}>
-                      {(requesterName || '').split(' ')[0]}
-                    </Text>
-                  </View>
-                </>
+                <View style={styles.footerItem}>
+                  <Text style={styles.footerLabel}>Kayıt</Text>
+                  <UserAvatar sicilNo={requesterSicil} name={requesterName} size={18} style={{ marginRight: 4 }} />
+                  <Text style={styles.footerText} numberOfLines={1}>
+                    {(requesterName || '').split(' ')[0]}
+                  </Text>
+                </View>
               )}
-              <View style={styles.footerDivider} />
               <View style={styles.footerItem}>
+                <Text style={styles.footerLabel}>Sorumlu</Text>
                 {userSicil
                   ? <UserAvatar sicilNo={userSicil} name={user} size={18} style={{ marginRight: 4 }} />
-                  : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} />}
+                  : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} style={{ marginRight: 4 }} />}
                 <Text style={styles.footerText}>{user}</Text>
               </View>
             </View>
@@ -177,9 +176,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  footerLeft: {
+  // Kayıt / Sorumlu bloğu sağa yaslanır
+  footerPeople: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    flexShrink: 1,
+  },
+  footerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: slateTokens.textMuted,
+    marginRight: 4,
   },
   footerItem: {
     flexDirection: 'row',
