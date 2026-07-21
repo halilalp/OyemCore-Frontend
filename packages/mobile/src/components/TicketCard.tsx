@@ -94,8 +94,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             <View style={styles.footerCell}>
               <Text style={styles.footerLabel}>Kayıt</Text>
               {requesterSicil
-                ? <UserAvatar sicilNo={requesterSicil} name={requesterName} size={18} style={{ marginRight: 4 }} />
-                : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} style={{ marginRight: 4 }} />}
+                ? <UserAvatar sicilNo={requesterSicil} name={requesterName} size={24} style={{ marginRight: 5 }} />
+                : <Ionicons name="person-outline" size={18} color={slateTokens.textMuted} style={{ marginRight: 5 }} />}
               <Text style={styles.footerText} numberOfLines={1}>
                 {(requesterName || '-').split(' ')[0]}
               </Text>
@@ -106,8 +106,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             <View style={styles.footerCell}>
               <Text style={styles.footerLabel}>Sorumlu</Text>
               {userSicil
-                ? <UserAvatar sicilNo={userSicil} name={user} size={18} style={{ marginRight: 4 }} />
-                : <Ionicons name="person-outline" size={14} color={slateTokens.textMuted} style={{ marginRight: 4 }} />}
+                ? <UserAvatar sicilNo={userSicil} name={user} size={24} style={{ marginRight: 5 }} />
+                : <Ionicons name="person-outline" size={18} color={slateTokens.textMuted} style={{ marginRight: 5 }} />}
               <Text style={[styles.footerText, { flexShrink: 1 }]} numberOfLines={1}>{user}</Text>
             </View>
           </View>
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
   footerDivider: {
     width: 1,
-    height: 14,
+    height: 18,
     backgroundColor: slateTokens.border,
     flexShrink: 0,        // sikisip kaybolmasin
   },
