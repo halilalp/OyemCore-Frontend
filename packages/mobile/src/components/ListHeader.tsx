@@ -54,7 +54,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }, compact && { paddingBottom: 10 }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }, compact && { paddingBottom: 2 }]}>
       <LinearGradient
         colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
         start={{ x: 0, y: 0 }}
