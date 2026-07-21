@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
@@ -879,7 +878,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     return (
       <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
         <ListHeader
-          title={type === 'IT' ? 'IT HelpDesk' : type === 'ERP' ? 'ERP HelpDesk' : 'Bakım HelpDesk'}
+          title="Bakım HelpDesk"
           subtitle={`Diğer Sayfalar`}
         />
         <ModuleSubNav 
@@ -898,7 +897,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <ListHeader
-        title={type === 'IT' ? 'IT HelpDesk' : type === 'ERP' ? 'ERP HelpDesk' : 'Bakım HelpDesk'}
+        title="Bakım HelpDesk"
         subtitle={`${filteredRequests.length} talep`}
         searchValue={searchText}
         onSearchChange={setSearchText}
@@ -1827,7 +1826,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                               <View key={i} style={styles.timelineItemRow}>
                                 <View style={styles.timelineLeftCol}>
                                   <View style={[styles.timelineIconBg, { backgroundColor: iconColor + '1A' }]}>
-                                    <Ionicons name={iconName} size={14} color={iconColor} />
+                                    <Ionicons name={iconName as any} size={14} color={iconColor} />
                                   </View>
                                   {!isLast && <View style={styles.timelineVerticalLine} />}
                                 </View>
@@ -2530,13 +2529,19 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <KeyboardDismissBar />
       </Modal>
 
-      {/* ----------------- DATE PICKER MODAL (TEMPORARY PLACEHOLDER) ----------------- */}
+      {/* Termin tarihi. Önceden onSelect/initialDate/mode geçiliyordu; bileşende
+          böyle proplar yok (doğrusu onSelectDate), bu yüzden seçim yapıldığında
+          hiçbir şey olmuyordu — @ts-nocheck bunu gizliyordu. */}
       <DatePickerModal
         visible={isWoTerminPickerOpen}
         onClose={() => setIsWoTerminPickerOpen(false)}
-        onSelect={(date) => { setWoFormTermin(date); setIsWoTerminPickerOpen(false); }}
-        initialDate={woFormTermin || new Date()}
-        mode="datetime"
+        title="Termin Tarihi"
+        outputFormat="yyyy-MM-dd"
+        onSelectDate={(dateStr) => {
+          const [y, m, d] = dateStr.split('-').map(Number);
+          if (y && m && d) setWoFormTermin(new Date(y, m - 1, d));
+          setIsWoTerminPickerOpen(false);
+        }}
       />
 
       {/* ----------------- WORK ORDER ASSIGN MODAL ----------------- */}
@@ -3810,7 +3815,6 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     justifyContent: 'flex-end',
   },
   // Bu stiller kullanılıyordu ama hiç tanımlanmamıştı; undefined döndükleri
-  // için İş Emri Oluştur modali zeminsiz/düzensiz çiziliyordu (@ts-nocheck
   // yüzünden derleyici de uyarmıyordu).
   modalContent: {
     backgroundColor: colors.card,
@@ -3864,13 +3868,6 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     fontWeight: '700',
     color: colors.text,
   },
-  formLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 6,
-    marginTop: 12,
-  },
   formInput: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -3882,6 +3879,128 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     fontSize: 14,
     minHeight: 46,
     justifyContent: 'center',
+  },
+  // Açılır seçim listesi (tür seçimi, sorumlu seçimi)
+  dropdownContainer: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    marginHorizontal: 24,
+    maxHeight: '70%',
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  dropdownHeader: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  dropdownTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  dropdownItem: {
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  // Geçmiş / iş emri kartları
+  historyCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  historyIconWrapper: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  historyContent: {
+    flex: 1,
+  },
+  historyDate: {
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  historyDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  // Aksiyon butonları
+  footerActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  actionButtonDanger: {
+    backgroundColor: colors.danger,
+  },
+  actionButtonSuccess: {
+    backgroundColor: colors.success,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalButtonSuccess: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  smallBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  smallBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   actionSheetWrapper: {
     backgroundColor: colors.card,
