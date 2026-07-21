@@ -59,9 +59,12 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         <View style={styles.contentContainer}>
           <View style={styles.headerRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-              {/* BAKIM talep puanı — referanstaki renkli top göstergesi */}
+              {/* BAKIM talep puanı — referanstaki renkli gösterge; puan varsa
+                  değeri de yazılır. TalepPuan boş olan taleplerde hiç çizilmez. */}
               {!!puanRenk && (
-                <View style={[styles.puanDot, { backgroundColor: puanRenk }]} />
+                <View style={[styles.puanBadge, { backgroundColor: puanRenk }]}>
+                  <Text style={styles.puanBadgeText}>{puan ?? ''}</Text>
+                </View>
               )}
               <Text style={styles.codeText}>{code}</Text>
             </View>
@@ -144,13 +147,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  // BAKIM talep puanı göstergesi (referanstaki 15px renkli daire)
-  puanDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  // BAKIM talep puanı göstergesi — referanstaki renkli daire, içinde puan
+  puanBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  puanBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1f2937',
   },
   codeText: {
     fontSize: 12,

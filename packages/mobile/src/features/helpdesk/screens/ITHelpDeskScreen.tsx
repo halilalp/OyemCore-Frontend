@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
@@ -820,22 +820,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         filters={[]} // Boş bırak, children render edilecek
       >
         {/* Advanced Filters inside ListHeader */}
-        {/* Tümü / Bana Atanan */}
-        <View style={styles.helpTabsRow}>
-          {[{ id: 'all', label: 'Tümü' }, { id: 'mine', label: 'Bana Atanan' }].map(t => {
-            const isActive = activeTab === t.id;
-            return (
-              <TouchableOpacity
-                key={t.id}
-                style={[styles.helpTabBtn, isActive && styles.helpTabBtnActive]}
-                onPress={() => setActiveTab(t.id as any)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.helpTabText, isActive && styles.helpTabTextActive]}>{t.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
 
         <View style={styles.headerFiltersRow}>
           <TouchableOpacity style={styles.headerFilterBtn} onPress={() => setIsFilterStatusSelectorOpen(true)}>
@@ -853,6 +837,17 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               Bitiş: {filterEndDate.substring(0,5)} ⌄
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Bana Atanan — sekme yerine anahtar; filtre satırının altında */}
+        <View style={styles.assignedToggleRow}>
+          <Text style={styles.assignedToggleLabel}>Bana Atanan</Text>
+          <Switch
+            value={activeTab === 'mine'}
+            onValueChange={(v) => setActiveTab(v ? 'mine' : 'all')}
+            trackColor={{ false: 'rgba(255,255,255,0.25)', true: '#ffffff' }}
+            thumbColor={activeTab === 'mine' ? colors.primary : '#f4f4f5'}
+          />
         </View>
       </ListHeader>
 
@@ -2257,6 +2252,18 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   helpTabBtnActive: { backgroundColor: '#fff', borderColor: '#fff' },
   helpTabText: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
   helpTabTextActive: { color: colors.primary, fontWeight: '800' },
+  assignedToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  assignedToggleLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+  },
   headerFiltersRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
