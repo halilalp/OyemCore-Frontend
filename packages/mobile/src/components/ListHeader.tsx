@@ -24,14 +24,14 @@ interface ListHeaderProps {
   onBack?: () => void;
   // Başlık sağında opsiyonel aksiyon butonu (ör. dashboard/pano girişi)
   rightAction?: { icon: any; onPress: () => void };
-  /** Alt boşluğu daraltmak icin (varsayilan 30). Ortak bilesen oldugu icin
-   *  global degistirmek yerine ekran bazinda gecilir. */
-  bottomSpacing?: number;
+  /** Basligi ve alt boslugu daraltir. Ortak bilesen 29 ekranda kullanildigi
+   *  icin global degistirmek yerine ekran bazinda acilir. */
+  compact?: boolean;
   children?: React.ReactNode;
 }
 
 export const ListHeader: React.FC<ListHeaderProps> = ({
-  bottomSpacing,
+  compact,
   title,
   subtitle,
   searchPlaceholder = 'Ara...',
@@ -54,7 +54,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }, bottomSpacing !== undefined && { paddingBottom: bottomSpacing }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }, compact && { paddingBottom: 10 }]}>
       <LinearGradient
         colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
         start={{ x: 0, y: 0 }}
@@ -67,7 +67,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
 
       <View style={styles.content}>
         {/* Top Row: Back, Title, Subtitle */}
-        <View style={styles.topRow}>
+        <View style={[styles.topRow, compact && { marginBottom: 10 }]}>
           <View style={styles.topLeft}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />

@@ -792,7 +792,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     return (
       <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
         <ListHeader
-        bottomSpacing={12}
+        compact
           title={type === 'IT' ? 'IT HelpDesk' : type === 'ERP' ? 'ERP HelpDesk' : 'Bakım HelpDesk'}
           subtitle={`Diğer Sayfalar`}
         />
@@ -2258,7 +2258,7 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginTop: 10,
+    marginTop: 8,
   },
   assignedToggleLabel: {
     fontSize: 12.5,
@@ -2269,7 +2269,7 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
       flexDirection: 'row',
       justifyContent: 'space-between',
       gap: 8,
-      marginTop: 8,
+      marginTop: 0,
     },
     headerFilterBtn: {
       flex: 1,
@@ -2343,7 +2343,8 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     marginTop: 40,
   },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,   // header ile arasindaki bosluk kisildi
     gap: 0,
     paddingBottom: 32,
   },
