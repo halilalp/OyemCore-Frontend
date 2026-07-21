@@ -2207,9 +2207,10 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
       alignSelf: 'center',
     },
     helpTabsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  helpTabBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+  // Icerik kadar genislik: flex:1 iken tum satiri kapliyordu
+  helpTabBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
   helpTabBtnActive: { backgroundColor: '#fff', borderColor: '#fff' },
-  helpTabText: { fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
+  helpTabText: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)' },
   helpTabTextActive: { color: colors.primary, fontWeight: '800' },
   headerFiltersRow: {
       flexDirection: 'row',

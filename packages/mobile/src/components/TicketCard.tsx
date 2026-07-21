@@ -65,14 +65,10 @@ export const TicketCard: React.FC<TicketCardProps> = ({
               )}
               <Text style={styles.codeText}>{code}</Text>
             </View>
-            {/* Sağ üstte durum, hemen solunda önem seviyesi */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={[styles.badge, { backgroundColor: priorityBg }]}>
-                <Text style={[styles.badgeText, { color: priorityColor }]}>{priorityLabel}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: statusBg }]}>
-                <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
-              </View>
+            {/* Tek vurgulu öğe: durum. Önem seviyesi aşağıda renkli nokta +
+                metin olarak veriliyor — iki dolu rozet birbiriyle yarışıyordu. */}
+            <View style={[styles.badge, { backgroundColor: statusBg }]}>
+              <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
           </View>
 
@@ -80,15 +76,18 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             {title}
           </Text>
 
-          {/* Tarih | Kayıt eden | Sorumlu — üçü satıra eşit dağılır */}
+          {/* Önem + tarih. Önem artık dolu rozet değil: üstte tek vurgulu öğe
+              durum olsun diye renkli nokta + metne indirildi. */}
+          <View style={styles.metaRow}>
+            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+            <Text style={[styles.metaText, { color: priorityColor, fontWeight: '700' }]}>{priorityLabel}</Text>
+            <Text style={styles.metaSeparator}>·</Text>
+            <Ionicons name="time-outline" size={13} color={slateTokens.textMuted} />
+            <Text style={styles.metaText} numberOfLines={1}>{timeAgo}</Text>
+          </View>
+
+          {/* Kişiler ayrı satırda — üçü aynı satıra sığmıyordu, isimler kısalıyordu */}
           <View style={styles.footerRow}>
-            <View style={styles.footerCell}>
-              <Ionicons name="time-outline" size={14} color={slateTokens.textMuted} />
-              <Text style={styles.footerText} numberOfLines={1}>{timeAgo}</Text>
-            </View>
-
-            <View style={styles.footerDivider} />
-
             <View style={styles.footerCell}>
               <Text style={styles.footerLabel}>Kayıt</Text>
               {requesterSicil
@@ -171,7 +170,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: slateTokens.textBody,
-    marginBottom: 12,
+    marginBottom: 8,
     lineHeight: 20,
   },
   footerRow: {
@@ -187,6 +186,28 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  // Önem + tarih satırı
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  priorityDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginRight: 5,
+  },
+  metaText: {
+    fontSize: 12,
+    color: slateTokens.textMuted,
+    marginLeft: 3,
+  },
+  metaSeparator: {
+    fontSize: 12,
+    color: slateTokens.border,
+    marginHorizontal: 7,
   },
   footerLabel: {
     fontSize: 10,
