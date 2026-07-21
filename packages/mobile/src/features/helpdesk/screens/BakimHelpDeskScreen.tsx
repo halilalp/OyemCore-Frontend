@@ -233,6 +233,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const [woFormAciklama, setWoFormAciklama] = useState('');
   const [isWoTurSelectOpen, setIsWoTurSelectOpen] = useState(false);
   const [isWoTerminPickerOpen, setIsWoTerminPickerOpen] = useState(false);
+  const [woFormSaat, setWoFormSaat] = useState('');
 
   // Kontrol Formu States
   const [isKontrolFormOpen, setIsKontrolFormOpen] = useState(false);
@@ -407,7 +408,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       return;
     }
     try {
-      const formattedTermin = `${woFormTermin.getFullYear()}-${String(woFormTermin.getMonth() + 1).padStart(2, '0')}-${String(woFormTermin.getDate()).padStart(2, '0')}T${String(woFormTermin.getHours()).padStart(2, '0')}:${String(woFormTermin.getMinutes()).padStart(2, '0')}:00`;
+      // Saat ayrı alandan geliyor (SS:DD); girilmemişse 00:00 kabul edilir.
+      const [saatStr, dakikaStr] = (woFormSaat || '').split(':');
+      const saat = Math.min(23, Number(saatStr) || 0);
+      const dakika = Math.min(59, Number(dakikaStr) || 0);
+
+      const formattedTermin = `${woFormTermin.getFullYear()}-${String(woFormTermin.getMonth() + 1).padStart(2, '0')}-${String(woFormTermin.getDate()).padStart(2, '0')}T${String(saat).padStart(2, '0')}:${String(dakika).padStart(2, '0')}:00`;
       
       const res = await api.saveIsEmri(selectedRequest?.talepKodu as string, {
         isEmriTurID: woFormTur,
@@ -2057,6 +2063,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           setIsActionsMenuOpen(false);
                           setWoFormTur(null);
                           setWoFormTermin(null);
+                          setWoFormSaat('');
                           setWoFormAciklama('');
                           setIsWorkOrderCreateModalOpen(true);
                         }}
@@ -2458,9 +2465,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       </Modal>
 
       {/* ----------------- WORK ORDER CREATE MODAL ----------------- */}
-      <Modal visible={isWorkOrderCreateModalOpen} transparent animationType="slide" onRequestClose={() => setIsWorkOrderCreateModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
+      {/* Tam sayfa form — yarım ekran alt sayfa olarak sıkışıyordu */}
+      <Modal visible={isWorkOrderCreateModalOpen} animationType="slide" onRequestClose={() => setIsWorkOrderCreateModalOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.card }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <View style={styles.modalContent}>
               {/* Standart tema: diğer kayıt formlarıyla aynı mor başlık */}
               <CreateModalHeader
@@ -2477,11 +2485,32 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 </TouchableOpacity>
 
                 <Text style={[styles.formLabel, { marginTop: 16 }]}>Termin Tarihi</Text>
-                <TouchableOpacity style={styles.formInput} onPress={() => setIsWoTerminPickerOpen(true)}>
-                  <Text style={{ color: woFormTermin ? slateTokens.text : slateTokens.textMuted }}>
-                    {woFormTermin ? `${woFormTermin.getDate().toString().padStart(2, '0')}.${(woFormTermin.getMonth() + 1).toString().padStart(2, '0')}.${woFormTermin.getFullYear()} ${woFormTermin.getHours().toString().padStart(2, '0')}:${woFormTermin.getMinutes().toString().padStart(2, '0')}` : 'Tarih Seçin'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={[styles.formInput, { flex: 2 }]} onPress={() => setIsWoTerminPickerOpen(true)}>
+                    <Text style={{ color: woFormTermin ? slateTokens.text : slateTokens.textMuted }}>
+                      {woFormTermin
+                        ? `${woFormTermin.getDate().toString().padStart(2, '0')}.${(woFormTermin.getMonth() + 1).toString().padStart(2, '0')}.${woFormTermin.getFullYear()}`
+                        : 'Tarih Seçin'}
+                    </Text>
+                  </TouchableOpacity>
+                  {/* Saat ayrı alan — paylaşılan DatePickerModal saat desteklemiyor */}
+                  <TextInput
+                    style={[styles.formInput, { flex: 1, textAlign: 'center' }]}
+                    value={woFormSaat}
+                    onChangeText={(t) => {
+                      const sadeceRakam = t.replace(/[^0-9]/g, '').slice(0, 4);
+                      setWoFormSaat(
+                        sadeceRakam.length > 2
+                          ? `${sadeceRakam.slice(0, 2)}:${sadeceRakam.slice(2)}`
+                          : sadeceRakam
+                      );
+                    }}
+                    placeholder="SS:DD"
+                    placeholderTextColor={slateTokens.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                  />
+                </View>
 
                 <Text style={[styles.formLabel, { marginTop: 16 }]}>Açıklama</Text>
                 <TextInput
@@ -3817,10 +3846,9 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   // Bu stiller kullanılıyordu ama hiç tanımlanmamıştı; undefined döndükleri
   // yüzünden derleyici de uyarmıyordu).
   modalContent: {
+    // Tam sayfa: alt sayfa olarak yarım ekranda sıkışıyordu
+    flex: 1,
     backgroundColor: colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '85%',
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
   },
   modalHeader: {
