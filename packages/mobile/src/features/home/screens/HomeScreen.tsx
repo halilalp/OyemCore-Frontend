@@ -929,11 +929,12 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       paddingHorizontal: 20,
       gap: 10,
     },
-    // Proje kutucuğundaki bildirim rozeti (ikon kutusunun sağ üstüne oturur)
+    // Proje kutucuğundaki bildirim rozeti. Kutunun üstüne taşırılmıyor —
+    // yatay listenin üst kenarında kırpılıyordu; köşeye oturuyor.
     projectBadge: {
       position: 'absolute',
-      top: -6,
-      right: -6,
+      top: 4,
+      right: -4,
       minWidth: 20,
       height: 20,
       borderRadius: 10,
