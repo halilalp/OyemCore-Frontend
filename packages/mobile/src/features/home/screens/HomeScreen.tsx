@@ -50,7 +50,6 @@ export const HomeScreen = () => {
   const { menuItems, setMenuItems } = useAppStore();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const [activeCategory, setActiveCategory] = useState<string>('Tümü');
   const [isModulesModalVisible, setIsModulesModalVisible] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -64,13 +63,6 @@ export const HomeScreen = () => {
     fileUrl?: string;
     module?: string;
   } | null>(null);
-
-  React.useEffect(() => {
-    if (route.params?.activeCategory) {
-      setActiveCategory(route.params.activeCategory);
-      navigation.setParams({ activeCategory: undefined });
-    }
-  }, [route.params?.activeCategory]);
 
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -183,23 +175,6 @@ export const HomeScreen = () => {
       icon: icon as any,
       bildirim: (pages[0]?.projeBildirim || '') as string,
       anaSayfa: anaSayfaPage?.mobilUrl || 'Home',
-    };
-  });
-
-  // Map backend menu items to UI modules format
-  const dynamicModules = mobilePages.map((m, index) => {
-    const pastelBgs = [colors.pastelBlueBg, colors.pastelOrangeBg, colors.pastelGreenBg, colors.pastelPurpleBg];
-    const pastelIcons = [colors.pastelBlueIcon, colors.pastelOrangeIcon, colors.pastelGreenIcon, colors.pastelPurpleIcon];
-    const colorIndex = index % 4;
-
-    return {
-      id: m.sayfaUrl || String(index),
-      title: m.sayfaAdi as string,
-      icon: (m.mobilIcon || mapKeenIconToIonicons(m.ikon)) as any,
-      screen: m.mobilUrl || 'Home',
-      bg: pastelBgs[colorIndex],
-      color: pastelIcons[colorIndex],
-      projeAdi: m.projeAdi || 'Genel'
     };
   });
 
@@ -344,7 +319,9 @@ export const HomeScreen = () => {
             {/* Projeler — webportal Dashboard/index.js renderAppCreativeItem2026 karşılığı:
                 proje ikonu + adı + bildirim rozeti, tıklayınca projenin anasayfasına gider. */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.projectCardsContent}>
-              {projects.map(proj => (
+              {projects
+                .filter(p => moduleSearch === '' || p.name.toLowerCase().includes(moduleSearch.toLowerCase()))
+                .map(proj => (
                 <TouchableOpacity
                   key={proj.name}
                   style={styles.projectCard}
@@ -385,30 +362,8 @@ export const HomeScreen = () => {
               </View>
             )}
 
-            {/* Modüller */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll} contentContainerStyle={styles.modulesScrollContent}>
-              {dynamicModules
-                .filter(mod =>
-                  (activeCategory === 'Tümü' || mod.projeAdi === activeCategory) &&
-                  (moduleSearch === '' || mod.title.toLowerCase().includes(moduleSearch.toLowerCase()))
-                )
-                .map((mod, idx) => (
-                <TouchableOpacity
-                  key={`${mod.id}-${idx}`}
-                  style={styles.moduleItemHoriz}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    let target = mod.screen;
-                    navigation.navigate(target);
-                  }}
-                >
-                  <View style={[styles.moduleIconBox, { backgroundColor: mod.bg }]}>
-                    <Ionicons name={mod.icon} size={28} color={mod.color} />
-                  </View>
-                  <Text style={styles.moduleLabel}>{mod.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {/* Eski modül şeridi kaldırıldı — webportal'da da yalnızca proje kartları var.
+                Tek tek sayfalara "Tümünü Gör" modalinden erişiliyor. */}
           </View>
 
           {/* Panolar (Dashboard'lar) — yalnızca yetkili olunan modüller gösterilir */}
