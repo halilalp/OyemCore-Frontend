@@ -2000,8 +2000,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           style={styles.centerTabItem}
                           onPress={() => setIsActionsMenuOpen(true)}
                         >
-                          <View style={styles.centerPlusCircle}>
-                            <Ionicons name="ellipsis-horizontal" size={30} color="#FFF" />
+                          <View style={styles.centerFabWrapper}>
+                            <View style={styles.centerFab}>
+                              <Ionicons name="ellipsis-horizontal" size={26} color="#FFF" />
+                            </View>
                           </View>
                         </TouchableOpacity>
 
@@ -3749,22 +3751,39 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     marginTop: 2,
   },
   centerTabItem: {
+    // Anasayfadaki centerTab ile aynı: FAB mutlak konumlandığı için satır
+    // yüksekliğini değiştirmiyor.
+    flex: 1,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    height: 80,
-    marginTop: -18,
+    height: '100%',
   },
-  centerPlusCircle: {
-    // İşlemler menüsü butonu: yükseltilmiş daire, üç-nokta (⋯) ikonu, beyaz border, gölgesiz
+  centerFabWrapper: {
+    // Sayfa zemini renginde halka — çubuğun beyazında çentik etkisi verir.
+    position: 'absolute',
+    top: -18,
     width: 64,
     height: 64,
     borderRadius: 32,
-    borderWidth: 6,
-    borderColor: '#fff',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+    // Android elevation halkayı kare bir gölgeyle çiziyordu; derinliği zaten
+    // mavi dairenin kendi gölgesi veriyor.
+  },
+  centerFab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    elevation: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
   },
   centerTabLabel: {
     fontSize: 10,
