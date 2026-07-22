@@ -1228,8 +1228,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 14,
   },
   modalScroll: {
+    // gap:20 vardı ama formGroup zaten marginBottom veriyordu; ikisi üst üste
+    // binince alanlar arası ~34px oluyor, form "çok açık" görünüyordu.
     padding: 20,
-    gap: 20,
   },
   detailCard: {
     backgroundColor: colors.card,
@@ -1403,13 +1404,14 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 13,
   },
   formGroup: {
-    marginBottom: 14,
+    // Alanlar arası tek boşluk kaynağı; label ile input arası gap ile.
+    marginBottom: 16,
+    gap: 8,
   },
   formLabel: {
     fontSize: 12,
     fontWeight: '800',
     color: colors.text,
-    marginBottom: 6,
   },
   selectBox: {
     height: 48,
@@ -1482,7 +1484,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 14,
     color: colors.text,
     fontSize: 14,
-    marginBottom: 12,
   },
   modalBtnRow: {
     flexDirection: 'row',
