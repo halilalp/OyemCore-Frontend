@@ -447,7 +447,7 @@ export const HomeScreen = () => {
                   onPress={() => navigation.navigate('HelpDeskDashboard', { tur: hd.tur, title: hd.title })}>
                   <Ionicons name={hd.icon} size={14} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
                   <Text style={styles.metricLabel}>{hd.label}</Text>
-                  <StatLine styles={styles} num={s.actigim} label="Açtığım" compact />
+                  <StatLine styles={styles} num={s.actigim} label="Talep Edilen" compact />
                   <StatLine styles={styles} num={s.islem} label="İşlem" compact />
                   <StatLine styles={styles} num={s.onay} label="Onay" color={slateTokens.warning} compact />
                 </TouchableOpacity>
