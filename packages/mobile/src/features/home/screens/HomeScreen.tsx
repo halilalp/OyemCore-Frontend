@@ -43,6 +43,14 @@ const stripHtml = (html: string | null | undefined): string => {
     .trim();
 };
 
+// Metrik kartı içi tek istatistik satırı: büyük sayı + küçük etiket
+const StatLine = ({ styles, num, label, color, compact }: any) => (
+  <View style={styles.statLine}>
+    <Text style={[compact ? styles.statNumCompact : styles.statNum, color ? { color } : null]}>{num ?? '-'}</Text>
+    <Text style={compact ? styles.statLblCompact : styles.statLbl}>{label}</Text>
+  </View>
+);
+
 // ─── Bileşen ─────────────────────────────────────────────────────────────────
 
 export const HomeScreen = () => {
@@ -90,9 +98,14 @@ export const HomeScreen = () => {
   // Zil bildirimleri (aksiyon bekleyen işler)
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  // Aksiyon metrikleri (kartlar): İzin + IT/ERP/Bakım açık talep + Proje görevleri
-  const [talepAcik, setTalepAcik] = useState<{ IT: number | null; ERP: number | null; BAKIM: number | null }>({ IT: null, ERP: null, BAKIM: null });
-  const [projeGorev, setProjeGorev] = useState<number | null>(null);  // devam eden proje görevi
+  // Metrik kartları: her HelpDesk türü için {açtığım, işlem bekleyen, onay bekleyen}
+  type TalepStat = { actigim: number; islem: number; onay: number };
+  const bosStat: TalepStat = { actigim: 0, islem: 0, onay: 0 };
+  const [talepStats, setTalepStats] = useState<{ IT: TalepStat; ERP: TalepStat; BAKIM: TalepStat }>({ IT: bosStat, ERP: bosStat, BAKIM: bosStat });
+  // Proje kartı: açık proje / toplam görev / gecikmiş görev
+  const [projeOzet, setProjeOzet] = useState<{ acikProje: number; gorev: number; gecikmis: number } | null>(null);
+  // Panolar bölümü açık/kapalı (varsayılan kapalı)
+  const [panolarAcik, setPanolarAcik] = useState(false);
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -125,16 +138,10 @@ export const HomeScreen = () => {
           .then(r => setNotifications(r?.details || []))
           .catch(() => setNotifications([]));
 
-        // Proje görevleri: tüm projelerdeki devam eden görev toplamı (ozet "tamam/toplam"). Sessiz.
-        api.getProjeToplantiList({})
-          .then(r => {
-            const dev = (r?.data || []).reduce((acc: number, p: any) => {
-              const [tam, top] = String(p.ozet || '').split('/').map((n: string) => parseInt(n, 10));
-              return acc + (Number.isFinite(top) ? Math.max((top || 0) - (tam || 0), 0) : 0);
-            }, 0);
-            setProjeGorev(dev);
-          })
-          .catch(() => setProjeGorev(0));
+        // Proje özeti: açık proje / görev / gecikmiş görev (backend hesaplar). Sessiz.
+        api.getProjeOzet()
+          .then(r => setProjeOzet(r || { acikProje: 0, gorev: 0, gecikmis: 0 }))
+          .catch(() => setProjeOzet({ acikProje: 0, gorev: 0, gecikmis: 0 }));
 
         const deger = <T,>(i: number, varsayilan: T): T =>
           sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
@@ -168,12 +175,18 @@ export const HomeScreen = () => {
         };
         setHelpdeskBadges({ IT: badge(itData), ERP: badge(erpData), BAKIM: badge(bakimData) });
         const talepRes = [...itData, ...erpData, ...bakimData];
-        // Metrik kartları: tür başına açık talep sayısı
-        setTalepAcik({
-          IT: itData.filter(acik).length,
-          ERP: erpData.filter(acik).length,
-          BAKIM: bakimData.filter(acik).length,
-        });
+        // Metrik kartları: tür başına {açtığım, işlem bekleyen, onay bekleyen}
+        const mySicil = (user as any)?.sicilNo;
+        const isOnay = (t: any) => (t.durum || '').toLocaleUpperCase('tr-TR').includes('ONAY');
+        const stat = (arr: any[]) => {
+          const open = arr.filter(acik);
+          return {
+            actigim: open.filter(t => t.kayitSicil === mySicil).length,
+            onay: open.filter(isOnay).length,
+            islem: open.filter(t => !isOnay(t)).length,
+          };
+        };
+        setTalepStats({ IT: stat(itData), ERP: stat(erpData), BAKIM: stat(bakimData) });
         const statsRes = deger<any>(3, null);
         const newsRes = deger<any[]>(4, []);
         const trainingRes = deger<any[]>(5, []);
@@ -398,40 +411,41 @@ export const HomeScreen = () => {
             )}
           </View>
 
-          {/* Metrik Kartları — İzin + IT/ERP/Bakım HelpDesk + Proje Görevleri */}
+          {/* Metrik Kartları — Satır 1: İzin + Proje · Satır 2: IT/ERP/Bakım */}
           <View style={styles.metricsContainer}>
+            {/* Yıllık İzin */}
             <View style={styles.metricCard}>
               <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>YILLIK İZİN</Text>
               <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
               <Text style={styles.metricSub}>gün borç</Text>
             </View>
-            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => navigation.navigate('HelpDeskDashboard', { tur: 'IT', title: 'IT HelpDesk' })}>
-              <Ionicons name="laptop-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>IT HELPDESK</Text>
-              <Text style={styles.metricValue}>{talepAcik.IT ?? '-'}</Text>
-              <Text style={styles.metricSub}>açık talep</Text>
+            {/* Proje */}
+            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
+              <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>PROJE</Text>
+              <StatLine styles={styles} num={projeOzet?.acikProje} label="açık proje" />
+              <StatLine styles={styles} num={projeOzet?.gorev} label="görev" />
+              <StatLine styles={styles} num={projeOzet?.gecikmis} label="gecikmiş" color={slateTokens.danger} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => navigation.navigate('HelpDeskDashboard', { tur: 'ERP', title: 'ERP HelpDesk' })}>
-              <Ionicons name="server-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>ERP HELPDESK</Text>
-              <Text style={styles.metricValue}>{talepAcik.ERP ?? '-'}</Text>
-              <Text style={styles.metricSub}>açık talep</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => navigation.navigate('HelpDeskDashboard', { tur: 'BAKIM', title: 'Bakım HelpDesk' })}>
-              <Ionicons name="construct-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>BAKIM HELPDESK</Text>
-              <Text style={styles.metricValue}>{talepAcik.BAKIM ?? '-'}</Text>
-              <Text style={styles.metricSub}>açık talep</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.metricCard, styles.metricCardWide]} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
-              <Ionicons name="briefcase-outline" size={18} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <View>
-                <Text style={styles.metricLabel}>PROJE GÖREVLERİ</Text>
-                <Text style={[styles.metricValue, { color: slateTokens.success }]}>{projeGorev ?? '-'}</Text>
-                <Text style={styles.metricSub}>devam eden görev</Text>
-              </View>
-            </TouchableOpacity>
+            {/* IT / ERP / Bakım HelpDesk */}
+            {([
+              { tur: 'IT', label: 'IT', title: 'IT HelpDesk', icon: 'laptop-outline' },
+              { tur: 'ERP', label: 'ERP', title: 'ERP HelpDesk', icon: 'server-outline' },
+              { tur: 'BAKIM', label: 'BAKIM', title: 'Bakım HelpDesk', icon: 'construct-outline' },
+            ] as const).map(hd => {
+              const s = talepStats[hd.tur];
+              return (
+                <TouchableOpacity key={hd.tur} style={[styles.metricCard, styles.metricCardThird]} activeOpacity={0.8}
+                  onPress={() => navigation.navigate('HelpDeskDashboard', { tur: hd.tur, title: hd.title })}>
+                  <Ionicons name={hd.icon} size={14} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+                  <Text style={styles.metricLabel}>{hd.label}</Text>
+                  <StatLine styles={styles} num={s.actigim} label="açtığım" compact />
+                  <StatLine styles={styles} num={s.islem} label="işlem" compact />
+                  <StatLine styles={styles} num={s.onay} label="onay" color={slateTokens.warning} compact />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </SafeAreaView>
 
@@ -534,13 +548,15 @@ export const HomeScreen = () => {
                 Tek tek sayfalara "Tümünü Gör" modalinden erişiliyor. */}
           </View>
 
-          {/* Panolar (Dashboard'lar) — yalnızca yetkili olunan modüller gösterilir */}
+          {/* Panolar (Dashboard'lar) — katlanır; varsayılan kapalı */}
           {allowedDashboards.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeaderIconRow}>
+            <TouchableOpacity style={styles.sectionHeaderIconRow} activeOpacity={0.7} onPress={() => setPanolarAcik(a => !a)}>
               <Ionicons name="stats-chart-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Panolar</Text>
-            </View>
+              <Ionicons name={panolarAcik ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+            {panolarAcik && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll} contentContainerStyle={styles.modulesScrollContent}>
               {allowedDashboards.map((d, idx) => (
                 <TouchableOpacity
@@ -556,6 +572,7 @@ export const HomeScreen = () => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            )}
           </View>
           )}
 
@@ -954,7 +971,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     headerBackground: {
       position: 'absolute',
       top: 0, left: 0, right: 0,
-      height: 640, // 5 metrik kartını (2x2 + tam genişlik) kapsayacak yükseklik
+      height: 575, // 2 sıra metrik kartı (İzin+Proje / IT+ERP+Bakım)
       overflow: 'hidden',
     },
     bgCircleLarge: {
@@ -1139,6 +1156,20 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     metricCardWide: {
       width: '100%',
     },
+    metricCardThird: {
+      width: '31.5%',
+      paddingHorizontal: 10,
+    },
+    statLine: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 5,
+      marginTop: 3,
+    },
+    statNum: { fontSize: 17, fontWeight: '800', color: '#FFF', minWidth: 18 },
+    statLbl: { fontSize: 11, color: 'rgba(255,255,255,0.72)' },
+    statNumCompact: { fontSize: 15, fontWeight: '800', color: '#FFF', minWidth: 14 },
+    statLblCompact: { fontSize: 9.5, color: 'rgba(255,255,255,0.72)' },
     metricIcon: {
       position: 'absolute',
       top: 12,

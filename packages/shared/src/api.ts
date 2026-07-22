@@ -89,6 +89,10 @@ export const api = {
     const response = await apiClient.get<{ data: any[] }>('/ProjeToplanti', { params });
     return response.data;
   },
+  getProjeOzet: async (): Promise<{ acikProje: number; gorev: number; gecikmis: number }> => {
+    const response = await apiClient.get<{ acikProje: number; gorev: number; gecikmis: number }>('/ProjeToplanti/ozet');
+    return response.data;
+  },
   getProjeToplantiDetail: async (id: number): Promise<any> => {
     const response = await apiClient.get(`/ProjeToplanti/${id}`);
     return response.data;
