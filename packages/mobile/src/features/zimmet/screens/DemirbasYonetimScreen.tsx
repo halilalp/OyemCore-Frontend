@@ -465,6 +465,8 @@ export const DemirbasYonetimScreen = () => {
         <ListHeader
           title="Demirbaş Yönetimi"
           subtitle={`${totalAssetsCount} Kayıt`}
+          // Demirbaş Sayımı ekranı yazılmıştı ama hiçbir yerden erişilmiyordu.
+          rightAction={{ icon: 'scan-outline', onPress: () => navigation.navigate('DemirbasSayim') }}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Tanım, barkod, seri/sicil no..."
