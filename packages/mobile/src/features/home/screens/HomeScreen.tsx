@@ -106,6 +106,8 @@ export const HomeScreen = () => {
   const [projeOzet, setProjeOzet] = useState<{ acikProje: number; gorev: number; gecikmis: number } | null>(null);
   // Panolar bölümü açık/kapalı (varsayılan kapalı)
   const [panolarAcik, setPanolarAcik] = useState(false);
+  // Header (gradient) yüksekliği içeriğe göre ölçülür → gövde ovalinde boşluk kalmaz
+  const [headerH, setHeaderH] = useState(0);
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -339,8 +341,8 @@ export const HomeScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
       
-      {/* ── HEADER (Sabit Arka Plan) ────────────────────────── */}
-      <View style={styles.headerBackground}>
+      {/* ── HEADER (Sabit Arka Plan) — yükseklik içeriğe göre ölçülür ── */}
+      <View style={[styles.headerBackground, headerH ? { height: headerH + 24 } : null]}>
         <LinearGradient
           colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
           start={{ x: 0, y: 0 }}
@@ -357,7 +359,8 @@ export const HomeScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerContent}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerContent}
+          onLayout={e => setHeaderH(e.nativeEvent.layout.height)}>
           {/* Üst Logo ve İkonlar */}
           <View style={styles.topRow}>
             <Image 
@@ -411,24 +414,28 @@ export const HomeScreen = () => {
             )}
           </View>
 
-          {/* Metrik Kartları — Satır 1: İzin + Proje · Satır 2: IT/ERP/Bakım */}
-          <View style={styles.metricsContainer}>
-            {/* Yıllık İzin */}
+          {/* Metrik Kartları — Satır 1: İzin + Proje · Satır 2: IT/ERP/Bakım
+              Her satır ayrı; alignItems flex-start → kartlar içerik boyuna göre
+              kısalır (0 satırlar gizli), boşluk kalmaz. */}
+          {/* Satır 1 */}
+          <View style={styles.metricRow}>
             <View style={styles.metricCard}>
               <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>Yıllık İzin</Text>
-              <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
-              <Text style={styles.metricSub}>Gün borç</Text>
+              <View style={styles.izinValueWrap}>
+                <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
+              </View>
             </View>
-            {/* Proje */}
             <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
               <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>Proje</Text>
-              <StatLine styles={styles} num={projeOzet?.acikProje} label="Açık proje" />
-              <StatLine styles={styles} num={projeOzet?.gorev} label="Görev" />
-              <StatLine styles={styles} num={projeOzet?.gecikmis} label="Gecikmiş" color={slateTokens.danger} />
+              <StatLine styles={styles} num={projeOzet?.acikProje ?? 0} label="Açık proje" />
+              <StatLine styles={styles} num={projeOzet?.gorev ?? 0} label="Görev" />
+              <StatLine styles={styles} num={projeOzet?.gecikmis ?? 0} label="Gecikmiş" color={slateTokens.danger} />
             </TouchableOpacity>
-            {/* IT / ERP / Bakım HelpDesk */}
+          </View>
+          {/* Satır 2 */}
+          <View style={[styles.metricRow, { marginTop: 10 }]}>
             {([
               { tur: 'IT', label: 'IT', title: 'IT HelpDesk', icon: 'laptop-outline' },
               { tur: 'ERP', label: 'ERP', title: 'ERP HelpDesk', icon: 'server-outline' },
@@ -971,7 +978,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     headerBackground: {
       position: 'absolute',
       top: 0, left: 0, right: 0,
-      height: 575, // 2 sıra metrik kartı (İzin+Proje / IT+ERP+Bakım)
+      height: 520, // 2 sıra metrik kartı (İzin+Proje / IT+ERP+Bakım)
       overflow: 'hidden',
     },
     bgCircleLarge: {
@@ -1137,42 +1144,49 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
 
     // METRICS
-    metricsContainer: {
+    metricRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       justifyContent: 'space-between',
-      rowGap: 10,
+      alignItems: 'stretch', // satır içi kartlar eşit yükseklik (İzin = Proje)
     },
     metricCard: {
       width: '48.5%',
+      minHeight: 88,    // Satır 1 (İzin/Proje) taban yüksekliği
       backgroundColor: 'rgba(255,255,255,0.15)',
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.22)',
-      paddingVertical: 14,
+      paddingVertical: 10,
       paddingHorizontal: 14,
       alignItems: 'flex-start',
+    },
+    // İzin kartında sayıyı dikeyde ortalar (tek sayı, alt metin yok)
+    izinValueWrap: {
+      flex: 1,
+      alignSelf: 'stretch',
+      justifyContent: 'center',
     },
     metricCardWide: {
       width: '100%',
     },
     metricCardThird: {
       width: '31.5%',
+      minHeight: 84,    // Satır 2 (helpdesk) standart yükseklik
       paddingHorizontal: 10,
     },
     statLine: {
       flexDirection: 'row',
       alignItems: 'baseline',
       gap: 6,
-      marginTop: 6,
+      marginTop: 2,
     },
-    statNum: { fontSize: 22, fontWeight: '800', color: '#FFF', minWidth: 22 },
-    statLbl: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-    statNumCompact: { fontSize: 20, fontWeight: '800', color: '#FFF', minWidth: 18 },
-    statLblCompact: { fontSize: 11.5, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+    statNum: { fontSize: 18, lineHeight: 22, fontWeight: '800', color: '#FFF', minWidth: 19 },
+    statLbl: { fontSize: 12.5, lineHeight: 22, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+    statNumCompact: { fontSize: 17, lineHeight: 21, fontWeight: '800', color: '#FFF', minWidth: 16 },
+    statLblCompact: { fontSize: 11.5, lineHeight: 21, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
     metricIcon: {
       position: 'absolute',
-      top: 13,
+      top: 12,
       right: 12,
     },
     metricLabel: {
@@ -1180,7 +1194,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       fontWeight: '800',
       color: 'rgba(255,255,255,0.9)',
       letterSpacing: 0.2,
-      marginBottom: 4,
+      marginBottom: 3,
     },
     metricValue: {
       fontSize: 32,
@@ -1192,6 +1206,12 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       fontSize: 12,
       color: 'rgba(255,255,255,0.72)',
       fontWeight: '600',
+    },
+    metricEmpty: {
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.6)',
+      fontWeight: '600',
+      marginTop: 6,
     },
 
     // ── BODY OVERLAP ──
