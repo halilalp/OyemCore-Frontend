@@ -99,6 +99,44 @@ export const ProjeDetailScreen = () => {
     ]);
   };
 
+  const silGorev = (gorevId: number) => {
+    Alert.alert('Görevi Sil', 'Bu görevi silmek istediğinize emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.deleteProjeGorev(gorevId);
+            load();
+          } catch (e: any) {
+            Alert.alert('Hata', apiHataMesaji(e, 'Görev silinemedi.'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const durumGuncelle = (yeni: boolean) => {
+    Alert.alert(
+      yeni ? 'Kaydı Tamamla' : 'Yeniden Aç',
+      yeni ? 'Bu kaydı tamamlandı olarak işaretlemek istiyor musunuz?' : 'Bu kaydı yeniden beklemeye almak istiyor musunuz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: yeni ? 'Tamamla' : 'Yeniden Aç',
+          onPress: async () => {
+            try {
+              await api.updateProjeToplantiDurum(id, yeni);
+              load();
+            } catch (e: any) {
+              Alert.alert('Hata', apiHataMesaji(e, 'Durum güncellenemedi.'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return <View style={styles.container}><LogoLoader style={{ marginTop: 60 }} /></View>;
   }
@@ -136,6 +174,17 @@ export const ProjeDetailScreen = () => {
             <Meta colors={colors} label="Başlangıç" value={t.basTarihStr || '-'} />
             <Meta colors={colors} label="Bitiş" value={t.bitTarihStr || '-'} />
           </View>
+          {t.yonetebilir && (
+            <TouchableOpacity
+              style={[styles.durumBtn, { backgroundColor: tamamlandi ? colors.warningLight : colors.successLight }]}
+              onPress={() => durumGuncelle(!tamamlandi)}
+            >
+              <Ionicons name={tamamlandi ? 'refresh-outline' : 'checkmark-done-outline'} size={16} color={tamamlandi ? colors.warning : colors.success} />
+              <Text style={[styles.durumBtnText, { color: tamamlandi ? colors.warning : colors.success }]}>
+                {tamamlandi ? 'Yeniden Aç' : 'Kaydı Tamamla'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Katılımcılar */}
@@ -177,12 +226,19 @@ export const ProjeDetailScreen = () => {
                 <Text style={styles.gorevAciklama}>{g.aciklama}</Text>
                 <View style={styles.gorevFooter}>
                   <Text style={styles.gorevMeta}>{g.sorumluAd}{g.terminTarStr ? ` · Termin: ${g.terminTarStr}` : ''}</Text>
-                  {!gTamam && (
-                    <TouchableOpacity style={styles.tamamlaBtn} onPress={() => tamamlaGorev(g.id)}>
-                      <Ionicons name="checkmark" size={14} color={colors.success} />
-                      <Text style={styles.tamamlaText}>Tamamla</Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {!gTamam && (
+                      <TouchableOpacity style={styles.tamamlaBtn} onPress={() => tamamlaGorev(g.id)}>
+                        <Ionicons name="checkmark" size={14} color={colors.success} />
+                        <Text style={styles.tamamlaText}>Tamamla</Text>
+                      </TouchableOpacity>
+                    )}
+                    {t.yonetebilir && (
+                      <TouchableOpacity style={styles.silBtn} onPress={() => silGorev(g.id)}>
+                        <Ionicons name="trash-outline" size={15} color={colors.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             );
@@ -326,6 +382,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   gorevMeta: { fontSize: 12, color: colors.textSecondary, flex: 1 },
   tamamlaBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   tamamlaText: { color: colors.success, fontWeight: '700', fontSize: 12 },
+  silBtn: { padding: 6, borderRadius: 8, backgroundColor: colors.dangerLight },
+  durumBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14, height: 44, borderRadius: 10 },
+  durumBtnText: { fontWeight: '700', fontSize: 14 },
   dRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   dBaslik: { flex: 1, fontSize: 14, color: colors.text },
   dDate: { fontSize: 11, color: colors.textMuted },
