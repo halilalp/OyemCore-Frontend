@@ -84,6 +84,43 @@ export const api = {
     const response = await apiClient.get<{ totalCount: number; details: any[] }>('/Dashboard/user-actions');
     return response.data;
   },
+  // ── Proje / Toplantı yönetimi (Faz 1) ──
+  getProjeToplantiList: async (params: { konu?: string; durum?: string; tur?: string } = {}): Promise<{ data: any[] }> => {
+    const response = await apiClient.get<{ data: any[] }>('/ProjeToplanti', { params });
+    return response.data;
+  },
+  getProjeToplantiDetail: async (id: number): Promise<any> => {
+    const response = await apiClient.get(`/ProjeToplanti/${id}`);
+    return response.data;
+  },
+  createProjeToplanti: async (payload: { tur: string; projeTur?: string; konu: string; aciklama?: string; basTarih: string; bitTarih?: string; katilimcilar?: string[] }): Promise<any> => {
+    const response = await apiClient.post('/ProjeToplanti', payload);
+    return response.data;
+  },
+  updateProjeToplantiDurum: async (id: number, durum: boolean): Promise<any> => {
+    const response = await apiClient.post(`/ProjeToplanti/${id}/durum`, { durum });
+    return response.data;
+  },
+  addProjeGorev: async (id: number, payload: { aciklama: string; sorumluEposta: string; terminTar?: string; baslamaTar?: string; trl?: string }): Promise<any> => {
+    const response = await apiClient.post(`/ProjeToplanti/${id}/gorev`, payload);
+    return response.data;
+  },
+  completeProjeGorev: async (gorevId: number): Promise<any> => {
+    const response = await apiClient.post(`/ProjeToplanti/gorev/${gorevId}/tamamla`, {});
+    return response.data;
+  },
+  deleteProjeGorev: async (gorevId: number): Promise<any> => {
+    const response = await apiClient.delete(`/ProjeToplanti/gorev/${gorevId}`);
+    return response.data;
+  },
+  addProjeKatilimci: async (id: number, eposta: string): Promise<any> => {
+    const response = await apiClient.post(`/ProjeToplanti/${id}/katilimci`, { eposta });
+    return response.data;
+  },
+  removeProjeKatilimci: async (katilimciId: number): Promise<any> => {
+    const response = await apiClient.delete(`/ProjeToplanti/katilimci/${katilimciId}`);
+    return response.data;
+  },
   getDashboardBirthdays: async (): Promise<any[]> => {
     const response = await apiClient.get<any[]>('/Dashboard/birthdays');
     return response.data;

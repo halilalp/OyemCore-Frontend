@@ -34,6 +34,8 @@ import { TicketDashboardScreen } from './src/features/ticket/screens/TicketDashb
 import { BakimDashboardScreen } from './src/features/bakim_yonetim/screens/BakimDashboardScreen';
 import { BakimRaporScreen } from './src/features/bakim_yonetim/screens/BakimRaporScreen';
 import { BakimPlanScreen } from './src/features/bakim_yonetim/screens/BakimPlanScreen';
+import { ProjeListScreen } from './src/features/proje/screens/ProjeListScreen';
+import { ProjeDetailScreen } from './src/features/proje/screens/ProjeDetailScreen';
 import { PeriyodikKontrolScreen } from './src/features/bakim_yonetim/screens/PeriyodikKontrolScreen';
 import { IzinScreen } from './src/features/izin/screens/IzinScreen';
 import { IzinDashboardScreen } from './src/features/izin/screens/IzinDashboardScreen';
@@ -314,6 +316,8 @@ export default function App() {
             <Stack.Screen name="BakimDashboard" component={BakimDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimRapor" component={BakimRaporScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimPlan" component={BakimPlanScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ProjeList" component={ProjeListScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ProjeDetail" component={ProjeDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PeriyodikKontrol" component={PeriyodikKontrolScreen} options={{ headerShown: false }} />
             <Stack.Screen name="IzinDashboard" component={IzinDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="HelpDeskDashboard" component={HelpDeskDashboardScreen} options={{ headerShown: false }} />
