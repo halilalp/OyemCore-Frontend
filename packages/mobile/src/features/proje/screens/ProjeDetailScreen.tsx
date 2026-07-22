@@ -8,6 +8,7 @@ import { LogoLoader } from '../../../components/LogoLoader';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { FilePickerSheet } from '../../../components/FilePickerSheet';
 import { apiHataMesaji } from '../../../utils/apiError';
 
 // Proje / Toplantı detayı (Faz 1). Referans: ToplantiDetay.
@@ -33,6 +34,12 @@ export const ProjeDetailScreen = () => {
   const [baslamaPicker, setBaslamaPicker] = useState(false);
   const [terminPicker, setTerminPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Katılımcı ekleme
+  const [katilimciSelect, setKatilimciSelect] = useState(false);
+  const [personeller, setPersoneller] = useState<any[]>([]);
+  // Dosya
+  const [filePicker, setFilePicker] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) { setLoading(false); return; }
@@ -116,6 +123,61 @@ export const ProjeDetailScreen = () => {
     ]);
   };
 
+  const acKatilimciSecici = async () => {
+    try {
+      const list = await api.getProjeAktifPersoneller('');
+      setPersoneller(list || []);
+      setKatilimciSelect(true);
+    } catch (e: any) {
+      Alert.alert('Hata', apiHataMesaji(e, 'Personel listesi alınamadı.'));
+    }
+  };
+
+  const ekleKatilimci = async (eposta: string) => {
+    try {
+      await api.addProjeKatilimci(id, eposta);
+      load();
+    } catch (e: any) {
+      Alert.alert('Hata', apiHataMesaji(e, 'Katılımcı eklenemedi.'));
+    }
+  };
+
+  const cikarKatilimci = (katilimciId: number, ad: string) => {
+    Alert.alert('Katılımcı Çıkar', `${ad} çıkarılsın mı?`, [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Çıkar', style: 'destructive',
+        onPress: async () => {
+          try { await api.removeProjeKatilimci(katilimciId); load(); }
+          catch (e: any) { Alert.alert('Hata', apiHataMesaji(e, 'Katılımcı çıkarılamadı.')); }
+        },
+      },
+    ]);
+  };
+
+  const dosyaEklendi = async (file: { filePath: string; fileName: string }) => {
+    try {
+      const ad = (file.filePath || '').split('/').pop() || file.filePath;
+      await api.addProjeDosya(id, file.fileName || 'Dosya', ad);
+      load();
+    } catch (e: any) {
+      Alert.alert('Hata', apiHataMesaji(e, 'Dosya kaydedilemedi.'));
+    }
+  };
+
+  const silDosya = (dosyaId: number) => {
+    Alert.alert('Dosyayı Sil', 'Bu dosyayı silmek istediğinize emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil', style: 'destructive',
+        onPress: async () => {
+          try { await api.deleteProjeDosya(dosyaId); load(); }
+          catch (e: any) { Alert.alert('Hata', apiHataMesaji(e, 'Dosya silinemedi.')); }
+        },
+      },
+    ]);
+  };
+
   const durumGuncelle = (yeni: boolean) => {
     Alert.alert(
       yeni ? 'Kaydı Tamamla' : 'Yeniden Aç',
@@ -188,7 +250,17 @@ export const ProjeDetailScreen = () => {
         </View>
 
         {/* Katılımcılar */}
-        <Section title={`Katılımcılar (${detail.katilimcilar.length})`} colors={colors}>
+        <View style={{ marginTop: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Katılımcılar ({detail.katilimcilar.length})</Text>
+            {t.yonetebilir && (
+              <TouchableOpacity style={styles.yeniGorevBtn} onPress={acKatilimciSecici}>
+                <Ionicons name="person-add-outline" size={14} color="#fff" />
+                <Text style={styles.yeniGorevText}>Ekle</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
           {detail.katilimcilar.length === 0 ? (
             <Text style={styles.empty}>Katılımcı yok.</Text>
           ) : detail.katilimcilar.map((k: any) => (
@@ -196,10 +268,16 @@ export const ProjeDetailScreen = () => {
               {k.sicilNo
                 ? <UserAvatar sicilNo={k.sicilNo} name={k.ad} size={30} style={{ marginRight: 8 }} />
                 : <Ionicons name="person-circle-outline" size={30} color={colors.textMuted} style={{ marginRight: 8 }} />}
-              <Text style={styles.kAd}>{k.ad}</Text>
+              <Text style={[styles.kAd, { flex: 1 }]}>{k.ad}</Text>
+              {t.yonetebilir && (
+                <TouchableOpacity style={styles.silBtn} onPress={() => cikarKatilimci(k.id, k.ad)}>
+                  <Ionicons name="close" size={16} color={colors.danger} />
+                </TouchableOpacity>
+              )}
             </View>
           ))}
-        </Section>
+          </View>
+        </View>
 
         {/* Görevler */}
         <View style={{ marginTop: 14 }}>
@@ -247,17 +325,35 @@ export const ProjeDetailScreen = () => {
         </View>
 
         {/* Dosyalar */}
-        <Section title={`Ekli Dosyalar (${detail.dosyalar.length})`} colors={colors}>
+        <View style={{ marginTop: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Ekli Dosyalar ({detail.dosyalar.length})</Text>
+            {t.yonetebilir && (
+              <TouchableOpacity style={styles.yeniGorevBtn} onPress={() => setFilePicker(true)}>
+                <Ionicons name="cloud-upload-outline" size={14} color="#fff" />
+                <Text style={styles.yeniGorevText}>Yükle</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
           {detail.dosyalar.length === 0 ? (
             <Text style={styles.empty}>Ekli dosya yok.</Text>
           ) : detail.dosyalar.map((d: any) => (
             <View key={d.id} style={styles.dRow}>
               <Ionicons name="document-text-outline" size={18} color={slateTokens.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.dBaslik} numberOfLines={1}>{d.baslik || 'Dosya'}</Text>
-              <Text style={styles.dDate}>{d.kayitTarStr}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.dBaslik} numberOfLines={1}>{d.baslik || 'Dosya'}</Text>
+                <Text style={styles.dDate}>{d.kayitTarStr}</Text>
+              </View>
+              {t.yonetebilir && (
+                <TouchableOpacity style={styles.silBtn} onPress={() => silDosya(d.id)}>
+                  <Ionicons name="trash-outline" size={15} color={colors.danger} />
+                </TouchableOpacity>
+              )}
             </View>
           ))}
-        </Section>
+          </View>
+        </View>
       </ScrollView>
 
       {/* Yeni Görev Modalı */}
@@ -324,6 +420,25 @@ export const ProjeDetailScreen = () => {
       />
       <DatePickerModal visible={baslamaPicker} onClose={() => setBaslamaPicker(false)} onSelectDate={(d) => setGBaslama(d)} title="Başlama Tarihi" />
       <DatePickerModal visible={terminPicker} onClose={() => setTerminPicker(false)} onSelectDate={(d) => setGTermin(d)} title="Termin Tarihi" />
+
+      {/* Katılımcı ekleme (aktif personel) */}
+      <SearchableSelectorModal
+        visible={katilimciSelect}
+        onClose={() => setKatilimciSelect(false)}
+        onSelect={(item) => ekleKatilimci(item.eposta)}
+        data={personeller}
+        keyExtractor={(item) => item.eposta}
+        labelExtractor={(item) => `${item.ad}${item.sicilNo ? ` (${item.sicilNo})` : ''}`}
+        title="Katılımcı Ekle"
+      />
+
+      {/* Dosya yükleme */}
+      <FilePickerSheet
+        visible={filePicker}
+        onClose={() => setFilePicker(false)}
+        module="Toplanti"
+        onPicked={dosyaEklendi}
+      />
     </View>
   );
 };

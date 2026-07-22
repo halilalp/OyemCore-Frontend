@@ -121,6 +121,18 @@ export const api = {
     const response = await apiClient.delete(`/ProjeToplanti/katilimci/${katilimciId}`);
     return response.data;
   },
+  getProjeAktifPersoneller: async (arama = ''): Promise<{ eposta: string; ad: string; sicilNo: string }[]> => {
+    const response = await apiClient.get<{ eposta: string; ad: string; sicilNo: string }[]>('/ProjeToplanti/personeller', { params: { arama } });
+    return response.data;
+  },
+  addProjeDosya: async (id: number, baslik: string, dosyaUrl: string): Promise<any> => {
+    const response = await apiClient.post(`/ProjeToplanti/${id}/dosya`, { baslik, dosyaUrl });
+    return response.data;
+  },
+  deleteProjeDosya: async (dosyaId: number): Promise<any> => {
+    const response = await apiClient.delete(`/ProjeToplanti/dosya/${dosyaId}`);
+    return response.data;
+  },
   getDashboardBirthdays: async (): Promise<any[]> => {
     const response = await apiClient.get<any[]>('/Dashboard/birthdays');
     return response.data;
