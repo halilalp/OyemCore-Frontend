@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   StyleSheet,
   Text,
@@ -36,6 +36,11 @@ interface BottomNavBarProps {
     label: string;
     onPress: () => void;
   };
+}
+
+// Dışarıdan (ör. anasayfadaki "Tümünü Gör") projeler menüsünü açmak için.
+export interface BottomNavBarHandle {
+  openProjectsMenu: () => void;
 }
 
 // ─── Hızlı Kayıt Seçenekleri ─────────────────────────────────────────────────
@@ -80,10 +85,10 @@ const QUICK_ACTIONS = [
 
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
 
-export const BottomNavBar: React.FC<BottomNavBarProps> = ({
+export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   currentScreen,
   customAction,
-}) => {
+}, ref) => {
   const navigation = useNavigation<any>();
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors);
@@ -92,6 +97,10 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const [isProjectsMenuVisible, setIsProjectsMenuVisible] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    openProjectsMenu: () => setIsProjectsMenuVisible(true),
+  }));
 
   const rawMobilePages = menuItems.filter(m => m.mobilGoster === true);
   const mobilePages: typeof rawMobilePages = [];
@@ -425,7 +434,9 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       </Modal>
     </>
   );
-};
+});
+
+BottomNavBar.displayName = 'BottomNavBar';
 
 // ─── Stiller ─────────────────────────────────────────────────────────────────
 

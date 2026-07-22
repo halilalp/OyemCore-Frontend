@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -22,7 +22,7 @@ import { mapKeenIconToIonicons } from '../../../utils/iconMapper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
 import { UserAvatar } from '../../../components/UserAvatar';
-import { BottomNavBar } from '../../../components/BottomNavBar';
+import { BottomNavBar, BottomNavBarHandle } from '../../../components/BottomNavBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import EventMonthCalendar from '../../../components/EventMonthCalendar';
 import { getEventDayRange } from '../../../utils/calendarEvents';
@@ -51,6 +51,8 @@ export const HomeScreen = () => {
   const { menuItems, setMenuItems } = useAppStore();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  // "Tümünü Gör" alt bardaki "Yetkili Projeler" menüsünü açar (ortak menü).
+  const bottomNavRef = useRef<BottomNavBarHandle>(null);
   const [isModulesModalVisible, setIsModulesModalVisible] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -249,8 +251,12 @@ export const HomeScreen = () => {
     return `${dd} ${mm} ${yyyy}, ${timeStr}`;
   }, [selectedEvent]);
 
-  const userDisplayName = user?.adSoyad || 'Halil Alp Çalışan';
-  const userTitle       = (user as any)?.unvan || 'BİLGİ İŞLEM YÖNETİCİSİ';
+  // Hardcoded fallback ("Halil Alp Çalışan") kaldırıldı: user AsyncStorage'dan
+  // async geldiği için ilk frame'de sahte isim görünüp sonra gerçeğiyle
+  // değişiyordu. Artık user yüklenene kadar skeleton gösteriliyor.
+  const userDisplayName = user?.adSoyad || '';
+  const userTitle       = (user as any)?.unvan || '';
+  const userReady       = !!user?.adSoyad;
 
   return (
     <View style={styles.container}>
@@ -297,19 +303,31 @@ export const HomeScreen = () => {
 
           {/* İsim ve Sicil */}
           <View style={styles.greetingSection}>
-            <View style={styles.nameRow}>
-              <Text style={styles.nameText}>{userDisplayName}</Text>
-              {user?.sicilNo && (
-                <View style={styles.sicilBadge}>
-                  <Text style={styles.sicilText}>Sicil No: {user.sicilNo}</Text>
+            {userReady ? (
+              <>
+                <View style={styles.nameRow}>
+                  <Text style={styles.nameText}>{userDisplayName}</Text>
+                  {user?.sicilNo && (
+                    <View style={styles.sicilBadge}>
+                      <Text style={styles.sicilText}>Sicil No: {user.sicilNo}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            
-            <View style={styles.roleBadge}>
-              <Ionicons name="business-outline" size={12} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.roleText}>{userTitle}</Text>
-            </View>
+
+                <View style={styles.roleBadge}>
+                  <Ionicons name="business-outline" size={12} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.roleText}>{userTitle}</Text>
+                </View>
+              </>
+            ) : (
+              // user AsyncStorage'dan gelene kadar: sahte isim yerine skeleton
+              <>
+                <View style={styles.nameRow}>
+                  <View style={[styles.skeletonBlock, { width: 200, height: 26 }]} />
+                </View>
+                <View style={[styles.skeletonBlock, { width: 150, height: 22, marginTop: 8 }]} />
+              </>
+            )}
           </View>
 
           {/* Metrik Kartları */}
@@ -382,7 +400,7 @@ export const HomeScreen = () => {
                   <Ionicons name="search-outline" size={20} color={isSearchVisible ? colors.primary : colors.textMuted} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.seeAllBtn} onPress={() => setIsModulesModalVisible(true)}>
+              <TouchableOpacity style={styles.seeAllBtn} onPress={() => bottomNavRef.current?.openProjectsMenu()}>
                 <Text style={styles.seeAllText}>Tümünü Gör ({mobilePages.length}) ⌄</Text>
               </TouchableOpacity>
             </View>
@@ -775,7 +793,7 @@ export const HomeScreen = () => {
         </View>
       </Modal>
 
-      <BottomNavBar currentScreen="Home" />
+      <BottomNavBar ref={bottomNavRef} currentScreen="Home" />
     </View>
   );
 };
@@ -866,6 +884,11 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 12,
+    },
+    // Kullanıcı bilgisi yüklenene kadar nötr placeholder (sahte isim yerine).
+    skeletonBlock: {
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      borderRadius: 8,
     },
     nameText: {
       fontSize: 24,
