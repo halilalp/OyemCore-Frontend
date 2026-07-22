@@ -87,6 +87,9 @@ export const HomeScreen = () => {
   // sorumlusu ben olan açık talep. Tek 'Talepler' proje bildirimi türe göre
   // ayrılamadığı için getTaleps(IT/ERP/BAKIM) verisinden hesaplanıyor.
   const [helpdeskBadges, setHelpdeskBadges] = useState<{ IT: string; ERP: string; BAKIM: string }>({ IT: '', ERP: '', BAKIM: '' });
+  // Zil bildirimleri (aksiyon bekleyen işler)
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -112,6 +115,12 @@ export const HomeScreen = () => {
           api.getTaleps('ERP'),
           api.getTaleps('BAKIM'),
         ]);
+
+        // Bildirimler ayrı ve sessiz: backend henüz her ortamda olmayabilir,
+        // 404 olursa ana yükleme hata banner'ını tetiklemesin.
+        api.getUserActions()
+          .then(r => setNotifications(r?.details || []))
+          .catch(() => setNotifications([]));
 
         const deger = <T,>(i: number, varsayilan: T): T =>
           sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
@@ -246,6 +255,7 @@ export const HomeScreen = () => {
     if (name === 'IT-HelpDesk') bildirim = helpdeskBadges.IT;
     else if (name === 'ERP-HelpDesk') bildirim = helpdeskBadges.ERP;
     else if (name === 'Bakım-HelpDesk') bildirim = helpdeskBadges.BAKIM;
+    else if (name === 'Bakım Yönetimi') bildirim = ''; // badge istenmiyor (kullanıcı)
 
     // #60'ta tek 'Bakim' ekranı silinip 4 sayfaya bölündü; Bakım Yönetimi artık
     // BakimYonetim hub'ı. Menüdeki eski 'Bakim' mobilUrl'ine giden kartlar
@@ -324,9 +334,13 @@ export const HomeScreen = () => {
             />
             
             <View style={styles.topActions}>
-              <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={() => setIsNotifOpen(true)}>
                 <Ionicons name="notifications-outline" size={20} color="#fff" />
-                <View style={styles.bellDot} />
+                {notifications.length > 0 && (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeText}>{notifications.length > 9 ? '9+' : notifications.length}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
               
               <TouchableOpacity onPress={() => navigation.navigate('Profil')} activeOpacity={0.8}>
@@ -829,6 +843,73 @@ export const HomeScreen = () => {
         </View>
       </Modal>
 
+      {/* Bildirimler (zil) — aksiyon bekleyen işler */}
+      <Modal
+        visible={isNotifOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsNotifOpen(false)}
+      >
+        <View style={styles.bottomSheetOverlay}>
+          <View style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheetHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+                <Text style={styles.bottomSheetTitle}>Bildirimler</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsNotifOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {notifications.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <Ionicons name="checkmark-done-circle-outline" size={56} color={colors.textSecondary} />
+                <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>Aksiyon bekleyen işiniz yok.</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 40 }}>
+                {notifications.map((n, i) => {
+                  const m = (n.modul || '').toUpperCase();
+                  const icon = m === 'IT' ? 'laptop-outline'
+                    : m === 'ERP' ? 'server-outline'
+                    : m === 'BAKIM' ? 'construct-outline'
+                    : (m === 'IZIN' || m === 'İZİN') ? 'calendar-outline'
+                    : m === 'TOPLANTI' ? 'people-outline'
+                    : 'notifications-outline';
+                  return (
+                    <TouchableOpacity
+                      key={`${n.kod}-${i}`}
+                      style={styles.notifItem}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setIsNotifOpen(false);
+                        setTimeout(() => {
+                          if (m === 'IT') navigation.navigate('ITHelpDesk');
+                          else if (m === 'ERP') navigation.navigate('ERPHelpDesk');
+                          else if (m === 'BAKIM') navigation.navigate('BakimHelpDesk');
+                          else if (m === 'IZIN' || m === 'İZİN') navigation.navigate('Izin');
+                        }, 200);
+                      }}
+                    >
+                      <View style={[styles.notifIconBox, { backgroundColor: colors.primaryLight + '40' }]}>
+                        <Ionicons name={icon as any} size={20} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.notifCategory}>{n.category || 'Bildirim'}</Text>
+                        <Text style={styles.notifDesc} numberOfLines={2}>{n.description || ''}</Text>
+                        <Text style={styles.notifMeta}>{n.kod}{n.date ? ` · ${n.date}` : ''}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <BottomNavBar ref={bottomNavRef} currentScreen="Home" />
     </View>
   );
@@ -910,6 +991,58 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       backgroundColor: slateTokens.brandAccent, // Turuncu
       borderWidth: 1.5,
       borderColor: slateTokens.brandPrimary, // Mavi border
+    },
+    // Bildirim sayısı rozeti (zil üstünde)
+    bellBadge: {
+      position: 'absolute',
+      top: -2,
+      right: -2,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      paddingHorizontal: 4,
+      backgroundColor: slateTokens.danger,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: slateTokens.brandPrimary,
+    },
+    bellBadgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    // Bildirim listesi öğesi
+    notifItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    notifIconBox: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    notifCategory: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    notifDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    notifMeta: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 3,
     },
     // GREETING
     greetingSection: {

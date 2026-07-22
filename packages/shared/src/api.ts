@@ -79,6 +79,11 @@ export const api = {
     const response = await apiClient.get<any[]>('/Dashboard/menu');
     return response.data;
   },
+  // Zil bildirimleri: aksiyon bekleyen işler (onay/cevap/belge onayı)
+  getUserActions: async (): Promise<{ totalCount: number; details: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number; details: any[] }>('/Dashboard/user-actions');
+    return response.data;
+  },
   getDashboardBirthdays: async (): Promise<any[]> => {
     const response = await apiClient.get<any[]>('/Dashboard/birthdays');
     return response.data;
