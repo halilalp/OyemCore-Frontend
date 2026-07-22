@@ -82,10 +82,11 @@ export const HomeScreen = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Hızlı İşlemler HelpDesk kartlarının badge'i türe göre (IT/ERP/Bakım ayrı
-  // aktif talep sayısı). Proje bildirimi tek 'Talepler' kaydından geldiği için
-  // türe göre ayrılamıyordu; burada getTaleps verisinden hesaplanıyor.
-  const [helpdeskBadges, setHelpdeskBadges] = useState<{ IT: number; ERP: number; BAKIM: number }>({ IT: 0, ERP: 0, BAKIM: 0 });
+  // Hızlı İşlemler HelpDesk kartlarının badge'i, webportal BildirimHesapla
+  // (case 20) ile birebir: "toplam/bende" — o türdeki toplam açık talep /
+  // sorumlusu ben olan açık talep. Tek 'Talepler' proje bildirimi türe göre
+  // ayrılamadığı için getTaleps(IT/ERP/BAKIM) verisinden hesaplanıyor.
+  const [helpdeskBadges, setHelpdeskBadges] = useState<{ IT: string; ERP: string; BAKIM: string }>({ IT: '', ERP: '', BAKIM: '' });
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -134,10 +135,15 @@ export const HomeScreen = () => {
         const itData = deger<any[]>(2, []);
         const erpData = deger<any[]>(6, []);
         const bakimData = deger<any[]>(7, []);
-        // Türe göre aktif (kapalı/iptal olmayan) talep sayısı → HelpDesk badge'leri
-        const aktifSay = (arr: any[]) =>
-          arr.filter(t => t.durum !== 'Kapalı' && t.durum !== 'İptal' && t.durum !== 'KAPATILDI').length;
-        setHelpdeskBadges({ IT: aktifSay(itData), ERP: aktifSay(erpData), BAKIM: aktifSay(bakimData) });
+        // Webportal case 20 formatı "toplam/bende": toplam açık talep / sorumlusu
+        // ben olan açık talep. Açık = kapalı/iptal olmayan. Toplam 0 ise badge yok.
+        const acik = (t: any) => t.durum !== 'Kapalı' && t.durum !== 'İptal' && t.durum !== 'KAPATILDI';
+        const badge = (arr: any[]) => {
+          const toplam = arr.filter(acik).length;
+          const bende = arr.filter(t => acik(t) && t.isMine).length;
+          return toplam > 0 ? `${toplam}/${bende}` : '';
+        };
+        setHelpdeskBadges({ IT: badge(itData), ERP: badge(erpData), BAKIM: badge(bakimData) });
         const talepRes = [...itData, ...erpData, ...bakimData];
         const statsRes = deger<any>(3, null);
         const newsRes = deger<any[]>(4, []);
@@ -237,9 +243,9 @@ export const HomeScreen = () => {
     // HelpDesk kartlarında badge türe göre (getTaleps'ten hesaplanan aktif sayı);
     // diğer projelerde backend'in projeBildirim değeri kullanılır.
     let bildirim: string = (pages[0]?.projeBildirim || '') as string;
-    if (name === 'IT-HelpDesk') bildirim = helpdeskBadges.IT > 0 ? String(helpdeskBadges.IT) : '';
-    else if (name === 'ERP-HelpDesk') bildirim = helpdeskBadges.ERP > 0 ? String(helpdeskBadges.ERP) : '';
-    else if (name === 'Bakım-HelpDesk') bildirim = helpdeskBadges.BAKIM > 0 ? String(helpdeskBadges.BAKIM) : '';
+    if (name === 'IT-HelpDesk') bildirim = helpdeskBadges.IT;
+    else if (name === 'ERP-HelpDesk') bildirim = helpdeskBadges.ERP;
+    else if (name === 'Bakım-HelpDesk') bildirim = helpdeskBadges.BAKIM;
 
     return {
       name,
