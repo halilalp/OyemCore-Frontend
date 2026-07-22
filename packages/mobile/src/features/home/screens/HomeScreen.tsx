@@ -90,6 +90,10 @@ export const HomeScreen = () => {
   // Zil bildirimleri (aksiyon bekleyen işler)
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  // Aksiyon metrikleri (kartlar)
+  const [onayimda, setOnayimda] = useState<number | null>(null);      // onayımı/cevabımı bekleyen
+  const [uzerimdekiIs, setUzerimdekiIs] = useState<number | null>(null); // sorumlusu ben olan açık talep
+  const [aktifProje, setAktifProje] = useState<number | null>(null);  // tamamlanmamış proje/toplantı
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -119,8 +123,13 @@ export const HomeScreen = () => {
         // Bildirimler ayrı ve sessiz: backend henüz her ortamda olmayabilir,
         // 404 olursa ana yükleme hata banner'ını tetiklemesin.
         api.getUserActions()
-          .then(r => setNotifications(r?.details || []))
-          .catch(() => setNotifications([]));
+          .then(r => { setNotifications(r?.details || []); setOnayimda(r?.totalCount ?? (r?.details?.length || 0)); })
+          .catch(() => { setNotifications([]); setOnayimda(0); });
+
+        // Aktif proje/toplantı sayısı (tamamlanmamış). Sessiz.
+        api.getProjeToplantiList({})
+          .then(r => setAktifProje((r?.data || []).filter((p: any) => p.durum !== 'TAMAMLANDI').length))
+          .catch(() => setAktifProje(0));
 
         const deger = <T,>(i: number, varsayilan: T): T =>
           sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
@@ -154,6 +163,8 @@ export const HomeScreen = () => {
         };
         setHelpdeskBadges({ IT: badge(itData), ERP: badge(erpData), BAKIM: badge(bakimData) });
         const talepRes = [...itData, ...erpData, ...bakimData];
+        // Üzerimdeki iş: sorumlusu ben olan açık talepler (IT+ERP+Bakım)
+        setUzerimdekiIs(talepRes.filter(t => acik(t) && t.isMine).length);
         const statsRes = deger<any>(3, null);
         const newsRes = deger<any[]>(4, []);
         const trainingRes = deger<any[]>(5, []);
@@ -378,33 +389,32 @@ export const HomeScreen = () => {
             )}
           </View>
 
-          {/* Metrik Kartları */}
+          {/* Metrik Kartları (2x2) — aksiyon odaklı */}
           <View style={styles.metricsContainer}>
             <View style={styles.metricCard}>
+              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>YILLIK İZİN</Text>
               <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
               <Text style={styles.metricSub}>gün borç</Text>
             </View>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>BU AY</Text>
-              <Text style={styles.metricValue}>
-                {calendarEvents ? calendarEvents.filter(ev => {
-                  // Aya taşan etkinlikler de sayılır (aralık bu ayla kesişiyorsa)
-                  const range = getEventDayRange(ev);
-                  if (!range) return false;
-                  const now = new Date();
-                  const ayBas = new Date(now.getFullYear(), now.getMonth(), 1);
-                  const aySon = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                  return range.first <= aySon && range.last >= ayBas;
-                }).length : '-'}
-              </Text>
-              <Text style={styles.metricSub}>Etkinlik</Text>
+              <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>ÜZERİMDEKİ İŞ</Text>
+              <Text style={styles.metricValue}>{uzerimdekiIs ?? '-'}</Text>
+              <Text style={styles.metricSub}>açık talep</Text>
             </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>AKTİF TALEP</Text>
-              <Text style={[styles.metricValue, { color: slateTokens.success }]}>{tasks.length}</Text>
+            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => setIsNotifOpen(true)}>
+              <Ionicons name="checkmark-done-circle-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>ONAYIMDA</Text>
+              <Text style={[styles.metricValue, { color: slateTokens.warning }]}>{onayimda ?? '-'}</Text>
               <Text style={styles.metricSub}>bekleyen</Text>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
+              <Ionicons name="folder-open-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>AKTİF PROJE</Text>
+              <Text style={[styles.metricValue, { color: slateTokens.success }]}>{aktifProje ?? '-'}</Text>
+              <Text style={styles.metricSub}>devam eden</Text>
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
 
@@ -927,7 +937,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     headerBackground: {
       position: 'absolute',
       top: 0, left: 0, right: 0,
-      height: 400, // Yeterince yüksek, body overlap edecek
+      height: 510, // 2x2 metrik kartlarını kapsayacak yükseklik
       overflow: 'hidden',
     },
     bgCircleLarge: {
@@ -1095,24 +1105,30 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     // METRICS
     metricsContainer: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       justifyContent: 'space-between',
-      gap: 10,
+      rowGap: 10,
     },
     metricCard: {
-      flex: 1,
+      width: '48.5%',
       backgroundColor: 'rgba(255,255,255,0.12)',
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.15)',
-      paddingVertical: 16,
+      paddingVertical: 14,
       paddingHorizontal: 12,
       alignItems: 'flex-start',
+    },
+    metricIcon: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
     },
     metricLabel: {
       fontSize: 10,
       fontWeight: '700',
       color: 'rgba(255,255,255,0.7)',
-      marginBottom: 8,
+      marginBottom: 6,
     },
     metricValue: {
       fontSize: 28,
