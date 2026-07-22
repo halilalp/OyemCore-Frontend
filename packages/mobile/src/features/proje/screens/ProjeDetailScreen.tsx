@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, slateTokens } from '@oyemcore/shared';
@@ -19,7 +20,11 @@ export const ProjeDetailScreen = () => {
   const route = useRoute<any>();
   const id: number = route.params?.id ?? 0;
   const { colors } = useThemeStore();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
+
+  // Alt bar "Yönet" sheet
+  const [actionsMenu, setActionsMenu] = useState(false);
 
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -220,7 +225,7 @@ export const ProjeDetailScreen = () => {
     <View style={styles.container}>
       <Header colors={colors} onBack={() => navigation.goBack()} title="Proje / Toplantı" statusLabel={t.durum} statusOk={tamamlandi} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: t.yonetebilir ? 110 : 40 }} showsVerticalScrollIndicator={false}>
         {/* Başlık kartı */}
         <View style={styles.card}>
           <View style={styles.turRow}>
@@ -236,30 +241,11 @@ export const ProjeDetailScreen = () => {
             <Meta colors={colors} label="Başlangıç" value={t.basTarihStr || '-'} />
             <Meta colors={colors} label="Bitiş" value={t.bitTarihStr || '-'} />
           </View>
-          {t.yonetebilir && (
-            <TouchableOpacity
-              style={[styles.durumBtn, { backgroundColor: tamamlandi ? colors.warningLight : colors.successLight }]}
-              onPress={() => durumGuncelle(!tamamlandi)}
-            >
-              <Ionicons name={tamamlandi ? 'refresh-outline' : 'checkmark-done-outline'} size={16} color={tamamlandi ? colors.warning : colors.success} />
-              <Text style={[styles.durumBtnText, { color: tamamlandi ? colors.warning : colors.success }]}>
-                {tamamlandi ? 'Yeniden Aç' : 'Kaydı Tamamla'}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Katılımcılar */}
         <View style={{ marginTop: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Katılımcılar ({detail.katilimcilar.length})</Text>
-            {t.yonetebilir && (
-              <TouchableOpacity style={styles.yeniGorevBtn} onPress={acKatilimciSecici}>
-                <Ionicons name="person-add-outline" size={14} color="#fff" />
-                <Text style={styles.yeniGorevText}>Ekle</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>Katılımcılar ({detail.katilimcilar.length})</Text>
           <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
           {detail.katilimcilar.length === 0 ? (
             <Text style={styles.empty}>Katılımcı yok.</Text>
@@ -281,13 +267,7 @@ export const ProjeDetailScreen = () => {
 
         {/* Görevler */}
         <View style={{ marginTop: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Görevler ({detail.gorevler.length})</Text>
-            <TouchableOpacity style={styles.yeniGorevBtn} onPress={() => setGorevModal(true)}>
-              <Ionicons name="add" size={16} color="#fff" />
-              <Text style={styles.yeniGorevText}>Yeni Görev</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>Görevler ({detail.gorevler.length})</Text>
           <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
           {detail.gorevler.length === 0 ? (
             <Text style={styles.empty}>Henüz görev yok.</Text>
@@ -326,15 +306,7 @@ export const ProjeDetailScreen = () => {
 
         {/* Dosyalar */}
         <View style={{ marginTop: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Ekli Dosyalar ({detail.dosyalar.length})</Text>
-            {t.yonetebilir && (
-              <TouchableOpacity style={styles.yeniGorevBtn} onPress={() => setFilePicker(true)}>
-                <Ionicons name="cloud-upload-outline" size={14} color="#fff" />
-                <Text style={styles.yeniGorevText}>Yükle</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>Ekli Dosyalar ({detail.dosyalar.length})</Text>
           <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
           {detail.dosyalar.length === 0 ? (
             <Text style={styles.empty}>Ekli dosya yok.</Text>
@@ -355,6 +327,68 @@ export const ProjeDetailScreen = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Sabit alt işlem barı (HelpDesk detay deseni) */}
+      {t.yonetebilir && (
+        <View style={[styles.fixedBarWrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+          <View style={styles.bottomTabBar}>
+            {/* Sol: Yeni Görev */}
+            <TouchableOpacity style={styles.tabItem} onPress={() => setGorevModal(true)}>
+              <Ionicons name="add-circle-outline" size={28} color={slateTokens.primary} />
+              <Text style={styles.tabLabel}>Yeni Görev</Text>
+            </TouchableOpacity>
+
+            {/* Orta: Yönet (FAB) */}
+            <TouchableOpacity style={styles.centerTabItem} onPress={() => setActionsMenu(true)}>
+              <View style={styles.centerFabWrapper}>
+                <View style={styles.centerFab}>
+                  <Ionicons name="ellipsis-horizontal" size={26} color="#fff" />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Sağ: Durum */}
+            <TouchableOpacity style={styles.tabItem} onPress={() => durumGuncelle(!tamamlandi)}>
+              <Ionicons name={tamamlandi ? 'refresh-outline' : 'checkmark-done-outline'} size={28} color={tamamlandi ? colors.warning : colors.success} />
+              <Text style={[styles.tabLabel, { color: tamamlandi ? colors.warning : colors.success }]}>{tamamlandi ? 'Yeniden Aç' : 'Tamamla'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Yönet bottom sheet */}
+      <Modal visible={actionsMenu} transparent animationType="slide" onRequestClose={() => setActionsMenu(false)}>
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActionsMenu(false)}>
+          <View style={styles.sheetContent}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Kaydı Yönet</Text>
+              <TouchableOpacity onPress={() => setActionsMenu(false)}>
+                <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); setGorevModal(true); }}>
+              <Ionicons name="add-circle-outline" size={22} color={slateTokens.primary} />
+              <Text style={styles.sheetItemText}>Yeni Görev</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); acKatilimciSecici(); }}>
+              <Ionicons name="person-add-outline" size={22} color={slateTokens.primary} />
+              <Text style={styles.sheetItemText}>Katılımcı Ekle</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); setFilePicker(true); }}>
+              <Ionicons name="cloud-upload-outline" size={22} color={slateTokens.primary} />
+              <Text style={styles.sheetItemText}>Dosya Yükle</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); durumGuncelle(!tamamlandi); }}>
+              <Ionicons name={tamamlandi ? 'refresh-outline' : 'checkmark-done-outline'} size={22} color={tamamlandi ? colors.warning : colors.success} />
+              <Text style={[styles.sheetItemText, { color: tamamlandi ? colors.warning : colors.success }]}>{tamamlandi ? 'Yeniden Aç' : 'Kaydı Tamamla'}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Yeni Görev Modalı */}
       <Modal visible={gorevModal} transparent animationType="slide" onRequestClose={() => setGorevModal(false)}>
@@ -514,4 +548,28 @@ const createStyles = (colors: any) => StyleSheet.create({
   selectBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, height: 46 },
   kaydetBtn: { backgroundColor: slateTokens.primary, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
   kaydetText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  // Sabit alt bar (HelpDesk detay deseni)
+  fixedBarWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'transparent', paddingTop: 8 },
+  bottomTabBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
+    backgroundColor: '#FFFFFF', borderRadius: 30, height: 66,
+    marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16,
+    elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16,
+    overflow: 'visible',
+  },
+  tabItem: { alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%' },
+  tabLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, marginTop: 2 },
+  centerTabItem: { flex: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', height: '100%' },
+  centerFabWrapper: { position: 'absolute', top: -18, width: 64, height: 64, borderRadius: 32, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
+  centerFab: {
+    width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: slateTokens.primary, elevation: 8, shadowColor: slateTokens.primary,
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10,
+  },
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheetContent: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 24 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  sheetItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, marginBottom: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, gap: 12 },
+  sheetItemText: { fontSize: 15, fontWeight: '600', color: colors.text },
 });
