@@ -415,14 +415,14 @@ export const HomeScreen = () => {
           <View style={styles.metricsContainer}>
             {/* Yıllık İzin */}
             <View style={styles.metricCard}>
-              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Ionicons name="calendar-outline" size={16} color="#cbd5e1" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>YILLIK İZİN</Text>
               <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
               <Text style={styles.metricSub}>gün borç</Text>
             </View>
             {/* Proje */}
             <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
-              <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Ionicons name="briefcase-outline" size={16} color="#cbd5e1" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>PROJE</Text>
               <StatLine styles={styles} num={projeOzet?.acikProje} label="açık proje" />
               <StatLine styles={styles} num={projeOzet?.gorev} label="görev" />
@@ -438,7 +438,7 @@ export const HomeScreen = () => {
               return (
                 <TouchableOpacity key={hd.tur} style={[styles.metricCard, styles.metricCardThird]} activeOpacity={0.8}
                   onPress={() => navigation.navigate('HelpDeskDashboard', { tur: hd.tur, title: hd.title })}>
-                  <Ionicons name={hd.icon} size={14} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+                  <Ionicons name={hd.icon} size={14} color="#cbd5e1" style={styles.metricIcon} />
                   <Text style={styles.metricLabel}>{hd.label}</Text>
                   <StatLine styles={styles} num={s.actigim} label="açtığım" compact />
                   <StatLine styles={styles} num={s.islem} label="işlem" compact />
@@ -1145,52 +1145,56 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     metricCard: {
       width: '48.5%',
-      backgroundColor: 'rgba(255,255,255,0.12)',
+      backgroundColor: '#FFFFFF',
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.15)',
       paddingVertical: 14,
-      paddingHorizontal: 12,
+      paddingHorizontal: 14,
       alignItems: 'flex-start',
+      elevation: 4,
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
     },
     metricCardWide: {
       width: '100%',
     },
     metricCardThird: {
       width: '31.5%',
-      paddingHorizontal: 10,
+      paddingHorizontal: 11,
     },
     statLine: {
       flexDirection: 'row',
       alignItems: 'baseline',
-      gap: 5,
-      marginTop: 3,
+      gap: 6,
+      marginTop: 6,
     },
-    statNum: { fontSize: 17, fontWeight: '800', color: '#FFF', minWidth: 18 },
-    statLbl: { fontSize: 11, color: 'rgba(255,255,255,0.72)' },
-    statNumCompact: { fontSize: 15, fontWeight: '800', color: '#FFF', minWidth: 14 },
-    statLblCompact: { fontSize: 9.5, color: 'rgba(255,255,255,0.72)' },
+    statNum: { fontSize: 20, fontWeight: '800', color: '#0f172a', minWidth: 20 },
+    statLbl: { fontSize: 12.5, color: '#64748b', fontWeight: '600' },
+    statNumCompact: { fontSize: 18, fontWeight: '800', color: '#0f172a', minWidth: 17 },
+    statLblCompact: { fontSize: 11, color: '#64748b', fontWeight: '600' },
     metricIcon: {
       position: 'absolute',
-      top: 12,
+      top: 13,
       right: 12,
     },
     metricLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: 'rgba(255,255,255,0.7)',
-      marginBottom: 6,
-    },
-    metricValue: {
-      fontSize: 28,
+      fontSize: 11,
       fontWeight: '800',
-      color: '#FFF',
+      color: '#475569',
+      letterSpacing: 0.3,
       marginBottom: 4,
     },
+    metricValue: {
+      fontSize: 30,
+      fontWeight: '800',
+      color: '#0f172a',
+      marginBottom: 2,
+    },
     metricSub: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,0.6)',
-      fontWeight: '500',
+      fontSize: 11,
+      color: '#94a3b8',
+      fontWeight: '600',
     },
 
     // ── BODY OVERLAP ──
