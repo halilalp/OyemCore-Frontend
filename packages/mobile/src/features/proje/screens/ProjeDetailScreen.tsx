@@ -1,11 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, slateTokens } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { UserAvatar } from '../../../components/UserAvatar';
+import { DatePickerModal } from '../../../components/DatePickerModal';
+import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { apiHataMesaji } from '../../../utils/apiError';
 
 // Proje / Toplantı detayı (Faz 1). Referans: ToplantiDetay.
@@ -21,6 +23,17 @@ export const ProjeDetailScreen = () => {
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Yeni görev formu
+  const [gorevModal, setGorevModal] = useState(false);
+  const [gAciklama, setGAciklama] = useState('');
+  const [gSorumlu, setGSorumlu] = useState<{ eposta: string; ad: string } | null>(null);
+  const [gBaslama, setGBaslama] = useState('');
+  const [gTermin, setGTermin] = useState('');
+  const [sorumluSelect, setSorumluSelect] = useState(false);
+  const [baslamaPicker, setBaslamaPicker] = useState(false);
+  const [terminPicker, setTerminPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   const load = useCallback(async () => {
     if (!id) { setLoading(false); return; }
     setLoading(true);
@@ -35,6 +48,39 @@ export const ProjeDetailScreen = () => {
   }, [id]);
 
   React.useEffect(() => { if (isFocused) load(); }, [isFocused, load]);
+
+  // Görev sorumlusu adayları: oluşturan + katılımcılar (epostalar detayda mevcut)
+  const sorumluAdaylari = React.useMemo(() => {
+    if (!detail) return [];
+    const list: { eposta: string; ad: string }[] = [];
+    const t = detail.toplanti;
+    if (t.kullaniciEposta) list.push({ eposta: t.kullaniciEposta, ad: t.olusturan || t.kullaniciEposta });
+    detail.katilimcilar.forEach((k: any) => {
+      if (k.eposta && !list.some(x => x.eposta === k.eposta)) list.push({ eposta: k.eposta, ad: k.ad || k.eposta });
+    });
+    return list;
+  }, [detail]);
+
+  const kaydetGorev = async () => {
+    if (!gAciklama.trim()) { Alert.alert('Hata', 'Görev açıklaması giriniz.'); return; }
+    if (!gSorumlu) { Alert.alert('Hata', 'Sorumlu seçiniz.'); return; }
+    setSaving(true);
+    try {
+      await api.addProjeGorev(id, {
+        aciklama: gAciklama.trim(),
+        sorumluEposta: gSorumlu.eposta,
+        baslamaTar: gBaslama,
+        terminTar: gTermin,
+      });
+      setGorevModal(false);
+      setGAciklama(''); setGSorumlu(null); setGBaslama(''); setGTermin('');
+      load();
+    } catch (e: any) {
+      Alert.alert('Hata', apiHataMesaji(e, 'Görev eklenemedi.'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const tamamlaGorev = (gorevId: number) => {
     Alert.alert('Görevi Tamamla', 'Bu görevi tamamlandı olarak işaretlemek istiyor musunuz?', [
@@ -107,7 +153,15 @@ export const ProjeDetailScreen = () => {
         </Section>
 
         {/* Görevler */}
-        <Section title={`Görevler (${detail.gorevler.length})`} colors={colors}>
+        <View style={{ marginTop: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Görevler ({detail.gorevler.length})</Text>
+            <TouchableOpacity style={styles.yeniGorevBtn} onPress={() => setGorevModal(true)}>
+              <Ionicons name="add" size={16} color="#fff" />
+              <Text style={styles.yeniGorevText}>Yeni Görev</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
           {detail.gorevler.length === 0 ? (
             <Text style={styles.empty}>Henüz görev yok.</Text>
           ) : detail.gorevler.map((g: any) => {
@@ -133,7 +187,8 @@ export const ProjeDetailScreen = () => {
               </View>
             );
           })}
-        </Section>
+          </View>
+        </View>
 
         {/* Dosyalar */}
         <Section title={`Ekli Dosyalar (${detail.dosyalar.length})`} colors={colors}>
@@ -148,6 +203,71 @@ export const ProjeDetailScreen = () => {
           ))}
         </Section>
       </ScrollView>
+
+      {/* Yeni Görev Modalı */}
+      <Modal visible={gorevModal} transparent animationType="slide" onRequestClose={() => setGorevModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Yeni Görev</Text>
+              <TouchableOpacity onPress={() => setGorevModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.formLabel}>Açıklama *</Text>
+            <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="Görev açıklaması..."
+              placeholderTextColor={colors.placeholder}
+              multiline
+              value={gAciklama}
+              onChangeText={setGAciklama}
+            />
+
+            <Text style={styles.formLabel}>Sorumlu *</Text>
+            <TouchableOpacity style={styles.selectBox} onPress={() => setSorumluSelect(true)}>
+              <Text style={{ color: gSorumlu ? colors.text : colors.placeholder }}>
+                {gSorumlu ? gSorumlu.ad : 'Sorumlu seçin'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.formLabel}>Başlama</Text>
+                <TouchableOpacity style={styles.selectBox} onPress={() => setBaslamaPicker(true)}>
+                  <Text style={{ color: gBaslama ? colors.text : colors.placeholder }}>{gBaslama || 'Tarih'}</Text>
+                  <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.formLabel}>Termin</Text>
+                <TouchableOpacity style={styles.selectBox} onPress={() => setTerminPicker(true)}>
+                  <Text style={{ color: gTermin ? colors.text : colors.placeholder }}>{gTermin || 'Tarih'}</Text>
+                  <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={[styles.kaydetBtn, { opacity: saving ? 0.6 : 1 }]} onPress={kaydetGorev} disabled={saving}>
+              <Text style={styles.kaydetText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <SearchableSelectorModal
+        visible={sorumluSelect}
+        onClose={() => setSorumluSelect(false)}
+        onSelect={(item) => setGSorumlu(item)}
+        data={sorumluAdaylari}
+        keyExtractor={(item) => item.eposta}
+        labelExtractor={(item) => item.ad}
+        title="Sorumlu Seçin"
+      />
+      <DatePickerModal visible={baslamaPicker} onClose={() => setBaslamaPicker(false)} onSelectDate={(d) => setGBaslama(d)} title="Başlama Tarihi" />
+      <DatePickerModal visible={terminPicker} onClose={() => setTerminPicker(false)} onSelectDate={(d) => setGTermin(d)} title="Termin Tarihi" />
     </View>
   );
 };
@@ -209,4 +329,15 @@ const createStyles = (colors: any) => StyleSheet.create({
   dRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   dBaslik: { flex: 1, fontSize: 14, color: colors.text },
   dDate: { fontSize: 11, color: colors.textMuted },
+  yeniGorevBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: slateTokens.primary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
+  yeniGorevText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  formLabel: { fontSize: 12, fontWeight: '700', color: colors.text, marginTop: 12, marginBottom: 6 },
+  input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14 },
+  selectBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, height: 46 },
+  kaydetBtn: { backgroundColor: slateTokens.primary, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
+  kaydetText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
