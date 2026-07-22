@@ -105,11 +105,11 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const rawMobilePages = menuItems.filter(m => m.mobilGoster === true);
   const mobilePages: typeof rawMobilePages = [];
   rawMobilePages.forEach(m => {
-    console.log("BOTTOMNAV_DEBUG - item:", m.sayfaAdi, "url:", m.mobilUrl, "proj:", m.projeAdi);
     if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
-      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
+      // Yetki listesinde IT-HelpDesk ve ERP-HelpDesk ayrı projeler (anasayfa ile aynı).
+      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'IT-HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'ERP-HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'Bakım-HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
     } else {
       mobilePages.push(m);
     }

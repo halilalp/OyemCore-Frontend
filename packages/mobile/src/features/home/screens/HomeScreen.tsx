@@ -82,6 +82,10 @@ export const HomeScreen = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Hızlı İşlemler HelpDesk kartlarının badge'i türe göre (IT/ERP/Bakım ayrı
+  // aktif talep sayısı). Proje bildirimi tek 'Talepler' kaydından geldiği için
+  // türe göre ayrılamıyordu; burada getTaleps verisinden hesaplanıyor.
+  const [helpdeskBadges, setHelpdeskBadges] = useState<{ IT: number; ERP: number; BAKIM: number }>({ IT: 0, ERP: 0, BAKIM: 0 });
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -127,7 +131,14 @@ export const HomeScreen = () => {
 
         const menuRes = deger<any[]>(0, []);
         const takvimRes = deger<any[]>(1, []);
-        const talepRes = [...deger<any[]>(2, []), ...deger<any[]>(6, []), ...deger<any[]>(7, [])];
+        const itData = deger<any[]>(2, []);
+        const erpData = deger<any[]>(6, []);
+        const bakimData = deger<any[]>(7, []);
+        // Türe göre aktif (kapalı/iptal olmayan) talep sayısı → HelpDesk badge'leri
+        const aktifSay = (arr: any[]) =>
+          arr.filter(t => t.durum !== 'Kapalı' && t.durum !== 'İptal' && t.durum !== 'KAPATILDI').length;
+        setHelpdeskBadges({ IT: aktifSay(itData), ERP: aktifSay(erpData), BAKIM: aktifSay(bakimData) });
+        const talepRes = [...itData, ...erpData, ...bakimData];
         const statsRes = deger<any>(3, null);
         const newsRes = deger<any[]>(4, []);
         const trainingRes = deger<any[]>(5, []);
@@ -168,10 +179,12 @@ export const HomeScreen = () => {
   const mobilePages: typeof rawMobilePages = [];
   rawMobilePages.forEach(m => {
     if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
-      // ikon (proje ikonu) korunur — proje kartı onu kullanır; sayfa ikonu mobilIcon'dur.
-      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'HelpDesk', mobilIcon: 'laptop-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'HelpDesk', mobilIcon: 'server-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'HelpDesk', mobilIcon: 'construct-outline' });
+      // 'Talepler' tek yetki kaydı; anasayfa/yetki listesinde IT-HelpDesk ve
+      // ERP-HelpDesk ayrı projeler olarak gösteriliyor (kullanıcı isteği).
+      // Her tür kendi ikonunu taşır (proje kartı pages[0].ikon kullanır).
+      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'IT-HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'ERP-HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'Bakım-HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
     } else {
       mobilePages.push(m);
     }
@@ -221,10 +234,17 @@ export const HomeScreen = () => {
     const rawIcon = pages[0]?.ikon || '';
     const icon = rawIcon.includes('ki-') ? mapKeenIconToIonicons(rawIcon) : (rawIcon || 'grid-outline');
 
+    // HelpDesk kartlarında badge türe göre (getTaleps'ten hesaplanan aktif sayı);
+    // diğer projelerde backend'in projeBildirim değeri kullanılır.
+    let bildirim: string = (pages[0]?.projeBildirim || '') as string;
+    if (name === 'IT-HelpDesk') bildirim = helpdeskBadges.IT > 0 ? String(helpdeskBadges.IT) : '';
+    else if (name === 'ERP-HelpDesk') bildirim = helpdeskBadges.ERP > 0 ? String(helpdeskBadges.ERP) : '';
+    else if (name === 'Bakım-HelpDesk') bildirim = helpdeskBadges.BAKIM > 0 ? String(helpdeskBadges.BAKIM) : '';
+
     return {
       name,
       icon: icon as any,
-      bildirim: (pages[0]?.projeBildirim || '') as string,
+      bildirim,
       anaSayfa: anaSayfaPage?.mobilUrl || 'Home',
       // Panolar kutucuklarıyla aynı pastel dönüşümü
       bg: projectPastelBgs[projIndex % 4],
@@ -407,7 +427,9 @@ export const HomeScreen = () => {
 
             {/* Projeler — webportal Dashboard/index.js renderAppCreativeItem2026 karşılığı:
                 proje ikonu + adı + bildirim rozeti, tıklayınca projenin anasayfasına gider. */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modulesScrollContent}>
+            {/* style={modulesScroll} (marginHorizontal:-20) Panolar'da vardı, burada
+                yoktu; bu yüzden Hızlı İşlemler ilk kayıt 20px daha sağda başlıyordu. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll} contentContainerStyle={styles.modulesScrollContent}>
               {projects
                 .filter(p => moduleSearch === '' || p.name.toLowerCase().includes(moduleSearch.toLowerCase()))
                 .map(proj => (
