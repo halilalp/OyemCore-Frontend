@@ -247,11 +247,19 @@ export const HomeScreen = () => {
     else if (name === 'ERP-HelpDesk') bildirim = helpdeskBadges.ERP;
     else if (name === 'Bakım-HelpDesk') bildirim = helpdeskBadges.BAKIM;
 
+    // #60'ta tek 'Bakim' ekranı silinip 4 sayfaya bölündü; Bakım Yönetimi artık
+    // BakimYonetim hub'ı. Menüdeki eski 'Bakim' mobilUrl'ine giden kartlar
+    // (silinmiş rota) hub'a yönlendirilir — yoksa tıklayınca hiçbir şey açılmıyor.
+    let anaSayfa = anaSayfaPage?.mobilUrl || 'Home';
+    if (name === 'Bakım Yönetimi' || anaSayfa === 'Bakim' || anaSayfa === 'BakimScreen') {
+      anaSayfa = 'BakimYonetim';
+    }
+
     return {
       name,
       icon: icon as any,
       bildirim,
-      anaSayfa: anaSayfaPage?.mobilUrl || 'Home',
+      anaSayfa,
       // Panolar kutucuklarıyla aynı pastel dönüşümü
       bg: projectPastelBgs[projIndex % 4],
       color: projectPastelIcons[projIndex % 4],

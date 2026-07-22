@@ -392,7 +392,11 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
                                       onPress={() => {
                                         setIsProjectsMenuVisible(false);
                                         setTimeout(() => {
-                                          navigation.navigate(m.mobilUrl || 'Home');
+                                          // #60'ta 'Bakim' ekranı silindi; eski mobilUrl'i
+                                          // BakimYonetim hub'ına yönlendir.
+                                          let hedef = m.mobilUrl || 'Home';
+                                          if (hedef === 'Bakim' || hedef === 'BakimScreen') hedef = 'BakimYonetim';
+                                          navigation.navigate(hedef);
                                         }, 150);
                                       }}
                                     >
