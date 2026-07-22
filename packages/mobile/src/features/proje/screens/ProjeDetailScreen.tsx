@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform, StatusBar } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform, StatusBar, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
@@ -47,6 +47,8 @@ export const ProjeDetailScreen = () => {
   const [personeller, setPersoneller] = useState<any[]>([]);
   // Dosya
   const [filePicker, setFilePicker] = useState(false);
+  const [uploading, setUploading] = useState(false);   // upload + kayıt süresince overlay
+  const pickedRef = useRef(false);                       // onPicked çağrıldıysa upload sonu overlay'i kapatma
 
   const load = useCallback(async () => {
     if (!id) { setLoading(false); return; }
@@ -151,12 +153,16 @@ export const ProjeDetailScreen = () => {
   };
 
   const dosyaEklendi = async (file: { filePath: string; fileName: string }) => {
+    pickedRef.current = true;
     try {
       const ad = (file.filePath || '').split('/').pop() || file.filePath;
       await api.addProjeDosya(id, file.fileName || 'Dosya', ad);
-      load();
+      await load();
     } catch (e: any) {
       Alert.alert('Hata', apiHataMesaji(e, 'Dosya kaydedilemedi.'));
+    } finally {
+      setUploading(false);
+      pickedRef.current = false;
     }
   };
 
@@ -361,7 +367,7 @@ export const ProjeDetailScreen = () => {
         <View style={styles.fixedBarWrapper}>
           <View style={styles.bottomTabBar}>
             <TouchableOpacity style={styles.tabItem} onPress={() => setGorevModal(true)}>
-              <Ionicons name="add-circle-outline" size={28} color={slateTokens.brandPrimary} />
+              <Ionicons name="add-circle-outline" size={36} color={slateTokens.brandPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.centerTabItem} onPress={() => setActionsMenu(true)}>
@@ -373,7 +379,7 @@ export const ProjeDetailScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.tabItem} onPress={tamamlaKayit}>
-              <Ionicons name="checkmark-done-outline" size={28} color={colors.success} />
+              <Ionicons name="checkmark-done-outline" size={36} color={colors.success} />
             </TouchableOpacity>
           </View>
         </View>
@@ -493,7 +499,19 @@ export const ProjeDetailScreen = () => {
         onClose={() => setFilePicker(false)}
         module="Toplanti"
         onPicked={dosyaEklendi}
+        onUploadStart={() => setUploading(true)}
+        onUploadEnd={() => { if (!pickedRef.current) setUploading(false); }}
       />
+
+      {/* Dosya yükleme bekleme göstergesi */}
+      <Modal visible={uploading} transparent animationType="fade">
+        <View style={styles.uploadOverlay}>
+          <View style={styles.uploadBox}>
+            <ActivityIndicator size="large" color={slateTokens.brandPrimary} />
+            <Text style={styles.uploadText}>Dosya yükleniyor…</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -569,7 +587,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
     backgroundColor: '#FFFFFF', borderRadius: 30, height: 66,
     marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16,
-    borderTopWidth: 1, borderTopColor: colors.borderLight,
     elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16,
     position: 'relative', overflow: 'visible',
   },
@@ -601,4 +618,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   selectBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, height: 46 },
   kaydetBtn: { backgroundColor: slateTokens.brandPrimary, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
   kaydetText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  // Dosya yükleme overlay
+  uploadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
+  uploadBox: { backgroundColor: colors.card, borderRadius: 16, paddingVertical: 24, paddingHorizontal: 32, alignItems: 'center', gap: 12 },
+  uploadText: { fontSize: 14, fontWeight: '700', color: colors.text },
 });
