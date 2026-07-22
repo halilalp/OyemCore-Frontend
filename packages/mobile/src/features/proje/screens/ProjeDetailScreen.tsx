@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Platform, StatusBar } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,10 +11,11 @@ import { UserAvatar } from '../../../components/UserAvatar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { FilePickerSheet } from '../../../components/FilePickerSheet';
+import { AttachmentPreview } from '../../../components/AttachmentPreview';
 import { apiHataMesaji } from '../../../utils/apiError';
 
-// Proje / Toplantı detayı (Faz 1). Referans: ToplantiDetay.
-// Okuma + görev tamamla. Yeni görev/katılımcı ekleme sonraki aşamada.
+// Proje / Toplantı detayı (Faz 1). Referans: ToplantiDetay + HelpDesk talep detay standardı.
+// Tamamlanan kayıt readonly'ye geçer (webportalda "yeniden aç" yoktur).
 export const ProjeDetailScreen = () => {
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
@@ -23,11 +25,11 @@ export const ProjeDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
-  // Alt bar "Yönet" sheet
-  const [actionsMenu, setActionsMenu] = useState(false);
-
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Alt bar "Yönet" sheet
+  const [actionsMenu, setActionsMenu] = useState(false);
 
   // Yeni görev formu
   const [gorevModal, setGorevModal] = useState(false);
@@ -61,7 +63,7 @@ export const ProjeDetailScreen = () => {
 
   React.useEffect(() => { if (isFocused) load(); }, [isFocused, load]);
 
-  // Görev sorumlusu adayları: oluşturan + katılımcılar (epostalar detayda mevcut)
+  // Görev sorumlusu adayları: oluşturan + katılımcılar
   const sorumluAdaylari = React.useMemo(() => {
     if (!detail) return [];
     const list: { eposta: string; ad: string }[] = [];
@@ -100,12 +102,8 @@ export const ProjeDetailScreen = () => {
       {
         text: 'Tamamla',
         onPress: async () => {
-          try {
-            await api.completeProjeGorev(gorevId);
-            load();
-          } catch (e: any) {
-            Alert.alert('Hata', apiHataMesaji(e, 'Görev tamamlanamadı.'));
-          }
+          try { await api.completeProjeGorev(gorevId); load(); }
+          catch (e: any) { Alert.alert('Hata', apiHataMesaji(e, 'Görev tamamlanamadı.')); }
         },
       },
     ]);
@@ -117,12 +115,8 @@ export const ProjeDetailScreen = () => {
       {
         text: 'Sil', style: 'destructive',
         onPress: async () => {
-          try {
-            await api.deleteProjeGorev(gorevId);
-            load();
-          } catch (e: any) {
-            Alert.alert('Hata', apiHataMesaji(e, 'Görev silinemedi.'));
-          }
+          try { await api.deleteProjeGorev(gorevId); load(); }
+          catch (e: any) { Alert.alert('Hata', apiHataMesaji(e, 'Görev silinemedi.')); }
         },
       },
     ]);
@@ -139,12 +133,8 @@ export const ProjeDetailScreen = () => {
   };
 
   const ekleKatilimci = async (eposta: string) => {
-    try {
-      await api.addProjeKatilimci(id, eposta);
-      load();
-    } catch (e: any) {
-      Alert.alert('Hata', apiHataMesaji(e, 'Katılımcı eklenemedi.'));
-    }
+    try { await api.addProjeKatilimci(id, eposta); load(); }
+    catch (e: any) { Alert.alert('Hata', apiHataMesaji(e, 'Katılımcı eklenemedi.')); }
   };
 
   const cikarKatilimci = (katilimciId: number, ad: string) => {
@@ -183,25 +173,18 @@ export const ProjeDetailScreen = () => {
     ]);
   };
 
-  const durumGuncelle = (yeni: boolean) => {
-    Alert.alert(
-      yeni ? 'Kaydı Tamamla' : 'Yeniden Aç',
-      yeni ? 'Bu kaydı tamamlandı olarak işaretlemek istiyor musunuz?' : 'Bu kaydı yeniden beklemeye almak istiyor musunuz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: yeni ? 'Tamamla' : 'Yeniden Aç',
-          onPress: async () => {
-            try {
-              await api.updateProjeToplantiDurum(id, yeni);
-              load();
-            } catch (e: any) {
-              Alert.alert('Hata', apiHataMesaji(e, 'Durum güncellenemedi.'));
-            }
-          },
+  // Tek yönlü: tamamla (yeniden açma yok). Tamamlanınca kayıt readonly olur.
+  const tamamlaKayit = () => {
+    Alert.alert('Kaydı Tamamla', 'Bu kaydı tamamlandı olarak işaretlemek istiyor musunuz? Tamamlanan kayıt salt-okunur olur.', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Tamamla',
+        onPress: async () => {
+          try { await api.updateProjeToplantiDurum(id, true); load(); }
+          catch (e: any) { Alert.alert('Hata', apiHataMesaji(e, 'Durum güncellenemedi.')); }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   if (loading) {
@@ -210,7 +193,7 @@ export const ProjeDetailScreen = () => {
   if (!detail) {
     return (
       <View style={styles.container}>
-        <Header colors={colors} onBack={() => navigation.goBack()} title="Detay" />
+        <DetailHeader colors={colors} insets={insets} onBack={() => navigation.goBack()} title="Detay" />
         <View style={{ alignItems: 'center', paddingVertical: 60 }}>
           <Text style={{ color: colors.textSecondary }}>Kayıt bulunamadı.</Text>
         </View>
@@ -220,33 +203,79 @@ export const ProjeDetailScreen = () => {
 
   const t = detail.toplanti;
   const tamamlandi = t.durum === 'TAMAMLANDI';
+  const readonly = tamamlandi;                 // Tamamlanan kayıt salt-okunur
+  const canManage = t.yonetebilir && !readonly;
+  const showBar = canManage;                    // Alt bar yalnız yönetilebilir & açık kayıtta
 
   return (
     <View style={styles.container}>
-      <Header colors={colors} onBack={() => navigation.goBack()} title="Proje / Toplantı" statusLabel={t.durum} statusOk={tamamlandi} />
+      {/* Header — HelpDesk talep detay standardı */}
+      <LinearGradient
+        colors={['#4338CA', slateTokens.brandPurple]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : Math.max(insets.top, StatusBar.currentHeight || 24) + 12 }]}
+      >
+        <View style={styles.bgCircleLarge} />
+        <View style={styles.bgCircleSmall} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: t.yonetebilir ? 110 : 40 }} showsVerticalScrollIndicator={false}>
-        {/* Başlık kartı */}
-        <View style={styles.card}>
-          <View style={styles.turRow}>
-            <View style={styles.turBadge}>
-              <Ionicons name={t.tur === 'P' ? 'briefcase-outline' : 'people-outline'} size={13} color={slateTokens.primary} />
-              <Text style={styles.turBadgeText}>{t.turAdi}{t.projeTur ? ` · ${t.projeTur}` : ''}</Text>
-            </View>
+        <View style={styles.headerTopRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', zIndex: 2, flex: 1 }}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t.tur === 'P' ? 'Proje' : 'Toplantı'} Detayı</Text>
           </View>
-          <Text style={styles.konu}>{t.konu}</Text>
-          {!!t.aciklama && <Text style={styles.aciklama}>{t.aciklama}</Text>}
-          <View style={styles.metaGrid}>
-            <Meta colors={colors} label="Oluşturan" value={t.olusturan} />
-            <Meta colors={colors} label="Başlangıç" value={t.basTarihStr || '-'} />
-            <Meta colors={colors} label="Bitiş" value={t.bitTarihStr || '-'} />
+          <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? '#dcfce7' : '#fef9c3', zIndex: 2 }]}>
+            <Text style={[styles.statusText, { color: tamamlandi ? '#15803d' : '#a16207' }]}>{t.durum}</Text>
           </View>
         </View>
 
+        <View style={styles.headerSubRow}>
+          <Text style={styles.headerCode}>{t.turAdi}{t.projeTur ? ` · ${t.projeTur}` : ''}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {t.olusturanSicil
+              ? <UserAvatar sicilNo={t.olusturanSicil} name={t.olusturan} size={24} style={{ borderWidth: 0 }} />
+              : <Ionicons name="person-circle-outline" size={22} color="#fff" />}
+            <Text style={styles.headerOlusturan} numberOfLines={1}>{t.olusturan}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: showBar ? 120 : 24 }]} showsVerticalScrollIndicator={false}>
+        {/* Readonly bandı */}
+        {readonly && (
+          <View style={[styles.banner, { backgroundColor: colors.successLight, borderColor: colors.success }]}>
+            <Text style={[styles.bannerText, { color: colors.success }]}>🔒 Bu kayıt tamamlanmıştır — salt-okunur.</Text>
+          </View>
+        )}
+
+        {/* Konu / Açıklama */}
+        <View style={[styles.card, { gap: 4 }]}>
+          <Text style={styles.konu}>{t.konu}</Text>
+          {!!t.aciklama && <Text style={styles.aciklama}>{t.aciklama}</Text>}
+        </View>
+
+        {/* Detaylar */}
+        <View style={styles.card}>
+          <InfoRow colors={colors} label="Tür" value={`${t.turAdi}${t.projeTur ? ` · ${t.projeTur}` : ''}`} />
+          <View style={styles.dividerDashed} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Oluşturan</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {t.olusturanSicil ? <UserAvatar sicilNo={t.olusturanSicil} name={t.olusturan} size={22} /> : null}
+              <Text style={styles.infoValue}>{t.olusturan}</Text>
+            </View>
+          </View>
+          <View style={styles.dividerDashed} />
+          <InfoRow colors={colors} label="Başlangıç" value={t.basTarihStr || '-'} />
+          <View style={styles.dividerDashed} />
+          <InfoRow colors={colors} label="Bitiş" value={t.bitTarihStr || '-'} />
+        </View>
+
         {/* Katılımcılar */}
-        <View style={{ marginTop: 14 }}>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>Katılımcılar ({detail.katilimcilar.length})</Text>
-          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Katılımcılar ({detail.katilimcilar.length})</Text>
           {detail.katilimcilar.length === 0 ? (
             <Text style={styles.empty}>Katılımcı yok.</Text>
           ) : detail.katilimcilar.map((k: any) => (
@@ -255,20 +284,18 @@ export const ProjeDetailScreen = () => {
                 ? <UserAvatar sicilNo={k.sicilNo} name={k.ad} size={30} style={{ marginRight: 8 }} />
                 : <Ionicons name="person-circle-outline" size={30} color={colors.textMuted} style={{ marginRight: 8 }} />}
               <Text style={[styles.kAd, { flex: 1 }]}>{k.ad}</Text>
-              {t.yonetebilir && (
+              {canManage && (
                 <TouchableOpacity style={styles.silBtn} onPress={() => cikarKatilimci(k.id, k.ad)}>
                   <Ionicons name="close" size={16} color={colors.danger} />
                 </TouchableOpacity>
               )}
             </View>
           ))}
-          </View>
         </View>
 
         {/* Görevler */}
-        <View style={{ marginTop: 14 }}>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>Görevler ({detail.gorevler.length})</Text>
-          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Görevler ({detail.gorevler.length})</Text>
           {detail.gorevler.length === 0 ? (
             <Text style={styles.empty}>Henüz görev yok.</Text>
           ) : detail.gorevler.map((g: any) => {
@@ -285,13 +312,13 @@ export const ProjeDetailScreen = () => {
                 <View style={styles.gorevFooter}>
                   <Text style={styles.gorevMeta}>{g.sorumluAd}{g.terminTarStr ? ` · Termin: ${g.terminTarStr}` : ''}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {!gTamam && (
+                    {!gTamam && !readonly && (
                       <TouchableOpacity style={styles.tamamlaBtn} onPress={() => tamamlaGorev(g.id)}>
                         <Ionicons name="checkmark" size={14} color={colors.success} />
                         <Text style={styles.tamamlaText}>Tamamla</Text>
                       </TouchableOpacity>
                     )}
-                    {t.yonetebilir && (
+                    {canManage && (
                       <TouchableOpacity style={styles.silBtn} onPress={() => silGorev(g.id)}>
                         <Ionicons name="trash-outline" size={15} color={colors.danger} />
                       </TouchableOpacity>
@@ -301,44 +328,42 @@ export const ProjeDetailScreen = () => {
               </View>
             );
           })}
-          </View>
         </View>
 
-        {/* Dosyalar */}
-        <View style={{ marginTop: 14 }}>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>Ekli Dosyalar ({detail.dosyalar.length})</Text>
-          <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
+        {/* Ekli Dosyalar */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Ekli Dosyalar ({detail.dosyalar.length})</Text>
           {detail.dosyalar.length === 0 ? (
             <Text style={styles.empty}>Ekli dosya yok.</Text>
           ) : detail.dosyalar.map((d: any) => (
             <View key={d.id} style={styles.dRow}>
-              <Ionicons name="document-text-outline" size={18} color={slateTokens.primary} style={{ marginRight: 8 }} />
+              <AttachmentPreview
+                dosyaUrl={d.dosyaUrl}
+                module="Toplanti"
+                style={{ marginTop: 0, marginRight: 10, width: 52, height: 52 }}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.dBaslik} numberOfLines={1}>{d.baslik || 'Dosya'}</Text>
                 <Text style={styles.dDate}>{d.kayitTarStr}</Text>
               </View>
-              {t.yonetebilir && (
+              {canManage && (
                 <TouchableOpacity style={styles.silBtn} onPress={() => silDosya(d.id)}>
                   <Ionicons name="trash-outline" size={15} color={colors.danger} />
                 </TouchableOpacity>
               )}
             </View>
           ))}
-          </View>
         </View>
       </ScrollView>
 
-      {/* Sabit alt işlem barı (HelpDesk detay deseni) */}
-      {t.yonetebilir && (
-        <View style={[styles.fixedBarWrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+      {/* Sabit alt işlem barı (etiketsiz, üst border) — yalnız açık & yönetilebilir kayıt */}
+      {showBar && (
+        <View style={styles.fixedBarWrapper}>
           <View style={styles.bottomTabBar}>
-            {/* Sol: Yeni Görev */}
             <TouchableOpacity style={styles.tabItem} onPress={() => setGorevModal(true)}>
-              <Ionicons name="add-circle-outline" size={28} color={slateTokens.primary} />
-              <Text style={styles.tabLabel}>Yeni Görev</Text>
+              <Ionicons name="add-circle-outline" size={28} color={slateTokens.brandPrimary} />
             </TouchableOpacity>
 
-            {/* Orta: Yönet (FAB) */}
             <TouchableOpacity style={styles.centerTabItem} onPress={() => setActionsMenu(true)}>
               <View style={styles.centerFabWrapper}>
                 <View style={styles.centerFab}>
@@ -347,10 +372,8 @@ export const ProjeDetailScreen = () => {
               </View>
             </TouchableOpacity>
 
-            {/* Sağ: Durum */}
-            <TouchableOpacity style={styles.tabItem} onPress={() => durumGuncelle(!tamamlandi)}>
-              <Ionicons name={tamamlandi ? 'refresh-outline' : 'checkmark-done-outline'} size={28} color={tamamlandi ? colors.warning : colors.success} />
-              <Text style={[styles.tabLabel, { color: tamamlandi ? colors.warning : colors.success }]}>{tamamlandi ? 'Yeniden Aç' : 'Tamamla'}</Text>
+            <TouchableOpacity style={styles.tabItem} onPress={tamamlaKayit}>
+              <Ionicons name="checkmark-done-outline" size={28} color={colors.success} />
             </TouchableOpacity>
           </View>
         </View>
@@ -368,23 +391,23 @@ export const ProjeDetailScreen = () => {
             </View>
 
             <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); setGorevModal(true); }}>
-              <Ionicons name="add-circle-outline" size={22} color={slateTokens.primary} />
+              <Ionicons name="add-circle-outline" size={22} color={slateTokens.brandPrimary} />
               <Text style={styles.sheetItemText}>Yeni Görev</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); acKatilimciSecici(); }}>
-              <Ionicons name="person-add-outline" size={22} color={slateTokens.primary} />
+              <Ionicons name="person-add-outline" size={22} color={slateTokens.brandPrimary} />
               <Text style={styles.sheetItemText}>Katılımcı Ekle</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); setFilePicker(true); }}>
-              <Ionicons name="cloud-upload-outline" size={22} color={slateTokens.primary} />
+              <Ionicons name="cloud-upload-outline" size={22} color={slateTokens.brandPrimary} />
               <Text style={styles.sheetItemText}>Dosya Yükle</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); durumGuncelle(!tamamlandi); }}>
-              <Ionicons name={tamamlandi ? 'refresh-outline' : 'checkmark-done-outline'} size={22} color={tamamlandi ? colors.warning : colors.success} />
-              <Text style={[styles.sheetItemText, { color: tamamlandi ? colors.warning : colors.success }]}>{tamamlandi ? 'Yeniden Aç' : 'Kaydı Tamamla'}</Text>
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); tamamlaKayit(); }}>
+              <Ionicons name="checkmark-done-outline" size={22} color={colors.success} />
+              <Text style={[styles.sheetItemText, { color: colors.success }]}>Kaydı Tamamla</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -455,7 +478,6 @@ export const ProjeDetailScreen = () => {
       <DatePickerModal visible={baslamaPicker} onClose={() => setBaslamaPicker(false)} onSelectDate={(d) => setGBaslama(d)} title="Başlama Tarihi" />
       <DatePickerModal visible={terminPicker} onClose={() => setTerminPicker(false)} onSelectDate={(d) => setGTermin(d)} title="Termin Tarihi" />
 
-      {/* Katılımcı ekleme (aktif personel) */}
       <SearchableSelectorModal
         visible={katilimciSelect}
         onClose={() => setKatilimciSelect(false)}
@@ -466,7 +488,6 @@ export const ProjeDetailScreen = () => {
         title="Katılımcı Ekle"
       />
 
-      {/* Dosya yükleme */}
       <FilePickerSheet
         visible={filePicker}
         onClose={() => setFilePicker(false)}
@@ -477,53 +498,60 @@ export const ProjeDetailScreen = () => {
   );
 };
 
-const Header = ({ colors, onBack, title, statusLabel, statusOk }: any) => (
-  <View style={{ backgroundColor: slateTokens.primary, paddingTop: 50, paddingBottom: 18, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-      <TouchableOpacity onPress={onBack} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-        <Ionicons name="arrow-back" size={22} color="#fff" />
+const DetailHeader = ({ colors, insets, onBack, title }: any) => (
+  <LinearGradient
+    colors={['#4338CA', slateTokens.brandPurple]}
+    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+    style={{ paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 40) : Math.max(insets.top, StatusBar.currentHeight || 24) + 12 }}
+  >
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <TouchableOpacity onPress={onBack} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+        <Ionicons name="arrow-back" size={24} color="#FFF" />
       </TouchableOpacity>
-      <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>{title}</Text>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: '#FFF' }}>{title}</Text>
     </View>
-    {!!statusLabel && (
-      <View style={{ backgroundColor: statusOk ? '#dcfce7' : '#fef9c3', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 }}>
-        <Text style={{ color: statusOk ? '#15803d' : '#a16207', fontWeight: '700', fontSize: 12 }}>{statusLabel}</Text>
-      </View>
-    )}
-  </View>
+  </LinearGradient>
 );
 
-const Section = ({ title, colors, children }: any) => (
-  <View style={{ marginTop: 14 }}>
-    <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 }}>{title}</Text>
-    <View style={{ backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12 }}>
-      {children}
-    </View>
-  </View>
-);
-
-const Meta = ({ colors, label, value }: any) => (
-  <View style={{ minWidth: '30%' }}>
-    <Text style={{ fontSize: 11, color: colors.textMuted }}>{label}</Text>
-    <Text style={{ fontSize: 13, color: colors.text, fontWeight: '600', marginTop: 2 }}>{value}</Text>
+const InfoRow = ({ colors, label, value }: any) => (
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 }}>
+    <Text style={{ fontSize: 13, color: slateTokens.textDark, fontWeight: '700' }}>{label}</Text>
+    <Text style={{ fontSize: 13, color: slateTokens.textSecondary, fontWeight: '500', flexShrink: 1, textAlign: 'right', marginLeft: 12 }}>{value}</Text>
   </View>
 );
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  card: { backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16 },
-  turRow: { flexDirection: 'row', marginBottom: 8 },
-  turBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  turBadgeText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
-  konu: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 6 },
-  aciklama: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 12 },
-  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 },
+  // Header
+  header: { paddingHorizontal: 20, paddingBottom: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
+  bgCircleLarge: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.03)', top: -50, right: -80 },
+  bgCircleSmall: { position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.05)', top: 60, right: 40 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFF' },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  statusText: { fontSize: 12, fontWeight: '800' },
+  headerSubRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 2 },
+  headerCode: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
+  headerOlusturan: { color: '#FFF', fontSize: 12, fontWeight: '600', maxWidth: 160 },
+  // Body
+  scroll: { padding: 16, gap: 12 },
+  banner: { padding: 12, borderRadius: 12, borderWidth: 1 },
+  bannerText: { fontSize: 12.5, fontWeight: '700', lineHeight: 16 },
+  card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 12 },
+  konu: { fontSize: 16, fontWeight: '800', color: colors.text },
+  aciklama: { fontSize: 13.5, color: colors.textSecondary, lineHeight: 20 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  infoLabel: { fontSize: 13, color: slateTokens.textDark, fontWeight: '700' },
+  infoValue: { fontSize: 13, color: slateTokens.textSecondary, fontWeight: '500' },
+  dividerDashed: { height: 1, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: colors.border, marginVertical: 10 },
   empty: { color: colors.textMuted, fontSize: 13, paddingVertical: 6 },
   kRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   kAd: { fontSize: 14, color: colors.text, fontWeight: '500' },
   gorevCard: { borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 10 },
   gorevHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  gorevNo: { fontSize: 12, fontWeight: '800', color: slateTokens.primary },
+  gorevNo: { fontSize: 12, fontWeight: '800', color: slateTokens.brandPrimary },
   gDurum: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   gDurumText: { fontSize: 10, fontWeight: '700' },
   gorevAciklama: { fontSize: 14, color: colors.text, marginBottom: 6 },
@@ -532,38 +560,29 @@ const createStyles = (colors: any) => StyleSheet.create({
   tamamlaBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   tamamlaText: { color: colors.success, fontWeight: '700', fontSize: 12 },
   silBtn: { padding: 6, borderRadius: 8, backgroundColor: colors.dangerLight },
-  durumBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14, height: 44, borderRadius: 10 },
-  durumBtnText: { fontWeight: '700', fontSize: 14 },
   dRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
-  dBaslik: { flex: 1, fontSize: 14, color: colors.text },
-  dDate: { fontSize: 11, color: colors.textMuted },
-  yeniGorevBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: slateTokens.primary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
-  yeniGorevText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  formLabel: { fontSize: 12, fontWeight: '700', color: colors.text, marginTop: 12, marginBottom: 6 },
-  input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14 },
-  selectBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, height: 46 },
-  kaydetBtn: { backgroundColor: slateTokens.primary, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
-  kaydetText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  // Sabit alt bar (HelpDesk detay deseni)
-  fixedBarWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'transparent', paddingTop: 8 },
+  dBaslik: { fontSize: 14, color: colors.text },
+  dDate: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  // Alt bar (etiketsiz, üst border)
+  fixedBarWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'transparent' },
   bottomTabBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
     backgroundColor: '#FFFFFF', borderRadius: 30, height: 66,
     marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16,
+    borderTopWidth: 1, borderTopColor: colors.borderLight,
     elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16,
-    overflow: 'visible',
+    position: 'relative', overflow: 'visible',
   },
   tabItem: { alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%' },
-  tabLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, marginTop: 2 },
   centerTabItem: { flex: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', height: '100%' },
-  centerFabWrapper: { position: 'absolute', top: -18, width: 64, height: 64, borderRadius: 32, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
+  centerFabWrapper: {
+    position: 'absolute', top: -18, width: 64, height: 64, borderRadius: 32,
+    backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 4,
+  },
   centerFab: {
     width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: slateTokens.primary, elevation: 8, shadowColor: slateTokens.primary,
+    backgroundColor: slateTokens.brandPrimary, elevation: 8, shadowColor: slateTokens.brandPrimary,
     shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10,
   },
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -572,4 +591,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   sheetItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, marginBottom: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, gap: 12 },
   sheetItemText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  // Yeni görev modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  formLabel: { fontSize: 12, fontWeight: '700', color: colors.text, marginTop: 12, marginBottom: 6 },
+  input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14 },
+  selectBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, height: 46 },
+  kaydetBtn: { backgroundColor: slateTokens.brandPrimary, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
+  kaydetText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
