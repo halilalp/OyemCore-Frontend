@@ -90,10 +90,9 @@ export const HomeScreen = () => {
   // Zil bildirimleri (aksiyon bekleyen işler)
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  // Aksiyon metrikleri (kartlar)
-  const [onayimda, setOnayimda] = useState<number | null>(null);      // onayımı/cevabımı bekleyen
-  const [uzerimdekiIs, setUzerimdekiIs] = useState<number | null>(null); // sorumlusu ben olan açık talep
-  const [aktifProje, setAktifProje] = useState<number | null>(null);  // tamamlanmamış proje/toplantı
+  // Aksiyon metrikleri (kartlar): İzin + IT/ERP/Bakım açık talep + Proje görevleri
+  const [talepAcik, setTalepAcik] = useState<{ IT: number | null; ERP: number | null; BAKIM: number | null }>({ IT: null, ERP: null, BAKIM: null });
+  const [projeGorev, setProjeGorev] = useState<number | null>(null);  // devam eden proje görevi
 
   const fetchData = React.useCallback(async () => {
       setIsLoading(true);
@@ -123,13 +122,19 @@ export const HomeScreen = () => {
         // Bildirimler ayrı ve sessiz: backend henüz her ortamda olmayabilir,
         // 404 olursa ana yükleme hata banner'ını tetiklemesin.
         api.getUserActions()
-          .then(r => { setNotifications(r?.details || []); setOnayimda(r?.totalCount ?? (r?.details?.length || 0)); })
-          .catch(() => { setNotifications([]); setOnayimda(0); });
+          .then(r => setNotifications(r?.details || []))
+          .catch(() => setNotifications([]));
 
-        // Aktif proje/toplantı sayısı (tamamlanmamış). Sessiz.
+        // Proje görevleri: tüm projelerdeki devam eden görev toplamı (ozet "tamam/toplam"). Sessiz.
         api.getProjeToplantiList({})
-          .then(r => setAktifProje((r?.data || []).filter((p: any) => p.durum !== 'TAMAMLANDI').length))
-          .catch(() => setAktifProje(0));
+          .then(r => {
+            const dev = (r?.data || []).reduce((acc: number, p: any) => {
+              const [tam, top] = String(p.ozet || '').split('/').map((n: string) => parseInt(n, 10));
+              return acc + (Number.isFinite(top) ? Math.max((top || 0) - (tam || 0), 0) : 0);
+            }, 0);
+            setProjeGorev(dev);
+          })
+          .catch(() => setProjeGorev(0));
 
         const deger = <T,>(i: number, varsayilan: T): T =>
           sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
@@ -163,8 +168,12 @@ export const HomeScreen = () => {
         };
         setHelpdeskBadges({ IT: badge(itData), ERP: badge(erpData), BAKIM: badge(bakimData) });
         const talepRes = [...itData, ...erpData, ...bakimData];
-        // Üzerimdeki iş: sorumlusu ben olan açık talepler (IT+ERP+Bakım)
-        setUzerimdekiIs(talepRes.filter(t => acik(t) && t.isMine).length);
+        // Metrik kartları: tür başına açık talep sayısı
+        setTalepAcik({
+          IT: itData.filter(acik).length,
+          ERP: erpData.filter(acik).length,
+          BAKIM: bakimData.filter(acik).length,
+        });
         const statsRes = deger<any>(3, null);
         const newsRes = deger<any[]>(4, []);
         const trainingRes = deger<any[]>(5, []);
@@ -389,7 +398,7 @@ export const HomeScreen = () => {
             )}
           </View>
 
-          {/* Metrik Kartları (2x2) — aksiyon odaklı */}
+          {/* Metrik Kartları — İzin + IT/ERP/Bakım HelpDesk + Proje Görevleri */}
           <View style={styles.metricsContainer}>
             <View style={styles.metricCard}>
               <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
@@ -397,23 +406,31 @@ export const HomeScreen = () => {
               <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
               <Text style={styles.metricSub}>gün borç</Text>
             </View>
-            <View style={styles.metricCard}>
-              <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>ÜZERİMDEKİ İŞ</Text>
-              <Text style={styles.metricValue}>{uzerimdekiIs ?? '-'}</Text>
+            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => navigation.navigate('HelpDeskDashboard', { tur: 'IT', title: 'IT HelpDesk' })}>
+              <Ionicons name="laptop-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>IT HELPDESK</Text>
+              <Text style={styles.metricValue}>{talepAcik.IT ?? '-'}</Text>
               <Text style={styles.metricSub}>açık talep</Text>
-            </View>
-            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => setIsNotifOpen(true)}>
-              <Ionicons name="checkmark-done-circle-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>ONAYIMDA</Text>
-              <Text style={[styles.metricValue, { color: slateTokens.warning }]}>{onayimda ?? '-'}</Text>
-              <Text style={styles.metricSub}>bekleyen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
-              <Ionicons name="folder-open-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>AKTİF PROJE</Text>
-              <Text style={[styles.metricValue, { color: slateTokens.success }]}>{aktifProje ?? '-'}</Text>
-              <Text style={styles.metricSub}>devam eden</Text>
+            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => navigation.navigate('HelpDeskDashboard', { tur: 'ERP', title: 'ERP HelpDesk' })}>
+              <Ionicons name="server-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>ERP HELPDESK</Text>
+              <Text style={styles.metricValue}>{talepAcik.ERP ?? '-'}</Text>
+              <Text style={styles.metricSub}>açık talep</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => navigation.navigate('HelpDeskDashboard', { tur: 'BAKIM', title: 'Bakım HelpDesk' })}>
+              <Ionicons name="construct-outline" size={16} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>BAKIM HELPDESK</Text>
+              <Text style={styles.metricValue}>{talepAcik.BAKIM ?? '-'}</Text>
+              <Text style={styles.metricSub}>açık talep</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.metricCard, styles.metricCardWide]} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
+              <Ionicons name="briefcase-outline" size={18} color="rgba(255,255,255,0.55)" style={styles.metricIcon} />
+              <View>
+                <Text style={styles.metricLabel}>PROJE GÖREVLERİ</Text>
+                <Text style={[styles.metricValue, { color: slateTokens.success }]}>{projeGorev ?? '-'}</Text>
+                <Text style={styles.metricSub}>devam eden görev</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -937,7 +954,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     headerBackground: {
       position: 'absolute',
       top: 0, left: 0, right: 0,
-      height: 510, // 2x2 metrik kartlarını kapsayacak yükseklik
+      height: 640, // 5 metrik kartını (2x2 + tam genişlik) kapsayacak yükseklik
       overflow: 'hidden',
     },
     bgCircleLarge: {
@@ -1118,6 +1135,9 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       paddingVertical: 14,
       paddingHorizontal: 12,
       alignItems: 'flex-start',
+    },
+    metricCardWide: {
+      width: '100%',
     },
     metricIcon: {
       position: 'absolute',
