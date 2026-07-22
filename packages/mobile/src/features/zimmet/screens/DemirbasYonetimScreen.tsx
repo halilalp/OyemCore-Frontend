@@ -844,9 +844,22 @@ export const DemirbasYonetimScreen = () => {
             />
           </View>
 
-          <TouchableOpacity style={[styles.createBtnSubmit, { marginTop: 16 }]} onPress={handleSaveAsset}>
-            <Text style={styles.createBtnSubmitText}>Kaydet</Text>
-          </TouchableOpacity>
+          {/* HelpDesk formundaki gibi altta İptal + Kaydet yan yana */}
+          <View style={styles.formActionsRow}>
+            <TouchableOpacity
+              style={styles.formCancelBtnBottom}
+              onPress={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }}
+            >
+              <Text style={styles.formCancelBtnTextBottom}>İptal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.formSubmitBtnBottom} onPress={handleSaveAsset} disabled={isLoading}>
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.formSubmitBtnTextBottom}>Kaydet</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </>
     );
@@ -1415,12 +1428,20 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   selectBox: {
     height: 48,
-    backgroundColor: colors.background,
+    // HelpDesk formundaki tema: beyaz kart (colors.card) sayfa zemininde
+    // panel gibi belirir. Önce colors.background idi (zeminle aynı), input'lar
+    // görünmüyordu.
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   selectBoxText: {
     color: colors.text,
@@ -1439,6 +1460,41 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
     paddingTop: 10,
+  },
+  // Alt aksiyon çubuğu — HelpDesk formuyla aynı: İptal (kırmızı) + Kaydet (mavi)
+  formActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  formCancelBtnBottom: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formCancelBtnTextBottom: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  formSubmitBtnBottom: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formSubmitBtnTextBottom: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   createBtnSubmit: {
     backgroundColor: colors.primary,
@@ -1476,14 +1532,20 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: colors.background,
+    // HelpDesk formu teması: beyaz kart, panel gibi görünsün.
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     color: colors.text,
     fontSize: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   modalBtnRow: {
     flexDirection: 'row',
