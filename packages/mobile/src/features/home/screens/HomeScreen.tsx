@@ -415,34 +415,34 @@ export const HomeScreen = () => {
           <View style={styles.metricsContainer}>
             {/* Yıllık İzin */}
             <View style={styles.metricCard}>
-              <Ionicons name="calendar-outline" size={16} color="#cbd5e1" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>YILLIK İZİN</Text>
+              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>Yıllık İzin</Text>
               <Text style={[styles.metricValue, { color: slateTokens.danger }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
-              <Text style={styles.metricSub}>gün borç</Text>
+              <Text style={styles.metricSub}>Gün borç</Text>
             </View>
             {/* Proje */}
             <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
-              <Ionicons name="briefcase-outline" size={16} color="#cbd5e1" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>PROJE</Text>
-              <StatLine styles={styles} num={projeOzet?.acikProje} label="açık proje" />
-              <StatLine styles={styles} num={projeOzet?.gorev} label="görev" />
-              <StatLine styles={styles} num={projeOzet?.gecikmis} label="gecikmiş" color={slateTokens.danger} />
+              <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
+              <Text style={styles.metricLabel}>Proje</Text>
+              <StatLine styles={styles} num={projeOzet?.acikProje} label="Açık proje" />
+              <StatLine styles={styles} num={projeOzet?.gorev} label="Görev" />
+              <StatLine styles={styles} num={projeOzet?.gecikmis} label="Gecikmiş" color={slateTokens.danger} />
             </TouchableOpacity>
             {/* IT / ERP / Bakım HelpDesk */}
             {([
               { tur: 'IT', label: 'IT', title: 'IT HelpDesk', icon: 'laptop-outline' },
               { tur: 'ERP', label: 'ERP', title: 'ERP HelpDesk', icon: 'server-outline' },
-              { tur: 'BAKIM', label: 'BAKIM', title: 'Bakım HelpDesk', icon: 'construct-outline' },
+              { tur: 'BAKIM', label: 'Bakım', title: 'Bakım HelpDesk', icon: 'construct-outline' },
             ] as const).map(hd => {
               const s = talepStats[hd.tur];
               return (
                 <TouchableOpacity key={hd.tur} style={[styles.metricCard, styles.metricCardThird]} activeOpacity={0.8}
                   onPress={() => navigation.navigate('HelpDeskDashboard', { tur: hd.tur, title: hd.title })}>
-                  <Ionicons name={hd.icon} size={14} color="#cbd5e1" style={styles.metricIcon} />
+                  <Ionicons name={hd.icon} size={14} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
                   <Text style={styles.metricLabel}>{hd.label}</Text>
-                  <StatLine styles={styles} num={s.actigim} label="açtığım" compact />
-                  <StatLine styles={styles} num={s.islem} label="işlem" compact />
-                  <StatLine styles={styles} num={s.onay} label="onay" color={slateTokens.warning} compact />
+                  <StatLine styles={styles} num={s.actigim} label="Açtığım" compact />
+                  <StatLine styles={styles} num={s.islem} label="İşlem" compact />
+                  <StatLine styles={styles} num={s.onay} label="Onay" color={slateTokens.warning} compact />
                 </TouchableOpacity>
               );
             })}
@@ -1145,23 +1145,20 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     metricCard: {
       width: '48.5%',
-      backgroundColor: '#FFFFFF',
+      backgroundColor: 'rgba(255,255,255,0.15)',
       borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.22)',
       paddingVertical: 14,
       paddingHorizontal: 14,
       alignItems: 'flex-start',
-      elevation: 4,
-      shadowColor: '#0f172a',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
     },
     metricCardWide: {
       width: '100%',
     },
     metricCardThird: {
       width: '31.5%',
-      paddingHorizontal: 11,
+      paddingHorizontal: 10,
     },
     statLine: {
       flexDirection: 'row',
@@ -1169,31 +1166,31 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       gap: 6,
       marginTop: 6,
     },
-    statNum: { fontSize: 20, fontWeight: '800', color: '#0f172a', minWidth: 20 },
-    statLbl: { fontSize: 12.5, color: '#64748b', fontWeight: '600' },
-    statNumCompact: { fontSize: 18, fontWeight: '800', color: '#0f172a', minWidth: 17 },
-    statLblCompact: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+    statNum: { fontSize: 22, fontWeight: '800', color: '#FFF', minWidth: 22 },
+    statLbl: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+    statNumCompact: { fontSize: 20, fontWeight: '800', color: '#FFF', minWidth: 18 },
+    statLblCompact: { fontSize: 11.5, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
     metricIcon: {
       position: 'absolute',
       top: 13,
       right: 12,
     },
     metricLabel: {
-      fontSize: 11,
+      fontSize: 12.5,
       fontWeight: '800',
-      color: '#475569',
-      letterSpacing: 0.3,
+      color: 'rgba(255,255,255,0.9)',
+      letterSpacing: 0.2,
       marginBottom: 4,
     },
     metricValue: {
-      fontSize: 30,
+      fontSize: 32,
       fontWeight: '800',
-      color: '#0f172a',
+      color: '#FFF',
       marginBottom: 2,
     },
     metricSub: {
-      fontSize: 11,
-      color: '#94a3b8',
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.72)',
       fontWeight: '600',
     },
 
