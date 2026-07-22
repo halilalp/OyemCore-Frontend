@@ -878,6 +878,13 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
 
     return tabMatch && queryMatch && categoryMatch && altCategoryMatch && statusMatch && dateMatch;
+  }).sort((a, b) => {
+    // Puana göre büyükten küçüğe (kullanıcı isteği). Puanı olmayan talepler
+    // en sona; eşit puanda yeni kayıt önce gelsin diye ID'ye göre.
+    const pa = a.talepPuan ?? -1;
+    const pb = b.talepPuan ?? -1;
+    if (pb !== pa) return pb - pa;
+    return (b.talepID ?? 0) - (a.talepID ?? 0);
   });
 
   const paginatedRequests = filteredRequests.slice(0, pageIndexLocal * pageSizeLocal);
@@ -1022,7 +1029,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   requesterSicil={item.kayitSicil}
                   requesterName={item.kayitYapanAd}
                   puan={item.talepPuan}
-                  puanRenk={item.puanRenk}
+                  // Tüm bakım taleplerinde badge olsun: puanı olmayan kayıtlara nötr
+                  // gri gösterge (backend puan yoksa boş renk döndürüyor).
+                  puanRenk={item.puanRenk || '#cbd5e1'}
                   priorityLabel={priorityStyle.label}
                   priorityColor={priorityStyle.text}
                   priorityBg={priorityStyle.bg}

@@ -59,12 +59,11 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         <View style={styles.contentContainer}>
           <View style={styles.headerRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-              {/* BAKIM talep puanı — referanstaki renkli gösterge; puan varsa
-                  değeri de yazılır. TalepPuan boş olan taleplerde hiç çizilmez. */}
+              {/* BAKIM talep puanı — yalnızca renkli gösterge; puan değeri artık
+                  yazılmıyor (kullanıcı isteği). Rengin kendisi puanı temsil eder,
+                  sıralama da puana göre yapılıyor. */}
               {!!puanRenk && (
-                <View style={[styles.puanBadge, { backgroundColor: puanRenk }]}>
-                  <Text style={styles.puanBadgeText}>{puan ?? ''}</Text>
-                </View>
+                <View style={[styles.puanBadge, { backgroundColor: puanRenk }]} />
               )}
               <Text style={styles.codeText}>{code}</Text>
             </View>
@@ -147,21 +146,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  // BAKIM talep puanı göstergesi — referanstaki renkli daire, içinde puan
+  // BAKIM talep puanı göstergesi — sadece renkli daire, içinde yazı yok.
   puanBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  puanBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#1f2937',
+    borderColor: 'rgba(0,0,0,0.12)',
   },
   codeText: {
     fontSize: 12,
