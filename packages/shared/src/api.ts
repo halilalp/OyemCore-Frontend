@@ -994,33 +994,47 @@ export const api = {
     return response.data;
   },
 
-  // Mock/Bypass API endpoints for SAT/SAS module (not currently active)
+  // ── Satın Alma (SAT talep) — Faz A: backend'e bağlı ──
   getSatSasDashboard: async (): Promise<any> => {
-    return { sat: { bekleyen: 0 }, sas: { aktifAdet: 0, toplamTutar: 0 } };
+    const response = await apiClient.get('/satsas/dashboard');
+    return response.data;
   },
   getSatRequests: async (): Promise<{ data: any[] }> => {
-    return { data: [] };
+    const response = await apiClient.get<{ data: any[] }>('/satsas/sat-requests');
+    return response.data;
   },
+  checkOrCreateSatDraft: async (): Promise<any> => {
+    const response = await apiClient.get('/satsas/sat-draft');
+    return response.data;
+  },
+  getSatDetail: async (belgeNo: string): Promise<any> => {
+    const response = await apiClient.get(`/satsas/sat-detail/${encodeURIComponent(belgeNo)}`);
+    return response.data;
+  },
+  addItemToSatDraft: async (belgeNo: string, code: string, amount: number, unit: string, reason: string): Promise<any> => {
+    const response = await apiClient.post('/satsas/sat-item', {
+      belgeNo, malzemeKodu: code, miktar: amount, birimKodu: unit, neden: reason
+    });
+    return response.data;
+  },
+  deleteItemFromSatDraft: async (id: number): Promise<any> => {
+    const response = await apiClient.delete(`/satsas/sat-item/${id}`);
+    return response.data;
+  },
+  saveSatHeader: async (konu: string, aciklama: string): Promise<any> => {
+    const response = await apiClient.post('/satsas/sat-header', { konu, aciklama });
+    return response.data;
+  },
+  submitSatRequest: async (konu = '', aciklama = ''): Promise<any> => {
+    const response = await apiClient.post('/satsas/sat-submit', { konu, aciklama });
+    return response.data;
+  },
+  // ── SAS sipariş akışı — Faz B: backend henüz yok, stub ──
   getSasOrders: async (): Promise<any[]> => {
     return [];
   },
-  checkOrCreateSatDraft: async (): Promise<any> => {
-    return { success: true, belgeNo: '' };
-  },
-  getSatDetail: async (belgeNo: string): Promise<any> => {
-    return null;
-  },
   getOfferComparison: async (belgeNo: string): Promise<any[]> => {
     return [];
-  },
-  addItemToSatDraft: async (code: string, amount: number, unit: string, reason: string): Promise<any> => {
-    return { success: true, message: 'Ürün eklendi.' };
-  },
-  deleteItemFromSatDraft: async (id: number): Promise<any> => {
-    return { success: true, message: 'Kalem silindi.' };
-  },
-  submitSatRequest: async (): Promise<any> => {
-    return { success: true, message: 'Onaya gönderildi.' };
   },
   updateSatStatus: async (belgeNo: string, processStatus: string, finalStatus: string, comment: string): Promise<any> => {
     return { success: true, message: 'Durum güncellendi.' };

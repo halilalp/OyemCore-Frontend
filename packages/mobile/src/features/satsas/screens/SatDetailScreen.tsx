@@ -120,7 +120,7 @@ export const SatDetailScreen = () => {
     }
 
     try {
-      const res = await api.addItemToSatDraft(selectedMaterial.malzemeKodu, amount, unitCode, reason);
+      const res = await api.addItemToSatDraft(belgeNo, selectedMaterial.malzemeKodu, amount, unitCode, reason);
       Alert.alert('Başarılı', res.message || 'Ürün eklendi.');
       setShowAddItemModal(false);
       setSelectedMaterial(null);
