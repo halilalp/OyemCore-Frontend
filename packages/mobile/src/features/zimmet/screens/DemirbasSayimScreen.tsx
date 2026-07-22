@@ -8,6 +8,7 @@ import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
   Alert.alert(title, message, [
@@ -32,6 +33,11 @@ export const DemirbasSayimScreen = () => {
   const [sayimSearch, setSayimSearch] = useState('');
   const [isSayimLoading, setIsSayimLoading] = useState(false);
 
+  // Barkod tarayıcı (expo-camera CameraView)
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanHandled, setScanHandled] = useState(false); // aynı okumayı tekrar işlememek için
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+
   const fetchSayimList = async () => {
     setIsSayimLoading(true);
     try {
@@ -48,14 +54,16 @@ export const DemirbasSayimScreen = () => {
     }
   };
 
-  const handleAddSayim = async () => {
-    if (!sayimBarcode.trim()) {
+  // Kod parametreyle de gelebilir (barkod tarama), yoksa input'taki değer kullanılır.
+  const handleAddSayim = async (kod?: string) => {
+    const code = (kod ?? sayimBarcode).trim();
+    if (!code) {
       showAlert('Hata', 'Lütfen barkod veya demirbaş kodu giriniz.');
       return;
     }
     setIsSayimLoading(true);
     try {
-      const res = await api.addSayim(sayimBarcode.trim());
+      const res = await api.addSayim(code);
       if (res.success) {
         setSayimBarcode('');
         showAlert('Başarılı', res.message || 'Sayıma eklendi.');
@@ -67,6 +75,31 @@ export const DemirbasSayimScreen = () => {
       showAlert('Hata', e.response?.data?.message || e.message || 'Demirbaş bulunamadı veya eklenirken hata oluştu.');
     } finally {
       setIsSayimLoading(false);
+    }
+  };
+
+  // Tarayıcıyı aç: izin yoksa iste, reddedilirse uyar.
+  const openScanner = async () => {
+    if (!cameraPermission?.granted) {
+      const res = await requestCameraPermission();
+      if (!res.granted) {
+        showAlert('Kamera İzni', 'Barkod okutmak için kamera izni gerekiyor. Cihaz ayarlarından izin verebilirsiniz.');
+        return;
+      }
+    }
+    setScanHandled(false);
+    setIsScannerOpen(true);
+  };
+
+  // Barkod okununca: aynı okumayı bir kez işle, modalı kapat, sayıma ekle.
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (scanHandled) return;
+    setScanHandled(true);
+    setIsScannerOpen(false);
+    const kod = (data || '').trim();
+    if (kod) {
+      setSayimBarcode(kod);
+      handleAddSayim(kod);
     }
   };
 
@@ -125,7 +158,7 @@ export const DemirbasSayimScreen = () => {
                 placeholderTextColor={colors.placeholder}
                 value={sayimBarcode}
                 onChangeText={setSayimBarcode}
-                onSubmitEditing={handleAddSayim}
+                onSubmitEditing={() => handleAddSayim()}
               />
               {sayimBarcode ? (
                 <TouchableOpacity onPress={() => setSayimBarcode('')}>
@@ -133,11 +166,42 @@ export const DemirbasSayimScreen = () => {
                 </TouchableOpacity>
               ) : null}
             </View>
-            <TouchableOpacity style={[styles.dialogConfirmBtn, { flex: 0, width: 80, height: 44 }]} onPress={handleAddSayim}>
+            {/* Kamerayla barkod okut */}
+            <TouchableOpacity
+              style={[styles.scanBtn, { width: 44, height: 44 }]}
+              onPress={openScanner}
+            >
+              <Ionicons name="barcode-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.dialogConfirmBtn, { flex: 0, width: 80, height: 44 }]} onPress={() => handleAddSayim()}>
               <Text style={styles.dialogConfirmText}>Ekle</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Barkod Tarayıcı Modalı */}
+        <Modal visible={isScannerOpen} animationType="slide" onRequestClose={() => setIsScannerOpen(false)}>
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            <CameraView
+              style={{ flex: 1 }}
+              facing="back"
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'code93', 'upc_a', 'upc_e', 'itf14'],
+              }}
+              onBarcodeScanned={scanHandled ? undefined : handleBarcodeScanned}
+            />
+            {/* Hedef çerçeve + kapat */}
+            <View style={styles.scanOverlay} pointerEvents="box-none">
+              <View style={styles.scanFrame} />
+              <Text style={styles.scanHint}>Barkodu çerçeveye hizalayın</Text>
+            </View>
+            <SafeAreaView style={styles.scanCloseWrap}>
+              <TouchableOpacity style={styles.scanCloseBtn} onPress={() => setIsScannerOpen(false)}>
+                <Ionicons name="close" size={26} color="#fff" />
+              </TouchableOpacity>
+            </SafeAreaView>
+          </View>
+        </Modal>
 
 
         {/* Scanned Items List */}
@@ -243,6 +307,47 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   dialogConfirmText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  scanBtn: {
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanOverlay: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanFrame: {
+    width: 260,
+    height: 160,
+    borderWidth: 3,
+    borderColor: '#fff',
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+  },
+  scanHint: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 16,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowRadius: 4,
+  },
+  scanCloseWrap: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  scanCloseBtn: {
+    margin: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loader: {
     marginTop: 40,
