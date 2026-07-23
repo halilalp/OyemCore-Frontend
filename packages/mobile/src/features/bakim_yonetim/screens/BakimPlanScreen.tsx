@@ -215,6 +215,19 @@ export const BakimPlanScreen = () => {
     }
   };
 
+  // Hat seçenekleri seçili şirkete göre filtrelenir (Hat → Bölüm → Şirket).
+  // Şirket seçilmeden hat listelenmez (kullanıcı isteği).
+  const hatSecenekleri = React.useMemo(() => {
+    if (!gateSirket) return [];
+    const bolumler = (dropdowns?.bolums || []).filter((b: any) => b.sirketKodu === gateSirket).map((b: any) => b.bolumKodu);
+    return (dropdowns?.hats || []).filter((h: any) => bolumler.includes(h.bolumKodu));
+  }, [dropdowns, gateSirket]);
+
+  const acHatSecici = () => {
+    if (!gateSirket) { Alert.alert('Şirket Seçin', 'Hat seçebilmek için önce şirket seçmelisiniz.'); return; }
+    setIsFormPlanHatOpen(true);
+  };
+
   return (
     <View style={styles.container}>
       <ListHeader
@@ -330,7 +343,7 @@ export const BakimPlanScreen = () => {
                     </View>
                   </View>
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Hat / Makine:</Text>
+                    <Text style={styles.detailLabel}>Hat:</Text>
                     <Text style={styles.detailValue}>{selectedPlan.hatAdi || selectedPlan.hatKodu}</Text>
                   </View>
                   <View style={styles.detailRow}>
@@ -429,7 +442,7 @@ export const BakimPlanScreen = () => {
 
               <View style={styles.formInfoBox}>
                 <Text style={styles.formInfoBoxTitle}>Planlı Bakım Formu</Text>
-                <Text style={styles.formInfoBoxText}>Önce şirket seçin; ardından hat/makine, bakım türü ve hedef tarihleri belirleyin.</Text>
+                <Text style={styles.formInfoBoxText}>Önce şirket seçin; ardından hat, bakım türü ve hedef tarihleri belirleyin.</Text>
               </View>
 
               <View style={styles.formGroup}>
@@ -452,11 +465,11 @@ export const BakimPlanScreen = () => {
               {/* Plan Kodu sistem tarafından üretilir (PLN-YYYYAA-ID); kullanıcıya gösterilmez. */}
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Hat / Makine Seçimi *</Text>
-                <TouchableOpacity style={[styles.selectBox, styles.dateInput]} onPress={() => setIsFormPlanHatOpen(true)}>
+                <Text style={styles.formLabel}>Hat Seçimi *</Text>
+                <TouchableOpacity style={[styles.selectBox, styles.dateInput, !gateSirket && { opacity: 0.5 }]} onPress={acHatSecici}>
                   <Ionicons name="git-branch-outline" size={18} color={colors.textSecondary} />
                   <Text style={[styles.selectBoxText, { flex: 1 }]}>
-                    {dropdowns?.hats?.find((h: any) => h.hatKodu === formPlanHat)?.hatAdi || 'Hat Seçiniz'}
+                    {dropdowns?.hats?.find((h: any) => h.hatKodu === formPlanHat)?.hatAdi || (gateSirket ? 'Hat Seçiniz' : 'Önce şirket seçin')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -524,6 +537,7 @@ export const BakimPlanScreen = () => {
               const kod = item.sirketKodu || '';
               setGateSirket(kod);
               setPlanSirketFilter(kod);
+              setFormPlanHat(''); // şirket değişti → başka şirketin hattı seçili kalmasın
             }}
             data={[{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(dropdowns?.sirkets || [])]}
             keyExtractor={(item) => item.sirketKodu || 'all'}
@@ -534,10 +548,10 @@ export const BakimPlanScreen = () => {
             visible={isFormPlanHatOpen}
             onClose={() => setIsFormPlanHatOpen(false)}
             onSelect={(item) => setFormPlanHat(item.hatKodu)}
-            data={dropdowns?.hats || []}
+            data={hatSecenekleri}
             keyExtractor={(item) => item.hatKodu}
             labelExtractor={(item) => item.hatAdi}
-            title="Hat / Makine Seçin"
+            title="Hat Seçin"
           />
           <DatePickerModal
             visible={isPlanBasDatePickerOpen}
