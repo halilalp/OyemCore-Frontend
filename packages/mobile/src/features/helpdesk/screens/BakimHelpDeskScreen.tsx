@@ -2487,8 +2487,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         )}} />}
         </ErrorBoundary>
         <KeyboardDismissBar />
-      </Modal>
 
+      {/* İş emri modalları detay modalının İÇİNDE render edilir; iOS'ta
+          ayrı (kardeş) modal fullScreen detayın arkasında kalıyordu. Detay
+          modalı artık en sonda (kontrol formundan sonra) kapanır. */}
       {/* ----------------- WORK ORDER CREATE MODAL ----------------- */}
       {/* Tam sayfa form — yarım ekran alt sayfa olarak sıkışıyordu */}
       <Modal visible={isWorkOrderCreateModalOpen} animationType="slide" onRequestClose={() => { resetWorkOrderForm(); setIsWorkOrderCreateModalOpen(false); }}>
@@ -2583,8 +2585,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           </KeyboardAvoidingView>
         </View>
         <KeyboardDismissBar />
-      </Modal>
-      
+
+      {/* Tür/saat/termin seçicileri iş emri formunun İÇİNDE render edilir
+          (iOS'ta form modalının üstünde kalması için). Form modalı termin
+          seçiciden sonra kapanır. */}
       {/* ----------------- WORK ORDER SAAT SELECT MODAL ----------------- */}
       <Modal visible={isWoSaatSelectOpen} transparent animationType="fade" onRequestClose={() => setIsWoSaatSelectOpen(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setIsWoSaatSelectOpen(false)}>
@@ -2649,6 +2653,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           setIsWoTerminPickerOpen(false);
         }}
       />
+      </Modal>{/* ← İŞ EMRİ OLUŞTUR modalı burada kapanır (tür/saat/termin içeride) */}
 
       {/* ----------------- WORK ORDER ASSIGN MODAL ----------------- */}
       <Modal visible={isWorkOrderAssignModalOpen} transparent animationType="fade" onRequestClose={() => setIsWorkOrderAssignModalOpen(false)}>
@@ -2755,9 +2760,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         </View>
         <KeyboardDismissBar />
       </Modal>
+      </Modal>{/* ← DETAY modalı burada kapanır (tüm iş emri modalları içeride) */}
 
-      <BottomNavBar 
-        currentScreen="Talepler" 
+      <BottomNavBar
+        currentScreen="Talepler"
         customAction={{
           icon: 'create-outline',
           label: 'Yeni Talep',
