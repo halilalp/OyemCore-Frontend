@@ -281,6 +281,17 @@ export const PeriyodikKontrolScreen = () => {
     ]);
   };
 
+  // Bölüm seçenekleri seçili şirkete göre filtrelenir; şirketsiz bölüm listelenmez.
+  const bolumSecenekleri = React.useMemo(() => {
+    if (!gateSirket) return [];
+    return (dropdowns?.bolums || []).filter((b: any) => b.sirketKodu === gateSirket);
+  }, [dropdowns, gateSirket]);
+
+  const acBolumSecici = () => {
+    if (!gateSirket) { Alert.alert('Şirket Seçin', 'Bölüm seçebilmek için önce şirket seçmelisiniz.'); return; }
+    setIsFormCtrlBolumOpen(true);
+  };
+
   return (
     <View style={styles.container}>
       <ListHeader
@@ -403,34 +414,7 @@ export const PeriyodikKontrolScreen = () => {
                   </View>
                 </View>
 
-                {/* Status operations */}
-                {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
-                  <View style={styles.actionSection}>
-                    <Text style={styles.sectionHeader}>Kontrol İşlemleri</Text>
-                    <View style={styles.btnRow}>
-                      {selectedCtrl.durum === 'BEKLEMEDE' && (
-                        <TouchableOpacity 
-                          style={[styles.actionBtn, { backgroundColor: colors.infoLight, borderColor: colors.info }]}
-                          onPress={() => handleUpdateCtrlStatus('DEVAM')}
-                        >
-                          <Text style={[styles.actionBtnText, { color: colors.info }]}>▶ Başlat</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity 
-                        style={[styles.actionBtn, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
-                        onPress={() => handleUpdateCtrlStatus('TAMAMLANDI')}
-                      >
-                        <Text style={[styles.actionBtnText, { color: colors.primary }]}>✓ Tamamla</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.actionBtn, { backgroundColor: colors.dangerLight, borderColor: colors.danger }]}
-                        onPress={() => handleUpdateCtrlStatus('IPTAL')}
-                      >
-                        <Text style={[styles.actionBtnText, { color: colors.danger }]}>✕ İptal</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
+                {/* Kontrol işlemleri artık sabit alt barda (aşağıda) */}
 
                 {/* Inner Subtabs (Gelişme vs Sarfiyat) */}
                 <View style={styles.subtabsContainer}>
@@ -587,6 +571,38 @@ export const PeriyodikKontrolScreen = () => {
               </ScrollView>
             </View>
 
+            {/* Sabit alt işlem barı — kontrol aksiyonları (başlat/tamamla/iptal) */}
+            {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 26, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card }}>
+                {selectedCtrl.durum === 'BEKLEMEDE' && (
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.infoLight, justifyContent: 'center', alignItems: 'center' }}
+                    onPress={() => handleUpdateCtrlStatus('DEVAM')}
+                  >
+                    <Ionicons name="play" size={18} color={colors.info} />
+                    <Text style={{ color: colors.info, fontWeight: '700' }}>Başlat</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={() => handleUpdateCtrlStatus('TAMAMLANDI')}
+                >
+                  <Ionicons name="checkmark-done" size={18} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: '700' }}>Tamamla</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.dangerLight, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={() => Alert.alert('Kontrolü İptal Et', 'Bu periyodik kontrolü iptal etmek istediğinize emin misiniz?', [
+                    { text: 'Vazgeç', style: 'cancel' },
+                    { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdateCtrlStatus('IPTAL') },
+                  ])}
+                >
+                  <Ionicons name="close-circle" size={18} color={colors.danger} />
+                  <Text style={{ color: colors.danger, fontWeight: '700' }}>İptal Et</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Makine seçici detay modalının İÇİNDE — üstte açılması için */}
             <SearchableSelectorModal
               visible={isSarfMachineOpen}
@@ -646,10 +662,10 @@ export const PeriyodikKontrolScreen = () => {
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Bölüm Seçimi *</Text>
-                <TouchableOpacity style={[styles.selectBox, styles.dateInput]} onPress={() => setIsFormCtrlBolumOpen(true)}>
+                <TouchableOpacity style={[styles.selectBox, styles.dateInput, !gateSirket && { opacity: 0.5 }]} onPress={acBolumSecici}>
                   <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
                   <Text style={[styles.selectBoxText, { flex: 1 }]}>
-                    {dropdowns?.bolums?.find((b: any) => b.bolumKodu === formCtrlBolum)?.bolumAdi || 'Bölüm Seçiniz'}
+                    {dropdowns?.bolums?.find((b: any) => b.bolumKodu === formCtrlBolum)?.bolumAdi || (gateSirket ? 'Bölüm Seçiniz' : 'Önce şirket seçin')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -715,6 +731,7 @@ export const PeriyodikKontrolScreen = () => {
               const kod = item.sirketKodu || '';
               setGateSirket(kod);
               setCtrlSirketFilter(kod);
+              setFormCtrlBolum(''); // şirket değişti → başka şirketin bölümü kalmasın
             }}
             data={[{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(dropdowns?.sirkets || [])]}
             keyExtractor={(item) => item.sirketKodu || 'all'}
@@ -725,7 +742,7 @@ export const PeriyodikKontrolScreen = () => {
             visible={isFormCtrlBolumOpen}
             onClose={() => setIsFormCtrlBolumOpen(false)}
             onSelect={(item) => setFormCtrlBolum(item.bolumKodu)}
-            data={dropdowns?.bolums || []}
+            data={bolumSecenekleri}
             keyExtractor={(item) => item.bolumKodu}
             labelExtractor={(item) => item.bolumAdi}
             title="Bölüm Seçin"
