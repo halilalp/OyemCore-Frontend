@@ -104,7 +104,7 @@ export const PeriyodikKontrolScreen = () => {
   const getStatusBadgeColor = (durum: string) => {
     switch (durum) {
       case 'TAMAMLANDI': return colors.primaryLight;
-      case 'DEVAM_EDIYOR': return colors.infoLight;
+      case 'DEVAM': return colors.infoLight;
       case 'IPTAL': return colors.dangerLight;
       default: return colors.warningLight;
     }
@@ -113,7 +113,7 @@ export const PeriyodikKontrolScreen = () => {
   const getStatusTextColor = (durum: string) => {
     switch (durum) {
       case 'TAMAMLANDI': return colors.primary;
-      case 'DEVAM_EDIYOR': return colors.info;
+      case 'DEVAM': return colors.info;
       case 'IPTAL': return colors.danger;
       default: return colors.warning;
     }
@@ -411,7 +411,7 @@ export const PeriyodikKontrolScreen = () => {
                       {selectedCtrl.durum === 'BEKLEMEDE' && (
                         <TouchableOpacity 
                           style={[styles.actionBtn, { backgroundColor: colors.infoLight, borderColor: colors.info }]}
-                          onPress={() => handleUpdateCtrlStatus('DEVAM_EDIYOR')}
+                          onPress={() => handleUpdateCtrlStatus('DEVAM')}
                         >
                           <Text style={[styles.actionBtnText, { color: colors.info }]}>▶ Başlat</Text>
                         </TouchableOpacity>
@@ -773,7 +773,7 @@ export const PeriyodikKontrolScreen = () => {
         data={[
           { code: '', label: 'Tümü' },
           { code: 'BEKLEMEDE', label: 'BEKLEMEDE' },
-          { code: 'DEVAM_EDIYOR', label: 'DEVAM_EDIYOR' },
+          { code: 'DEVAM', label: 'DEVAM' },
           { code: 'TAMAMLANDI', label: 'TAMAMLANDI' },
           { code: 'IPTAL', label: 'IPTAL' }
         ]}

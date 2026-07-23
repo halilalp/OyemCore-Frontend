@@ -97,7 +97,7 @@ export const BakimPlanScreen = () => {
   const getStatusBadgeColor = (durum: string) => {
     switch (durum) {
       case 'TAMAMLANDI': return colors.primaryLight;
-      case 'DEVAM_EDIYOR': return colors.infoLight;
+      case 'DEVAM': return colors.infoLight;
       case 'IPTAL': return colors.dangerLight;
       default: return colors.warningLight;
     }
@@ -106,7 +106,7 @@ export const BakimPlanScreen = () => {
   const getStatusTextColor = (durum: string) => {
     switch (durum) {
       case 'TAMAMLANDI': return colors.primary;
-      case 'DEVAM_EDIYOR': return colors.info;
+      case 'DEVAM': return colors.info;
       case 'IPTAL': return colors.danger;
       default: return colors.warning;
     }
@@ -353,34 +353,7 @@ export const BakimPlanScreen = () => {
                   </View>
                 </View>
 
-                {/* Status operations */}
-                {selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
-                  <View style={styles.actionSection}>
-                    <Text style={styles.sectionHeader}>Plan İşlemleri</Text>
-                    <View style={styles.btnRow}>
-                      {selectedPlan.durum === 'BEKLEMEDE' && (
-                        <TouchableOpacity 
-                          style={[styles.actionBtn, { backgroundColor: colors.infoLight, borderColor: colors.info }]}
-                          onPress={() => handleUpdatePlanStatus('DEVAM_EDIYOR')}
-                        >
-                          <Text style={[styles.actionBtnText, { color: colors.info }]}>▶ Bakımı Başlat</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity 
-                        style={[styles.actionBtn, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
-                        onPress={() => handleUpdatePlanStatus('TAMAMLANDI')}
-                      >
-                        <Text style={[styles.actionBtnText, { color: colors.primary }]}>✓ Tamamla</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.actionBtn, { backgroundColor: colors.dangerLight, borderColor: colors.danger }]}
-                        onPress={() => handleUpdatePlanStatus('IPTAL')}
-                      >
-                        <Text style={[styles.actionBtnText, { color: colors.danger }]}>✕ İptal Et</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
+                {/* Plan işlemleri artık sabit alt barda (aşağıda) */}
 
                 {/* Progress / logs */}
                 <View style={styles.logsSection}>
@@ -417,6 +390,38 @@ export const BakimPlanScreen = () => {
                 </View>
               </ScrollView>
             </View>
+
+            {/* Sabit alt işlem barı — plan aksiyonları (başlat/tamamla/iptal) */}
+            {selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 26, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card }}>
+                {selectedPlan.durum === 'BEKLEMEDE' && (
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.infoLight, justifyContent: 'center', alignItems: 'center' }}
+                    onPress={() => handleUpdatePlanStatus('DEVAM')}
+                  >
+                    <Ionicons name="play" size={18} color={colors.info} />
+                    <Text style={{ color: colors.info, fontWeight: '700' }}>Başlat</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={() => handleUpdatePlanStatus('TAMAMLANDI')}
+                >
+                  <Ionicons name="checkmark-done" size={18} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: '700' }}>Tamamla</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.dangerLight, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={() => Alert.alert('Planı İptal Et', 'Bu bakım planını iptal etmek istediğinize emin misiniz?', [
+                    { text: 'Vazgeç', style: 'cancel' },
+                    { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdatePlanStatus('IPTAL') },
+                  ])}
+                >
+                  <Ionicons name="close-circle" size={18} color={colors.danger} />
+                  <Text style={{ color: colors.danger, fontWeight: '700' }}>İptal Et</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
         <KeyboardDismissBar />
@@ -585,7 +590,7 @@ export const BakimPlanScreen = () => {
         data={[
           { code: '', label: 'Tümü' },
           { code: 'BEKLEMEDE', label: 'BEKLEMEDE' },
-          { code: 'DEVAM_EDIYOR', label: 'DEVAM_EDIYOR' },
+          { code: 'DEVAM', label: 'DEVAM' },
           { code: 'TAMAMLANDI', label: 'TAMAMLANDI' },
           { code: 'IPTAL', label: 'IPTAL' }
         ]}
