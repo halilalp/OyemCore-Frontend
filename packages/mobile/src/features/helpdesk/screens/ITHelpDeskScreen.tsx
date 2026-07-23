@@ -1736,7 +1736,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     )}
 
                     {/* Approver Actions: Onayla & Reddet */}
-                    {detailData?.girisTur === 'ONAY' && detailData.onayBilgisi && (
+                    {/* Onaylayan kişi = bekleyen amir (SAHIP/SORUMLU olsa bile).
+                        Önceden girisTur==='ONAY' isteniyordu; oluşturan aynı zamanda
+                        onaylayansa girisTur='SAHIP' olup butonlar gizleniyordu. */}
+                    {detailData?.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo && (
                       <>
                         <TouchableOpacity 
                           style={[styles.sheetItem, { backgroundColor: colors.success + '10', borderColor: colors.success + '30' }]} 

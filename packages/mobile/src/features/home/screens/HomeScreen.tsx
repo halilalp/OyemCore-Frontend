@@ -436,7 +436,7 @@ export const HomeScreen = () => {
                 <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
                 <Text style={styles.metricLabel}>Yıllık İzin</Text>
                 <View style={styles.izinValueWrap}>
-                  <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0, fontSize: 26 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
+                  <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0, fontSize: 22 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
                 </View>
               </View>
               <TouchableOpacity style={[styles.metricCard, styles.leftColCard, { marginTop: 10 }]} activeOpacity={0.8}
@@ -444,7 +444,7 @@ export const HomeScreen = () => {
                 <Ionicons name="cube-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
                 <Text style={styles.metricLabel}>Zimmetli</Text>
                 <View style={styles.izinValueWrap}>
-                  <Text style={[styles.metricValue, { marginBottom: 0, fontSize: 26 }]}>{zimmetSayisi ?? '-'}</Text>
+                  <Text style={[styles.metricValue, { marginBottom: 0, fontSize: 22 }]}>{zimmetSayisi ?? '-'}</Text>
                 </View>
                 <Text style={styles.metricSub}>demirbaş</Text>
               </TouchableOpacity>
@@ -1273,7 +1273,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     matrixRowLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', flex: 1 },
     matrixCell: { width: 41, textAlign: 'center', fontSize: 17, fontWeight: '800', color: '#FFF' },
     // Proje tek satır kompakt kart
-    projeRowCard: { width: '100%', marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    projeRowCard: { width: '100%', minHeight: 0, marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
     projeRowTitle: { fontSize: 12.5, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
     projeRowStats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', marginLeft: 6 },
     projeStat: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },

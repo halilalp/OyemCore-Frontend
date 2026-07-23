@@ -1694,7 +1694,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     )}
 
                     {/* Approver Actions: Onayla & Reddet */}
-                    {detailData?.girisTur === 'ONAY' && detailData.onayBilgisi && (
+                    {/* Onaylayan = bekleyen amir (SAHIP/SORUMLU olsa bile). */}
+                    {detailData?.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo && (
                       <>
                         <TouchableOpacity 
                           style={[styles.sheetItem, { backgroundColor: colors.success + '10', borderColor: colors.success + '30' }]} 
