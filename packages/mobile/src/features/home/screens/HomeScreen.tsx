@@ -434,25 +434,44 @@ export const HomeScreen = () => {
               <StatLine styles={styles} num={projeOzet?.gecikmis ?? 0} label="Gecikmiş" color={slateTokens.danger} />
             </TouchableOpacity>
           </View>
-          {/* Satır 2 */}
+          {/* Satır 2 — HelpDesk matris kartı: etiketler tek sütun, türler yan yana */}
           <View style={[styles.metricRow, { marginTop: 10 }]}>
-            {([
-              { tur: 'IT', label: 'IT', title: 'IT HelpDesk', icon: 'laptop-outline' },
-              { tur: 'ERP', label: 'ERP', title: 'ERP HelpDesk', icon: 'server-outline' },
-              { tur: 'BAKIM', label: 'Bakım', title: 'Bakım HelpDesk', icon: 'construct-outline' },
-            ] as const).map(hd => {
-              const s = talepStats[hd.tur];
-              return (
-                <TouchableOpacity key={hd.tur} style={[styles.metricCard, styles.metricCardThird]} activeOpacity={0.8}
-                  onPress={() => navigation.navigate('HelpDeskDashboard', { tur: hd.tur, title: hd.title })}>
-                  <Ionicons name={hd.icon} size={14} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
-                  <Text style={styles.metricLabel}>{hd.label}</Text>
-                  <StatLine styles={styles} num={s.actigim} label="Talep Edilen" compact />
-                  <StatLine styles={styles} num={s.islem} label="İşlem" compact />
-                  <StatLine styles={styles} num={s.onay} label="Onay" color={slateTokens.warning} compact />
-                </TouchableOpacity>
-              );
-            })}
+            <View style={[styles.metricCard, { width: '100%' }]}>
+              {/* Başlık + tür sütun başlıkları (tıklanınca ilgili panoya gider) */}
+              <View style={styles.matrixHeadRow}>
+                <Text style={styles.matrixTitle}>HelpDesk</Text>
+                <View style={styles.matrixCols}>
+                  {([
+                    { tur: 'IT', label: 'IT', title: 'IT HelpDesk' },
+                    { tur: 'ERP', label: 'ERP', title: 'ERP HelpDesk' },
+                    { tur: 'BAKIM', label: 'Bakım', title: 'Bakım HelpDesk' },
+                  ] as const).map(c => (
+                    <TouchableOpacity key={c.tur} style={styles.matrixColHead} activeOpacity={0.7}
+                      onPress={() => navigation.navigate('HelpDeskDashboard', { tur: c.tur, title: c.title })}>
+                      <Text style={styles.matrixColHeadText}>{c.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={styles.matrixDivider} />
+              {/* Satırlar: etiket + IT/ERP/Bakım sayıları */}
+              {([
+                { key: 'actigim', label: 'Talep Edilen' },
+                { key: 'islem', label: 'İşlem' },
+                { key: 'onay', label: 'Onay', color: slateTokens.warning },
+              ] as const).map((r, i) => (
+                <View key={r.key} style={[styles.matrixRow, i > 0 && styles.matrixRowBorder]}>
+                  <Text style={styles.matrixRowLabel}>{r.label}</Text>
+                  <View style={styles.matrixCols}>
+                    {(['IT', 'ERP', 'BAKIM'] as const).map(t => (
+                      <Text key={t} style={[styles.matrixCell, (r as any).color ? { color: (r as any).color } : null]}>
+                        {talepStats[t][r.key]}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         </SafeAreaView>
 
@@ -1207,6 +1226,17 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       color: 'rgba(255,255,255,0.72)',
       fontWeight: '600',
     },
+    // HelpDesk matris kartı
+    matrixHeadRow: { flexDirection: 'row', alignItems: 'center' },
+    matrixTitle: { flex: 1, fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
+    matrixCols: { flexDirection: 'row', width: 156 },
+    matrixColHead: { width: 52, alignItems: 'center', paddingVertical: 2 },
+    matrixColHeadText: { fontSize: 11.5, fontWeight: '800', color: 'rgba(255,255,255,0.75)' },
+    matrixDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 8, marginBottom: 2 },
+    matrixRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
+    matrixRowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+    matrixRowLabel: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600', flex: 1 },
+    matrixCell: { width: 52, textAlign: 'center', fontSize: 19, fontWeight: '800', color: '#FFF' },
     metricEmpty: {
       fontSize: 12,
       color: 'rgba(255,255,255,0.6)',
