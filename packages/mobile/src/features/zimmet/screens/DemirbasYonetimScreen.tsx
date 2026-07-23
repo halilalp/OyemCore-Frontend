@@ -224,14 +224,19 @@ export const DemirbasYonetimScreen = () => {
         kullanimSekli: assignUsage
       });
       if (res.success) {
-        showAlert('Başarılı', res.message || 'Zimmet başarıyla atandı.');
+        // Assign modalı detay modalının İÇİNDE (nested). iOS'ta iç ve dış
+        // modalı aynı anda kapatmak siyah ekran bırakıyor; önce iç modal
+        // kapanır, dış geçiş (detay→liste) iç kapanma animasyonundan sonra.
         setIsAssignOpen(false);
-        setCurrentView('list');
         setAssignPersonel(null);
         setAssignDesc('');
-        setSelectedAsset(null);
-        setPageIndex(1);
-        fetchAllAssets(1);
+        setTimeout(() => {
+          setCurrentView('list');
+          setSelectedAsset(null);
+          setPageIndex(1);
+          fetchAllAssets(1);
+          showAlert('Başarılı', res.message || 'Zimmet başarıyla atandı.');
+        }, 400);
       } else {
         showAlert('Hata', res.message || 'Atama işlemi başarısız.');
       }
@@ -751,16 +756,8 @@ export const DemirbasYonetimScreen = () => {
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Demirbaş Barkodu / Kodu</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Barkod veya demirbaş kodu giriniz"
-              placeholderTextColor={colors.placeholder}
-              value={createDemirbasKodu}
-              onChangeText={setCreateDemirbasKodu}
-            />
-          </View>
+          {/* Demirbaş kodu form alanı kaldırıldı — sistem otomatik üretir
+              (DMB-YYYYAA-ID). Düzenlemede mevcut kod backend'de korunur. */}
 
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Seri No</Text>
