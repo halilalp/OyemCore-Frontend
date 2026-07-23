@@ -255,6 +255,9 @@ export interface TalepDetailResponse {
   bilgiPersonelleri?: { talepBilgiID: number; bilgiSicil: string; adSoyad: string; eposta: string }[];
   onayBilgisi?: { talepAmirID: number; amirSicil: string; adSoyad: string; durum: boolean | null; kayitTarStr: string; islemTarStr: string } | null;
   soruBilgisi?: { talepSoruCevapID: number; sicil: string; adSoyad: string; eposta: string; cevapTalepGelismeID: number | null; isAnswered: boolean; soruMetni: string } | null;
+  // Talep kapandığında dolan detaylı süre kırılımı (DK). Onay/soru-cevap/iş emri
+  // süreleri düşülerek net MTTR hesaplanır.
+  sureDetay?: { toplamSure: number; onaySure: number; soruCevapSure: number; isEmriSure: number; netKesinti: number; netMttr: number } | null;
 }
 
 export interface IsEmri {

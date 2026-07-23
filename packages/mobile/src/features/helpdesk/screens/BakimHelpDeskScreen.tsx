@@ -10,6 +10,7 @@ import { apiHataMesaji } from '../../../utils/apiError';
 import { Talep, api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { MultiSelectModal } from '../../../components/MultiSelectModal';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { ListHeader } from '../../../components/ListHeader';
 import { ModuleSubNav } from '../../../components/ModuleSubNav';
@@ -147,7 +148,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   // Search Filters States
   const [selectedFilterCategory, setSelectedFilterCategory] = useState('');
   const [selectedFilterAltCategory, setSelectedFilterAltCategory] = useState('');
-  const [selectedFilterStatus, setSelectedFilterStatus] = useState('BEKLEMEDE');
+  const [selectedFilterStatus, setSelectedFilterStatus] = useState<string[]>(['BEKLEMEDE', 'ONAY BEKLİYOR']); // çoklu durum
+  const toggleFilterStatus = (s: string) => setSelectedFilterStatus(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   const [filterStartDate, setFilterStartDate] = useState(getOneMonthAgoDateStr());
   const [filterEndDate, setFilterEndDate] = useState(getTodayDateStr());
 
@@ -248,14 +250,15 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
   // Kontrol Formu States
   const [isKontrolFormOpen, setIsKontrolFormOpen] = useState(false);
-  const [chkEksikSomun, setChkEksikSomun] = useState(false);
-  const [chkYag, setChkYag] = useState(false);
-  const [chkMiknatis, setChkMiknatis] = useState(false);
-  const [chkFazlaParca, setChkFazlaParca] = useState(false);
-  const [chkGuvenlik, setChkGuvenlik] = useState(false);
-  const [chkMakine, setChkMakine] = useState(false);
-  const [chkTemizlik, setChkTemizlik] = useState(false);
-  const [chkGida, setChkGida] = useState(false);
+  // Kontrol formu cevapları: '0' = SEÇİNİZ, 'U' = UYGUN, 'UD' = UYGUN DEĞİL (webportal ile aynı)
+  const [chkEksikSomun, setChkEksikSomun] = useState('0');
+  const [chkYag, setChkYag] = useState('0');
+  const [chkMiknatis, setChkMiknatis] = useState('0');
+  const [chkFazlaParca, setChkFazlaParca] = useState('0');
+  const [chkGuvenlik, setChkGuvenlik] = useState('0');
+  const [chkMakine, setChkMakine] = useState('0');
+  const [chkTemizlik, setChkTemizlik] = useState('0');
+  const [chkGida, setChkGida] = useState('0');
 
   useEffect(() => {
     if (isFocused) {
@@ -490,6 +493,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   };
 
   const handleKontrolKaydet = async () => {
+    // Webportal ile aynı: tüm sorular cevaplanmalı ('0' = SEÇİNİZ kalamaz)
+    if ([chkEksikSomun, chkYag, chkMiknatis, chkFazlaParca, chkGuvenlik, chkMakine, chkTemizlik, chkGida].some(v => v === '0')) {
+      Alert.alert('Eksik', 'Tüm soruları cevaplamanız gerekmektedir.');
+      return;
+    }
     try {
       const res = await api.saveTalepKontrol(selectedRequest?.talepKodu as string, {
         eksikSomun: chkEksikSomun,
@@ -845,11 +853,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       altCategoryMatch = r.altKategoriID?.toString() === selectedFilterAltCategory;
     }
 
-    // Durum Filter
+    // Durum Filter (çoklu; boş = tüm durumlar)
     let statusMatch = true;
-    if (selectedFilterStatus !== '') {
+    if (selectedFilterStatus.length > 0) {
       const statStyle = getStatusStyle(r.durum);
-      statusMatch = statStyle.label === selectedFilterStatus;
+      statusMatch = selectedFilterStatus.includes(statStyle.label);
     }
 
     // Date Range Filter
@@ -947,7 +955,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <View style={styles.headerFiltersRow}>
           <TouchableOpacity style={styles.headerFilterBtn} onPress={() => setIsFilterStatusSelectorOpen(true)}>
             <Text style={styles.headerFilterBtnText} numberOfLines={1}>
-              {selectedFilterStatus || 'Durum Seç'} ⌄
+              {selectedFilterStatus.length === 0 ? 'Tüm Durumlar' : selectedFilterStatus.length === 1 ? selectedFilterStatus[0] : `${selectedFilterStatus.length} durum`} ⌄
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerFilterBtn} onPress={() => setIsFilterStartDatePickerOpen(true)}>
@@ -1442,23 +1450,20 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         title="Alt Kategori Seçin"
       />
 
-      {/* Status Filter Selector */}
-      <SearchableSelectorModal
+      {/* Status Filter Selector — çoklu seçim */}
+      <MultiSelectModal
         visible={isFilterStatusSelectorOpen}
         onClose={() => setIsFilterStatusSelectorOpen(false)}
-        onSelect={(item) => {
-          setSelectedFilterStatus(item.id);
-          setIsFilterStatusSelectorOpen(false);
-        }}
+        selected={selectedFilterStatus}
+        onToggle={toggleFilterStatus}
         data={[
-          { id: '', name: 'HEPSİ' },
           { id: 'BEKLEMEDE', name: 'BEKLEMEDE' },
           { id: 'ONAY BEKLİYOR', name: 'ONAY BEKLİYOR' },
-          { id: 'TAMAMLANDI', name: 'TAMAMLANDI' }
+          { id: 'TAMAMLANDI', name: 'TAMAMLANDI' },
         ]}
         keyExtractor={(item) => item.id}
         labelExtractor={(item) => item.name}
-        title="Durum Seçin"
+        title="Durum Seçin (çoklu)"
       />
 
       {/* Start Date Filter Picker */}
@@ -1721,6 +1726,45 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         </Text>
                       </View>
 
+                      {/* Süre Detayı — talep kapandığında kesinti kırılımı ve net MTTR */}
+                      {detailData?.sureDetay && (
+                        <>
+                          <View style={[styles.detailDivider, { borderStyle: 'dashed' }]} />
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: slateTokens.textDark, marginBottom: 8 }}>⏱️ Süre Detayı</Text>
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoRowLabel, { color: slateTokens.textDark, fontWeight: '700', marginLeft: 0 }]}>Toplam Süre</Text>
+                            <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary, fontWeight: '600' }]}>{detailData.sureDetay.toplamSure} DK</Text>
+                          </View>
+                          {detailData.sureDetay.onaySure > 0 && (
+                            <View style={styles.infoRow}>
+                              <Text style={[styles.infoRowLabel, { color: slateTokens.textSecondary, fontWeight: '500', marginLeft: 0 }]}>− Onay Bekleme</Text>
+                              <Text style={[styles.infoRowValue, { color: slateTokens.danger, fontWeight: '500' }]}>{detailData.sureDetay.onaySure} DK</Text>
+                            </View>
+                          )}
+                          {detailData.sureDetay.soruCevapSure > 0 && (
+                            <View style={styles.infoRow}>
+                              <Text style={[styles.infoRowLabel, { color: slateTokens.textSecondary, fontWeight: '500', marginLeft: 0 }]}>− Soru-Cevap</Text>
+                              <Text style={[styles.infoRowValue, { color: slateTokens.danger, fontWeight: '500' }]}>{detailData.sureDetay.soruCevapSure} DK</Text>
+                            </View>
+                          )}
+                          {detailData.sureDetay.isEmriSure > 0 && (
+                            <View style={styles.infoRow}>
+                              <Text style={[styles.infoRowLabel, { color: slateTokens.textSecondary, fontWeight: '500', marginLeft: 0 }]}>− İş Emri</Text>
+                              <Text style={[styles.infoRowValue, { color: slateTokens.danger, fontWeight: '500' }]}>{detailData.sureDetay.isEmriSure} DK</Text>
+                            </View>
+                          )}
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoRowLabel, { color: slateTokens.textSecondary, fontWeight: '600', marginLeft: 0 }]}>Net Kesinti</Text>
+                            <Text style={[styles.infoRowValue, { color: slateTokens.textSecondary, fontWeight: '600' }]}>{detailData.sureDetay.netKesinti} DK</Text>
+                          </View>
+                          <View style={[styles.detailDivider, { borderStyle: 'dashed' }]} />
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoRowLabel, { color: slateTokens.success, fontWeight: '800', marginLeft: 0 }]}>Net İşlem Süresi (MTTR)</Text>
+                            <Text style={[styles.infoRowValue, { color: slateTokens.success, fontWeight: '800', fontSize: 15 }]}>{detailData.sureDetay.netMttr} DK</Text>
+                          </View>
+                        </>
+                      )}
+
                     </View>
                   );
                 })()}
@@ -1981,9 +2025,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                             <Ionicons name="close-circle-outline" size={20} color="#FFF" />
                             <Text style={styles.actionButtonText}>Reddet</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={[styles.actionButton, styles.actionButtonSuccess]}
-                            onPress={() => setIsKontrolFormOpen(true)}
+                            onPress={() => {
+                              // Formu her açılışta sıfırla
+                              setChkEksikSomun('0'); setChkYag('0'); setChkMiknatis('0'); setChkFazlaParca('0');
+                              setChkGuvenlik('0'); setChkMakine('0'); setChkTemizlik('0'); setChkGida('0');
+                              setIsKontrolFormOpen(true);
+                            }}
                           >
                             <Ionicons name="checkmark-done-circle-outline" size={20} color="#FFF" />
                             <Text style={styles.actionButtonText}>Kontrol Formu Doldur</Text>
@@ -2714,46 +2763,57 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <KeyboardDismissBar />
       </Modal>
 
-      {/* ----------------- KONTROL FORMU MODAL ----------------- */}
-      <Modal visible={isKontrolFormOpen} transparent animationType="slide" onRequestClose={() => setIsKontrolFormOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { flex: 0.8 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Bakım Kontrol Formu</Text>
-              <TouchableOpacity onPress={() => setIsKontrolFormOpen(false)} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color={slateTokens.textMuted} />
-              </TouchableOpacity>
-            </View>
+      {/* ----------------- KONTROL FORMU MODAL (standart tema — webportal sırası) ----------------- */}
+      <Modal visible={isKontrolFormOpen} animationType="slide" onRequestClose={() => setIsKontrolFormOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: colors.card }}>
+          <View style={styles.fullPageContent}>
+            <CreateModalHeader
+              title="Bakım Kontrol Formu"
+              onClose={() => setIsKontrolFormOpen(false)}
+              colorTheme="purple"
+            />
             <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalBody}>
               <Text style={{ marginBottom: 16, color: slateTokens.textMuted, fontSize: 13 }}>
-                Lütfen talebi onaylamadan önce aşağıdaki kontrolleri yapınız. Hepsini işaretlediğinizde talep kapatılacaktır.
+                Bakım Sonrası Uygunluk ve Temizlik Kontrolü. Onaylamadan önce lütfen tüm soruları cevaplayınız.
               </Text>
-              
+
               {[
-                { label: 'Eksik somun, civata, parça vs var mı?', state: chkEksikSomun, setter: setChkEksikSomun },
-                { label: 'Cıvata, somun, rulman, motor vb. kaynaklı yağ ve kir birikintisi var mı?', state: chkYag, setter: setChkYag },
-                { label: 'Miknatısların sağlamlığı ve temizliği yapıldı mı?', state: chkMiknatis, setter: setChkMiknatis },
-                { label: 'Makine içerisinde, üzerinde takım, bez veya yedek parça kalmış mı?', state: chkFazlaParca, setter: setChkFazlaParca },
-                { label: 'Güvenlik sensörü, kapak swici ve muhafaza sacları yerinde mi?', state: chkGuvenlik, setter: setChkGuvenlik },
-                { label: 'Tüm bu maddelere göre makinenin durumu üretime uygun mu?', state: chkMakine, setter: setChkMakine },
-                { label: 'Çalışma sonrası 5s (Temizlik) kurallarına uyulmuş mu?', state: chkTemizlik, setter: setChkTemizlik },
-                { label: 'Gıda güvenliğini tehlikeye atacak (fiziksel/kimyasal vb) bir unsur var mı?', state: chkGida, setter: setChkGida },
+                { label: 'Eksik somun, gevşek civata kontrolü yapıldı mı?', state: chkEksikSomun, setter: setChkEksikSomun },
+                { label: 'Makine yağı temizliği sağlandı mı?', state: chkYag, setter: setChkYag },
+                { label: 'Metal parçası/kirliliği mıknatısla kontrol edildi mi?', state: chkMiknatis, setter: setChkMiknatis },
+                { label: 'Parça ve aletler çantaya konuldu mu?', state: chkFazlaParca, setter: setChkFazlaParca },
+                { label: 'İş güvenliği açısından riskli durum mevcut mu?', state: chkGuvenlik, setter: setChkGuvenlik },
+                { label: 'Makine kullanıma hazır mı? (Bakım)', state: chkMakine, setter: setChkMakine },
+                { label: 'Çalışma alanı temizliği (Gıda Güv.) uygun mu?', state: chkTemizlik, setter: setChkTemizlik },
+                { label: 'Makine kullanıma hazır mı? (Gıda Güv.)', state: chkGida, setter: setChkGida },
               ].map((item, index) => (
-                <TouchableOpacity key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} onPress={() => item.setter(!item.state)}>
-                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 1, borderColor: item.state ? slateTokens.primary : slateTokens.borderLight, backgroundColor: item.state ? slateTokens.primary : 'transparent', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                    {item.state && <Ionicons name="checkmark" size={18} color={slateTokens.white} />}
+                <View key={index} style={styles.kfRow}>
+                  <Text style={styles.kfLabel}>{item.label}</Text>
+                  <View style={styles.kfOptions}>
+                    <TouchableOpacity
+                      style={[styles.kfOpt, item.state === 'U' && styles.kfOptUygun]}
+                      onPress={() => item.setter('U')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.kfOptText, item.state === 'U' && styles.kfOptTextActive]}>UYGUN</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.kfOpt, item.state === 'UD' && styles.kfOptUygunDegil]}
+                      onPress={() => item.setter('UD')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.kfOptText, item.state === 'UD' && styles.kfOptTextActive]}>UYGUN DEĞİL</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text style={{ flex: 1, fontSize: 13, color: slateTokens.text }}>{item.label}</Text>
-                </TouchableOpacity>
+                </View>
               ))}
             </ScrollView>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.modalButtonPrimary, { opacity: (chkEksikSomun && chkYag && chkMiknatis && chkFazlaParca && chkGuvenlik && chkMakine && chkTemizlik && chkGida) ? 1 : 0.5 }]} 
-                onPress={handleKontrolKaydet}
-                disabled={!(chkEksikSomun && chkYag && chkMiknatis && chkFazlaParca && chkGuvenlik && chkMakine && chkTemizlik && chkGida)}
-              >
-                <Text style={styles.modalButtonText}>Onayla ve Kapat</Text>
+            <View style={styles.pageFormActionsRow}>
+              <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => setIsKontrolFormOpen(false)}>
+                <Text style={styles.pageFormCancelBtnText}>Kapat</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.pageFormSubmitBtn} onPress={handleKontrolKaydet}>
+                <Text style={styles.pageFormSubmitBtnText}>Onayla ve Kapat</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -3997,6 +4057,47 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
   modalBody: {
     paddingHorizontal: 20,
     paddingTop: 16,
+  },
+  // Kontrol formu satırı: soru + UYGUN / UYGUN DEĞİL seçici
+  kfRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  kfLabel: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  kfOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  kfOpt: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  kfOptUygun: {
+    backgroundColor: slateTokens.success,
+    borderColor: slateTokens.success,
+  },
+  kfOptUygunDegil: {
+    backgroundColor: slateTokens.danger,
+    borderColor: slateTokens.danger,
+  },
+  kfOptText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: slateTokens.textMuted,
+  },
+  kfOptTextActive: {
+    color: slateTokens.white,
   },
   modalFooter: {
     flexDirection: 'row',

@@ -466,22 +466,24 @@ export const HomeScreen = () => {
                 </View>
               </View>
               <View style={styles.matrixDivider} />
-              {([
-                { key: 'actigim', label: 'Talep Edilen' },
-                { key: 'islem', label: 'İşlem' },
-                { key: 'onay', label: 'Onay', color: slateTokens.warning },
-              ] as const).map((r, i) => (
-                <View key={r.key} style={[styles.matrixRow, i > 0 && styles.matrixRowBorder]}>
-                  <Text style={styles.matrixRowLabel} numberOfLines={1}>{r.label}</Text>
-                  <View style={styles.matrixCols}>
-                    {(['IT', 'ERP', 'BAKIM'] as const).map(t => (
-                      <Text key={t} style={[styles.matrixCell, (r as any).color ? { color: (r as any).color } : null]}>
-                        {talepStats[t][r.key]}
-                      </Text>
-                    ))}
+              <View style={styles.matrixRows}>
+                {([
+                  { key: 'actigim', label: 'Talep Edilen' },
+                  { key: 'islem', label: 'İşlem' },
+                  { key: 'onay', label: 'Onay', color: slateTokens.warning },
+                ] as const).map((r) => (
+                  <View key={r.key} style={styles.matrixRow}>
+                    <Text style={styles.matrixRowLabel} numberOfLines={1}>{r.label}</Text>
+                    <View style={styles.matrixCols}>
+                      {(['IT', 'ERP', 'BAKIM'] as const).map(t => (
+                        <Text key={t} style={[styles.matrixCell, (r as any).color ? { color: (r as any).color } : null]}>
+                          {talepStats[t][r.key]}
+                        </Text>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           </View>
 
@@ -1262,16 +1264,17 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     leftColCard: { width: '100%', flex: 1, paddingVertical: 10 },
     metricCardHd: { width: '64%' },
     // HelpDesk matris kartı (dar alana uyumlu)
-    matrixHeadRow: { flexDirection: 'row', alignItems: 'center' },
+    matrixHeadRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
     matrixTitle: { flex: 1, fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
     matrixCols: { flexDirection: 'row', width: 123 },
     matrixColHead: { width: 41, alignItems: 'center', paddingVertical: 2 },
-    matrixColHeadText: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.75)' },
-    matrixDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 7, marginBottom: 1 },
-    matrixRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
+    matrixColHeadText: { fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.75)' },
+    matrixDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 8, marginBottom: 2, alignSelf: 'stretch' },
+    matrixRows: { flex: 1, alignSelf: 'stretch', justifyContent: 'space-around' },
+    matrixRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, alignSelf: 'stretch' },
     matrixRowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
-    matrixRowLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', flex: 1 },
-    matrixCell: { width: 41, textAlign: 'center', fontSize: 17, fontWeight: '800', color: '#FFF' },
+    matrixRowLabel: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600', flex: 1 },
+    matrixCell: { width: 41, textAlign: 'center', fontSize: 24, fontWeight: '800', color: '#FFF' },
     // Proje tek satır kompakt kart
     projeRowCard: { width: '100%', minHeight: 0, marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
     projeRowTitle: { fontSize: 12.5, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },

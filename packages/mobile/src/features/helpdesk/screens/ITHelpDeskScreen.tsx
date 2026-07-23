@@ -10,6 +10,7 @@ import { apiHataMesaji } from '../../../utils/apiError';
 import { Talep, api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
+import { MultiSelectModal } from '../../../components/MultiSelectModal';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { ListHeader } from '../../../components/ListHeader';
 import { ScrollToTopFAB } from '../../../components/ScrollToTopFAB';
@@ -149,7 +150,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   // Search Filters States
   const [selectedFilterCategory, setSelectedFilterCategory] = useState('');
   const [selectedFilterAltCategory, setSelectedFilterAltCategory] = useState('');
-  const [selectedFilterStatus, setSelectedFilterStatus] = useState('BEKLEMEDE');
+  const [selectedFilterStatus, setSelectedFilterStatus] = useState<string[]>(['BEKLEMEDE', 'ONAY BEKLİYOR']); // çoklu durum
+  const toggleFilterStatus = (s: string) => setSelectedFilterStatus(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
   const [filterStartDate, setFilterStartDate] = useState(getOneMonthAgoDateStr());
   const [filterEndDate, setFilterEndDate] = useState(getTodayDateStr());
 
@@ -713,11 +715,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       altCategoryMatch = r.altKategoriID?.toString() === selectedFilterAltCategory;
     }
 
-    // Durum Filter
+    // Durum Filter (çoklu; boş = tüm durumlar)
     let statusMatch = true;
-    if (selectedFilterStatus !== '') {
+    if (selectedFilterStatus.length > 0) {
       const statStyle = getStatusStyle(r.durum);
-      statusMatch = statStyle.label === selectedFilterStatus;
+      statusMatch = selectedFilterStatus.includes(statStyle.label);
     }
 
     // Date Range Filter
@@ -808,7 +810,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         <View style={styles.headerFiltersRow}>
           <TouchableOpacity style={styles.headerFilterBtn} onPress={() => setIsFilterStatusSelectorOpen(true)}>
             <Text style={styles.headerFilterBtnText} numberOfLines={1}>
-              {selectedFilterStatus || 'Durum Seç'} ⌄
+              {selectedFilterStatus.length === 0 ? 'Tüm Durumlar' : selectedFilterStatus.length === 1 ? selectedFilterStatus[0] : `${selectedFilterStatus.length} durum`} ⌄
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerFilterBtn} onPress={() => setIsFilterStartDatePickerOpen(true)}>
@@ -1204,23 +1206,20 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
         title="Alt Kategori Seçin"
       />
 
-      {/* Status Filter Selector */}
-      <SearchableSelectorModal
+      {/* Status Filter Selector — çoklu seçim */}
+      <MultiSelectModal
         visible={isFilterStatusSelectorOpen}
         onClose={() => setIsFilterStatusSelectorOpen(false)}
-        onSelect={(item) => {
-          setSelectedFilterStatus(item.id);
-          setIsFilterStatusSelectorOpen(false);
-        }}
+        selected={selectedFilterStatus}
+        onToggle={toggleFilterStatus}
         data={[
-          { id: '', name: 'HEPSİ' },
           { id: 'BEKLEMEDE', name: 'BEKLEMEDE' },
           { id: 'ONAY BEKLİYOR', name: 'ONAY BEKLİYOR' },
-          { id: 'TAMAMLANDI', name: 'TAMAMLANDI' }
+          { id: 'TAMAMLANDI', name: 'TAMAMLANDI' },
         ]}
         keyExtractor={(item) => item.id}
         labelExtractor={(item) => item.name}
-        title="Durum Seçin"
+        title="Durum Seçin (çoklu)"
       />
 
       {/* Start Date Filter Picker */}
