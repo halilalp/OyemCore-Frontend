@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import * as Notifications from 'expo-notifications';
 import {
   StyleSheet,
   Text,
@@ -104,6 +105,8 @@ export const HomeScreen = () => {
   const [talepStats, setTalepStats] = useState<{ IT: TalepStat; ERP: TalepStat; BAKIM: TalepStat }>({ IT: bosStat, ERP: bosStat, BAKIM: bosStat });
   // Proje kartı: açık proje / toplam görev / gecikmiş görev
   const [projeOzet, setProjeOzet] = useState<{ acikProje: number; gorev: number; gecikmis: number } | null>(null);
+  // Zimmetli demirbaş sayısı (kullanıcıya zimmetli)
+  const [zimmetSayisi, setZimmetSayisi] = useState<number | null>(null);
   // Panolar bölümü açık/kapalı (varsayılan kapalı)
   const [panolarAcik, setPanolarAcik] = useState(false);
   // Header (gradient) yüksekliği içeriğe göre ölçülür → gövde ovalinde boşluk kalmaz
@@ -137,13 +140,22 @@ export const HomeScreen = () => {
         // Bildirimler ayrı ve sessiz: backend henüz her ortamda olmayabilir,
         // 404 olursa ana yükleme hata banner'ını tetiklemesin.
         api.getUserActions()
-          .then(r => setNotifications(r?.details || []))
+          .then(r => {
+            setNotifications(r?.details || []);
+            // Uygulama ikonu rozeti = aksiyon bekleyen sayısı (iOS + OEM Android).
+            try { Notifications.setBadgeCountAsync(r?.totalCount ?? (r?.details?.length || 0)); } catch (_) {}
+          })
           .catch(() => setNotifications([]));
 
         // Proje özeti: açık proje / görev / gecikmiş görev (backend hesaplar). Sessiz.
         api.getProjeOzet()
           .then(r => setProjeOzet(r || { acikProje: 0, gorev: 0, gecikmis: 0 }))
           .catch(() => setProjeOzet({ acikProje: 0, gorev: 0, gecikmis: 0 }));
+
+        // Zimmetli demirbaş sayısı (kullanıcıya zimmetli cihazlar). Sessiz.
+        api.getMyDebits('')
+          .then(r => setZimmetSayisi((r || []).length))
+          .catch(() => setZimmetSayisi(0));
 
         const deger = <T,>(i: number, varsayilan: T): T =>
           sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
@@ -417,14 +429,25 @@ export const HomeScreen = () => {
           {/* Metrik Kartları — Satır 1: İzin + Proje · Satır 2: IT/ERP/Bakım
               Her satır ayrı; alignItems flex-start → kartlar içerik boyuna göre
               kısalır (0 satırlar gizli), boşluk kalmaz. */}
-          {/* Satır 1: Yıllık İzin (dar) + HelpDesk matris kartı (yanında) */}
+          {/* Satır 1: Sol sütun (Yıllık İzin üstte + Zimmetli Demirbaş altta) + HelpDesk matris */}
           <View style={styles.metricRow}>
-            <View style={[styles.metricCard, styles.metricCardIzin]}>
-              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>Yıllık İzin</Text>
-              <View style={styles.izinValueWrap}>
-                <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
+            <View style={styles.leftCol}>
+              <View style={[styles.metricCard, styles.leftColCard]}>
+                <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
+                <Text style={styles.metricLabel}>Yıllık İzin</Text>
+                <View style={styles.izinValueWrap}>
+                  <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0, fontSize: 26 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
+                </View>
               </View>
+              <TouchableOpacity style={[styles.metricCard, styles.leftColCard, { marginTop: 10 }]} activeOpacity={0.8}
+                onPress={() => navigation.navigate('Zimmetlerim')}>
+                <Ionicons name="cube-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
+                <Text style={styles.metricLabel}>Zimmetli</Text>
+                <View style={styles.izinValueWrap}>
+                  <Text style={[styles.metricValue, { marginBottom: 0, fontSize: 26 }]}>{zimmetSayisi ?? '-'}</Text>
+                </View>
+                <Text style={styles.metricSub}>demirbaş</Text>
+              </TouchableOpacity>
             </View>
             <View style={[styles.metricCard, styles.metricCardHd]}>
               <View style={styles.matrixHeadRow}>
@@ -1234,8 +1257,9 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       color: 'rgba(255,255,255,0.72)',
       fontWeight: '600',
     },
-    // Satır 1 kart genişlikleri: İzin dar, HelpDesk matris geniş
-    metricCardIzin: { width: '33.5%' },
+    // Satır 1: sol sütun (İzin + Zimmetli stacked) dar, HelpDesk matris geniş
+    leftCol: { width: '33.5%' },
+    leftColCard: { width: '100%', flex: 1, paddingVertical: 10 },
     metricCardHd: { width: '64%' },
     // HelpDesk matris kartı (dar alana uyumlu)
     matrixHeadRow: { flexDirection: 'row', alignItems: 'center' },

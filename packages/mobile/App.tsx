@@ -99,7 +99,7 @@ try {
     handleNotification: async () => ({
       shouldShowAlert: false,
       shouldPlaySound: true,
-      shouldSetBadge: false,
+      shouldSetBadge: true, // ikon rozeti güncellensin (iOS + OEM Android)
       shouldShowBanner: false,
       shouldShowList: true,
     }),
