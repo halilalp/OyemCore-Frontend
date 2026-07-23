@@ -475,6 +475,24 @@ export const api = {
     return response.data;
   },
 
+  // ── Bakım Planı sarfiyatı + hata bağlı makineler ──
+  getBakimSarfiyats: async (planKodu: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/bakim/plan/${planKodu}/sarfiyat`);
+    return response.data;
+  },
+  saveBakimSarfiyat: async (planKodu: string, sarfiyat: { malzemeKodu: string, miktar: number, makineKodu: string }): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>(`/bakim/plan/${planKodu}/sarfiyat`, sarfiyat);
+    return response.data;
+  },
+  deleteBakimSarfiyat: async (id: number): Promise<{ success: boolean }> => {
+    const response = await apiClient.delete<{ success: boolean }>(`/bakim/plan/sarfiyat/${id}`);
+    return response.data;
+  },
+  getHatMakines: async (hatKodu: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/bakim/hat/${hatKodu}/makines`);
+    return response.data;
+  },
+
   getPeriyodikGelismeler: async (code: string): Promise<any[]> => {
     const response = await apiClient.get<any[]>(`/bakim/periyodik/${code}/gelisme`);
     return response.data;

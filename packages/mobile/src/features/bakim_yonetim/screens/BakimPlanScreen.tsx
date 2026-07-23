@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList } from 'react-native';
 import { useIsFocused, useRoute } from '@react-navigation/native';
-import { api, BakimPlan, BakimPlanDetay } from '@oyemcore/shared';
+import { api, BakimPlan, BakimPlanDetay, Malzeme } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -70,6 +70,16 @@ export const BakimPlanScreen = () => {
   const [isPlanBasDatePickerOpen, setIsPlanBasDatePickerOpen] = useState(false);
   const [isPlanBitDatePickerOpen, setIsPlanBitDatePickerOpen] = useState(false);
 
+  // Malzeme sarfiyatı (referans BakimSarfiyat) + hata bağlı makineler
+  const [planSarfiyats, setPlanSarfiyats] = useState<any[]>([]);
+  const [hatMakines, setHatMakines] = useState<any[]>([]);
+  const [materialSearch, setMaterialSearch] = useState('');
+  const [materialsList, setMaterialsList] = useState<Malzeme[]>([]);
+  const [selectedMaterial, setSelectedMaterial] = useState<Malzeme | null>(null);
+  const [materialQty, setMaterialQty] = useState('');
+  const [selectedMachineKodu, setSelectedMachineKodu] = useState('');
+  const [isSarfMachineOpen, setIsSarfMachineOpen] = useState(false);
+
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
@@ -137,12 +147,63 @@ export const BakimPlanScreen = () => {
 
   const handleOpenPlan = async (plan: BakimPlan) => {
     setSelectedPlan(plan);
+    setPlanSarfiyats([]); setHatMakines([]); setSelectedMaterial(null); setMaterialSearch(''); setMaterialQty(''); setSelectedMachineKodu('');
     try {
       const notlar = await api.getBakimPlanNotlar(plan.planKodu);
       setPlanNotlar(notlar || []);
+      const sarf = await api.getBakimSarfiyats(plan.planKodu);
+      setPlanSarfiyats(sarf || []);
+      if (plan.hatKodu) {
+        const mk = await api.getHatMakines(plan.hatKodu);
+        setHatMakines(mk || []);
+      }
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleMaterialSearch = async (val: string) => {
+    setMaterialSearch(val);
+    if (val.length < 2) { setMaterialsList([]); return; }
+    try {
+      const res = await api.searchMalzemes(val, 1, 10, true);
+      setMaterialsList(res.results || []);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAddPlanSarfiyat = async () => {
+    if (!selectedPlan || !selectedMaterial || !materialQty || !selectedMachineKodu) {
+      Alert.alert('Hata', 'Lütfen malzeme, miktar ve makine seçimlerini yapın.');
+      return;
+    }
+    try {
+      await api.saveBakimSarfiyat(selectedPlan.planKodu, {
+        malzemeKodu: selectedMaterial.malzemeKodu,
+        miktar: parseFloat(materialQty),
+        makineKodu: selectedMachineKodu,
+      });
+      setSelectedMaterial(null); setMaterialQty(''); setMaterialSearch(''); setMaterialsList([]); setSelectedMachineKodu('');
+      const sarf = await api.getBakimSarfiyats(selectedPlan.planKodu);
+      setPlanSarfiyats(sarf || []);
+      Alert.alert('Başarılı', 'Sarfiyat eklendi.');
+    } catch (err: any) {
+      Alert.alert('Hata', apiHataMesaji(err, 'Sarfiyat kaydedilemedi.'));
+    }
+  };
+
+  const handleDeletePlanSarfiyat = (id: number) => {
+    Alert.alert('Sil', 'Bu sarfiyat kaydını silmek istediğinize emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Evet', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.deleteBakimSarfiyat(id);
+            if (selectedPlan) { const sarf = await api.getBakimSarfiyats(selectedPlan.planKodu); setPlanSarfiyats(sarf || []); }
+          } catch (err: any) { Alert.alert('Hata', apiHataMesaji(err, 'Sarfiyat silinemedi.')); }
+        },
+      },
+    ]);
   };
 
   const handleAddPlanNot = async () => {
@@ -388,8 +449,88 @@ export const BakimPlanScreen = () => {
                     </View>
                   )}
                 </View>
+
+                {/* Malzeme Sarfiyatı */}
+                <View style={styles.sarfiyatSection}>
+                  <Text style={styles.sectionHeader}>Malzeme Sarfiyatı ({planSarfiyats.length})</Text>
+                  {planSarfiyats.length === 0 ? (
+                    <Text style={styles.noDataText}>Henüz sarfiyat kaydı yok.</Text>
+                  ) : planSarfiyats.map(s => (
+                    <View key={s.id} style={styles.sarfiyatCard}>
+                      <View style={styles.sarfiyatInfo}>
+                        <Text style={styles.sarfName}>{s.malzemeAdi} ({s.malzemeKodu})</Text>
+                        <Text style={styles.sarfDesc}>Miktar: {s.miktar} {s.birim || ''} | Makine: {s.makineAdi || s.makineKodu || '-'}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => handleDeletePlanSarfiyat(s.id)} style={styles.deleteSarfBtn}>
+                        <Text style={styles.deleteSarfText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  {selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
+                    <View style={styles.addSarfiyatForm}>
+                      <Text style={styles.sectionHeader}>Yeni Sarfiyat Ekle</Text>
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>Malzeme Arama *</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Malzeme adı veya kodu yazın..."
+                          placeholderTextColor={colors.placeholder}
+                          value={materialSearch}
+                          onChangeText={handleMaterialSearch}
+                        />
+                        {materialsList.length > 0 && (
+                          <View style={styles.searchResultsDropdown}>
+                            {materialsList.map(m => (
+                              <TouchableOpacity
+                                key={m.malzemeKodu}
+                                style={styles.searchResultItem}
+                                onPress={() => { setSelectedMaterial(m); setMaterialSearch(`${m.malzemeAdi} (${m.malzemeKodu})`); setMaterialsList([]); }}
+                              >
+                                <Text style={styles.searchResultText}>{m.malzemeAdi} ({(m as any).olcuBirimi || ''})</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>Miktar *</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Örn: 2"
+                          placeholderTextColor={colors.placeholder}
+                          keyboardType="numeric"
+                          value={materialQty}
+                          onChangeText={setMaterialQty}
+                        />
+                      </View>
+                      <View style={styles.formGroup}>
+                        <Text style={styles.formLabel}>İlgili Makine (hatta bağlı) *</Text>
+                        <TouchableOpacity style={styles.selectBox} onPress={() => setIsSarfMachineOpen(true)}>
+                          <Text style={styles.selectBoxText}>
+                            {hatMakines.find((m: any) => m.makineKodu === selectedMachineKodu)?.makineAdi || 'Makine Seçin'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity style={styles.submitBtn} onPress={handleAddPlanSarfiyat}>
+                        <Text style={styles.submitBtnText}>Sarfiyatı Ekle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               </ScrollView>
             </View>
+
+            {/* Makine seçici (hatta bağlı) — detay modalının İÇİNDE (iOS'ta üstte) */}
+            <SearchableSelectorModal
+              visible={isSarfMachineOpen}
+              onClose={() => setIsSarfMachineOpen(false)}
+              onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
+              data={hatMakines}
+              keyExtractor={(item) => item.makineKodu}
+              labelExtractor={(item) => item.makineAdi}
+              title="Makine Seçin"
+            />
 
             {/* Sabit alt işlem barı — plan aksiyonları (başlat/tamamla/iptal) */}
             {selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
