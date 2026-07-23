@@ -512,6 +512,8 @@ export const TicketScreen = () => {
         timeAgo={item.kayitTarihiStr || ''}
         user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
         userSicil={item.sorumluSicilNo}
+        requesterName={item.kayitYapan}
+        requesterSicil={item.kayitSicilNo}
         priorityLabel={priStyle.label}
         priorityColor={priStyle.text}
         priorityBg={priStyle.bg}
@@ -519,6 +521,7 @@ export const TicketScreen = () => {
         statusColor={statStyle.text}
         statusBg={statStyle.bg}
         categoryLabel={item.kategoriAd || undefined}
+        ticketLayout
         iconName={iconName}
         iconColor={iconColor}
         iconBg={iconBg}

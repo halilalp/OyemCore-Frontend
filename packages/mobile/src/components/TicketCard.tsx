@@ -22,6 +22,7 @@ export interface TicketCardProps {
   statusColor: string;
   statusBg: string;
   categoryLabel?: string; // ticket kategori adı (liste kartında gösterilir)
+  ticketLayout?: boolean; // Ticket listesi: sağ üstte kategori, tek satırda önem/tarih/durum
   iconName: any; // e.g., 'warning-outline'
   iconColor: string;
   iconBg: string;
@@ -46,6 +47,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   statusColor,
   statusBg,
   categoryLabel,
+  ticketLayout,
   iconName,
   iconColor,
   iconBg,
@@ -69,33 +71,58 @@ export const TicketCard: React.FC<TicketCardProps> = ({
               )}
               <Text style={styles.codeText}>{code}</Text>
             </View>
-            {/* Tek vurgulu öğe: durum. Önem seviyesi aşağıda renkli nokta +
-                metin olarak veriliyor — iki dolu rozet birbiriyle yarışıyordu. */}
-            <View style={[styles.badge, { backgroundColor: statusBg }]}>
-              <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
-            </View>
+            {/* Ticket listesi: sağ üstte KATEGORİ; diğer ekranlarda durum rozeti. */}
+            {ticketLayout ? (
+              !!categoryLabel && (
+                <View style={styles.categoryBadge}>
+                  <Ionicons name="pricetag-outline" size={11} color={slateTokens.brandPrimary} />
+                  <Text style={styles.categoryBadgeText} numberOfLines={1}>{categoryLabel}</Text>
+                </View>
+              )
+            ) : (
+              <View style={[styles.badge, { backgroundColor: statusBg }]}>
+                <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.titleText} numberOfLines={2}>
             {title}
           </Text>
 
-          {!!categoryLabel && (
+          {!ticketLayout && !!categoryLabel && (
             <View style={styles.categoryRow}>
               <Ionicons name="pricetag-outline" size={12} color={slateTokens.brandPrimary} />
               <Text style={styles.categoryText} numberOfLines={1}>{categoryLabel}</Text>
             </View>
           )}
 
-          {/* Önem + tarih. Önem artık dolu rozet değil: üstte tek vurgulu öğe
-              durum olsun diye renkli nokta + metne indirildi. */}
-          <View style={styles.metaRow}>
-            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-            <Text style={[styles.metaText, { color: priorityColor, fontWeight: '700' }]}>{priorityLabel}</Text>
-            <Text style={styles.metaSeparator}>·</Text>
-            <Ionicons name="time-outline" size={13} color={slateTokens.textMuted} />
-            <Text style={styles.metaText} numberOfLines={1}>{timeAgo}</Text>
-          </View>
+          {ticketLayout ? (
+            /* Tek satır: önem sola, tarih ortalı, durum sağa yaslı */
+            <View style={styles.metaRowSpread}>
+              <View style={styles.metaLeft}>
+                <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+                <Text style={[styles.metaText, { color: priorityColor, fontWeight: '700' }]} numberOfLines={1}>{priorityLabel}</Text>
+              </View>
+              <View style={styles.metaCenter}>
+                <Ionicons name="time-outline" size={13} color={slateTokens.textMuted} />
+                <Text style={styles.metaText} numberOfLines={1}>{timeAgo}</Text>
+              </View>
+              <View style={styles.metaRight}>
+                <View style={[styles.badge, { backgroundColor: statusBg }]}>
+                  <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.metaRow}>
+              <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+              <Text style={[styles.metaText, { color: priorityColor, fontWeight: '700' }]}>{priorityLabel}</Text>
+              <Text style={styles.metaSeparator}>·</Text>
+              <Ionicons name="time-outline" size={13} color={slateTokens.textMuted} />
+              <Text style={styles.metaText} numberOfLines={1}>{timeAgo}</Text>
+            </View>
+          )}
 
           {/* Kişiler ayrı satırda — üçü aynı satıra sığmıyordu, isimler kısalıyordu */}
           <View style={styles.footerRow}>
@@ -217,6 +244,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  // Ticket listesi: sağ üst kategori rozeti
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 150,
+    backgroundColor: slateTokens.pastelBlueBg,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: slateTokens.brandPrimary,
+    flexShrink: 1,
+  },
+  // Ticket listesi: önem sola / tarih ortalı / durum sağa
+  metaRowSpread: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  metaLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  metaCenter: { flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1, justifyContent: 'center' },
+  metaRight: { flex: 1, alignItems: 'flex-end' },
   priorityDot: {
     width: 7,
     height: 7,

@@ -417,27 +417,16 @@ export const HomeScreen = () => {
           {/* Metrik Kartları — Satır 1: İzin + Proje · Satır 2: IT/ERP/Bakım
               Her satır ayrı; alignItems flex-start → kartlar içerik boyuna göre
               kısalır (0 satırlar gizli), boşluk kalmaz. */}
-          {/* Satır 1 */}
+          {/* Satır 1: Yıllık İzin (dar) + HelpDesk matris kartı (yanında) */}
           <View style={styles.metricRow}>
-            <View style={styles.metricCard}>
+            <View style={[styles.metricCard, styles.metricCardIzin]}>
               <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
               <Text style={styles.metricLabel}>Yıllık İzin</Text>
               <View style={styles.izinValueWrap}>
                 <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.metricCard} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
-              <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
-              <Text style={styles.metricLabel}>Proje</Text>
-              <StatLine styles={styles} num={projeOzet?.acikProje ?? 0} label="Açık proje" />
-              <StatLine styles={styles} num={projeOzet?.gorev ?? 0} label="Görev" />
-              <StatLine styles={styles} num={projeOzet?.gecikmis ?? 0} label="Gecikmiş" color={slateTokens.danger} />
-            </TouchableOpacity>
-          </View>
-          {/* Satır 2 — HelpDesk matris kartı: etiketler tek sütun, türler yan yana */}
-          <View style={[styles.metricRow, { marginTop: 10 }]}>
-            <View style={[styles.metricCard, { width: '100%' }]}>
-              {/* Başlık + tür sütun başlıkları (tıklanınca ilgili panoya gider) */}
+            <View style={[styles.metricCard, styles.metricCardHd]}>
               <View style={styles.matrixHeadRow}>
                 <Text style={styles.matrixTitle}>HelpDesk</Text>
                 <View style={styles.matrixCols}>
@@ -454,14 +443,13 @@ export const HomeScreen = () => {
                 </View>
               </View>
               <View style={styles.matrixDivider} />
-              {/* Satırlar: etiket + IT/ERP/Bakım sayıları */}
               {([
                 { key: 'actigim', label: 'Talep Edilen' },
                 { key: 'islem', label: 'İşlem' },
                 { key: 'onay', label: 'Onay', color: slateTokens.warning },
               ] as const).map((r, i) => (
                 <View key={r.key} style={[styles.matrixRow, i > 0 && styles.matrixRowBorder]}>
-                  <Text style={styles.matrixRowLabel}>{r.label}</Text>
+                  <Text style={styles.matrixRowLabel} numberOfLines={1}>{r.label}</Text>
                   <View style={styles.matrixCols}>
                     {(['IT', 'ERP', 'BAKIM'] as const).map(t => (
                       <Text key={t} style={[styles.matrixCell, (r as any).color ? { color: (r as any).color } : null]}>
@@ -473,6 +461,26 @@ export const HomeScreen = () => {
               ))}
             </View>
           </View>
+
+          {/* Satır 2: Proje — tek satır kompakt */}
+          <TouchableOpacity style={[styles.metricCard, styles.projeRowCard]} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
+            <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.75)" />
+            <Text style={styles.projeRowTitle}>Proje</Text>
+            <View style={styles.projeRowStats}>
+              <View style={styles.projeStat}>
+                <Text style={styles.projeNum}>{projeOzet?.acikProje ?? 0}</Text>
+                <Text style={styles.projeLbl}>Açık proje</Text>
+              </View>
+              <View style={styles.projeStat}>
+                <Text style={styles.projeNum}>{projeOzet?.gorev ?? 0}</Text>
+                <Text style={styles.projeLbl}>Görev</Text>
+              </View>
+              <View style={styles.projeStat}>
+                <Text style={[styles.projeNum, { color: slateTokens.danger }]}>{projeOzet?.gecikmis ?? 0}</Text>
+                <Text style={styles.projeLbl}>Gecikmiş</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         </SafeAreaView>
 
         {/* ── İÇERİK (Beyaz Overlap Alanı) ──────────────────── */}
@@ -1226,17 +1234,27 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       color: 'rgba(255,255,255,0.72)',
       fontWeight: '600',
     },
-    // HelpDesk matris kartı
+    // Satır 1 kart genişlikleri: İzin dar, HelpDesk matris geniş
+    metricCardIzin: { width: '33.5%' },
+    metricCardHd: { width: '64%' },
+    // HelpDesk matris kartı (dar alana uyumlu)
     matrixHeadRow: { flexDirection: 'row', alignItems: 'center' },
-    matrixTitle: { flex: 1, fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
-    matrixCols: { flexDirection: 'row', width: 156 },
-    matrixColHead: { width: 52, alignItems: 'center', paddingVertical: 2 },
-    matrixColHeadText: { fontSize: 11.5, fontWeight: '800', color: 'rgba(255,255,255,0.75)' },
-    matrixDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 8, marginBottom: 2 },
-    matrixRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
+    matrixTitle: { flex: 1, fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
+    matrixCols: { flexDirection: 'row', width: 123 },
+    matrixColHead: { width: 41, alignItems: 'center', paddingVertical: 2 },
+    matrixColHeadText: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.75)' },
+    matrixDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 7, marginBottom: 1 },
+    matrixRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
     matrixRowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
-    matrixRowLabel: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600', flex: 1 },
-    matrixCell: { width: 52, textAlign: 'center', fontSize: 19, fontWeight: '800', color: '#FFF' },
+    matrixRowLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', flex: 1 },
+    matrixCell: { width: 41, textAlign: 'center', fontSize: 17, fontWeight: '800', color: '#FFF' },
+    // Proje tek satır kompakt kart
+    projeRowCard: { width: '100%', marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    projeRowTitle: { fontSize: 12.5, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.2 },
+    projeRowStats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', marginLeft: 6 },
+    projeStat: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+    projeNum: { fontSize: 19, fontWeight: '800', color: '#FFF' },
+    projeLbl: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
     metricEmpty: {
       fontSize: 12,
       color: 'rgba(255,255,255,0.6)',
