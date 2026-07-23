@@ -2602,7 +2602,7 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
   },
   newDetailHeader: {
-    backgroundColor: '#1e1b4b', // Fallback
+    backgroundColor: slateTokens.brandPurple, // Fallback (mor — iOS'ta gradient render olmazsa lacivert görünmesin)
     paddingHorizontal: 20,
     paddingBottom: 24,
     borderBottomLeftRadius: 32,
