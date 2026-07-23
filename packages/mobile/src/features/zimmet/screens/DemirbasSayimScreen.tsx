@@ -64,8 +64,28 @@ export const DemirbasSayimScreen = () => {
     setIsSayimLoading(true);
     try {
       const res = await api.addSayim(code);
-      if (res.success) {
-        setSayimBarcode('');
+      setSayimBarcode('');
+      if (res.success && res.alreadyExists) {
+        // Aynı demirbaş 2. kez okutuldu → listeden çıkarmak isteyip istemediğini sor.
+        Alert.alert(
+          'Zaten Sayıldı',
+          `Bu demirbaş (${res.tanim || code}) sayım listesinde zaten var. Listeden çıkarmak istiyor musunuz?`,
+          [
+            { text: 'Hayır', style: 'cancel' },
+            {
+              text: 'Evet, çıkar', style: 'destructive',
+              onPress: async () => {
+                try {
+                  if (res.aygitID) await api.removeSayim(res.aygitID);
+                  fetchSayimList();
+                } catch (e: any) {
+                  showAlert('Hata', e.response?.data?.message || e.message || 'Sayımdan çıkarılamadı.');
+                }
+              },
+            },
+          ]
+        );
+      } else if (res.success) {
         showAlert('Başarılı', res.message || 'Sayıma eklendi.');
         fetchSayimList();
       } else {

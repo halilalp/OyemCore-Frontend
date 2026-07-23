@@ -980,8 +980,8 @@ export const api = {
     return response.data;
   },
 
-  addSayim: async (code: string): Promise<{ success: boolean, message: string, aygitID?: number }> => {
-    const response = await apiClient.post<{ success: boolean, message: string, aygitID?: number }>('/Zimmet/sayim-add', { code });
+  addSayim: async (code: string): Promise<{ success: boolean, message: string, aygitID?: number, alreadyExists?: boolean, tanim?: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string, aygitID?: number, alreadyExists?: boolean, tanim?: string }>('/Zimmet/sayim-add', { code });
     return response.data;
   },
 
