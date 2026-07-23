@@ -21,6 +21,7 @@ export interface TicketCardProps {
   statusLabel: string;
   statusColor: string;
   statusBg: string;
+  categoryLabel?: string; // ticket kategori adı (liste kartında gösterilir)
   iconName: any; // e.g., 'warning-outline'
   iconColor: string;
   iconBg: string;
@@ -44,6 +45,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   statusLabel,
   statusColor,
   statusBg,
+  categoryLabel,
   iconName,
   iconColor,
   iconBg,
@@ -77,6 +79,13 @@ export const TicketCard: React.FC<TicketCardProps> = ({
           <Text style={styles.titleText} numberOfLines={2}>
             {title}
           </Text>
+
+          {!!categoryLabel && (
+            <View style={styles.categoryRow}>
+              <Ionicons name="pricetag-outline" size={12} color={slateTokens.brandPrimary} />
+              <Text style={styles.categoryText} numberOfLines={1}>{categoryLabel}</Text>
+            </View>
+          )}
 
           {/* Önem + tarih. Önem artık dolu rozet değil: üstte tek vurgulu öğe
               durum olsun diye renkli nokta + metne indirildi. */}
@@ -190,6 +199,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Önem + tarih satırı
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  categoryText: {
+    fontSize: 12,
+    color: slateTokens.brandPrimary,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -134,6 +134,7 @@ export const TicketScreen = () => {
   const [categories, setCategories] = useState<{ id: number; tanim: string }[]>([]);
   const [formTur, setFormTur] = useState('Hata');
   const [formOncelik, setFormOncelik] = useState('ORTA');
+  const [formDurum, setFormDurum] = useState<'HAVUZ' | 'ISLEM' | 'TEST' | 'TAMAM'>('HAVUZ');
   const [formBitisTarihi, setFormBitisTarihi] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -449,6 +450,7 @@ export const TicketScreen = () => {
         kategoriID: formKategoriID,
         islemTuru: formTur,
         oncelik: formOncelik === 'YÜKSEK' ? 'Yüksek' : formOncelik === 'ORTA' ? 'Orta' : 'Düşük',
+        surecDurumu: formDurum,
         bitisTarihi: formBitisTarihi || null
       });
       setIsCreateOpen(false);
@@ -516,6 +518,7 @@ export const TicketScreen = () => {
         statusLabel={statStyle.label}
         statusColor={statStyle.text}
         statusBg={statStyle.bg}
+        categoryLabel={item.kategoriAd || undefined}
         iconName={iconName}
         iconColor={iconColor}
         iconBg={iconBg}
@@ -636,7 +639,8 @@ export const TicketScreen = () => {
         customAction={{
           icon: 'add-outline',
           label: 'Yeni Bilet',
-          onPress: () => setIsCreateOpen(true)
+          // Filtrede hangi durum aktifse yeni bilet o durumla açılır (kullanıcı isteği)
+          onPress: () => { setFormDurum(activeTab); setIsCreateOpen(true); }
         }}
       />
 
@@ -1261,6 +1265,29 @@ export const TicketScreen = () => {
                     >
                       <Text style={[styles.selectorItemText, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemTextActive]}>
                         {priority}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Durum */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Durum</Text>
+                <View style={styles.selectorGrid}>
+                  {([
+                    { id: 'HAVUZ', label: 'HAVUZ' },
+                    { id: 'ISLEM', label: 'İŞLEMDE' },
+                    { id: 'TEST', label: 'TEST' },
+                    { id: 'TAMAM', label: 'TAMAM' },
+                  ] as const).map(d => (
+                    <TouchableOpacity
+                      key={d.id}
+                      style={[styles.selectorItem, formDurum === d.id && styles.selectorItemActive]}
+                      onPress={() => setFormDurum(d.id)}
+                    >
+                      <Text style={[styles.selectorItemText, formDurum === d.id && styles.selectorItemTextActive]}>
+                        {d.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
