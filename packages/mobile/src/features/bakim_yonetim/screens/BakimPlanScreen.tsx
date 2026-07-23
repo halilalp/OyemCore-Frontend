@@ -241,6 +241,14 @@ export const BakimPlanScreen = () => {
         filters={[]}
       >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipsScroll} contentContainerStyle={styles.filterChipsContainer}>
+            {/* Şirket standart filtre çipi (admin seçebilir; değilse kendi şirketine kilitli) */}
+            <TouchableOpacity style={styles.filterChip} disabled={!isBakimAdmin} onPress={() => setIsGateSirketOpen(true)}>
+              <Text style={styles.filterChipText}>
+                🏢 Şirket: {gateSirket
+                  ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket)
+                  : (isBakimAdmin ? 'Hepsi' : 'Şirket')}{!isBakimAdmin ? ' 🔒' : ''}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanBolumFltOpen(true)}>
               <Text style={styles.filterChipText}>
                 ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === planBolumFilter)?.bolumAdi || 'Hepsi'}
@@ -254,26 +262,7 @@ export const BakimPlanScreen = () => {
           </ScrollView>
       </ListHeader>
 
-      <View style={styles.gateBar}>
-        <Ionicons name="business-outline" size={16} color={colors.primary} />
-        <Text style={styles.gateLabel}>Şirket:</Text>
-        <TouchableOpacity
-          style={[styles.gateSelect, !isBakimAdmin && styles.gateSelectLocked]}
-          disabled={!isBakimAdmin}
-          activeOpacity={0.7}
-          onPress={() => setIsGateSirketOpen(true)}
-        >
-          <Text style={styles.gateSelectText} numberOfLines={1}>
-            {gateSirket
-              ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket)
-              : (isBakimAdmin ? 'Tüm Şirketler' : 'Şirket')}
-          </Text>
-          {isBakimAdmin
-            ? <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
-            : <Ionicons name="lock-closed" size={13} color={colors.textSecondary} />}
-        </TouchableOpacity>
-      </View>
-
+      {/* Şirket artık standart filtre çipinde (yukarıda) — ayrı gate barı kaldırıldı */}
       {/* Gate şirket seçici (yalnız admin) */}
       <SearchableSelectorModal
         visible={isGateSirketOpen}
