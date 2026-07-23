@@ -24,9 +24,25 @@ export const TicketDashboardScreen = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [errMsg, setErrMsg] = useState('');
   const [filter, setFilter] = useState<DashboardFilterValue>({ sirket: '', yil: '', ay: '' });
+  const [isTicketAdmin, setIsTicketAdmin] = useState(false);
 
+  // Şirket seçenekleri: admin ise tüm şirketler; değilse yalnız kendi şirketi
+  // (diğer şirketler görünmez, filtre kendi şirketine sabit).
   useEffect(() => {
-    api.getCompanies().then(setCompanies).catch(() => setCompanies([]));
+    Promise.all([
+      api.getTicketInit().catch(() => ({ isAdmin: false, sirketKodu: '' } as any)),
+      api.getCompanies().catch(() => []),
+    ]).then(([init, all]: [any, any[]]) => {
+      const admin = !!init?.isAdmin;
+      const own = init?.sirketKodu || '';
+      setIsTicketAdmin(admin);
+      if (admin) {
+        setCompanies(all || []);
+      } else {
+        setCompanies((all || []).filter((c: any) => c.sirketKodu === own));
+        setFilter(f => ({ ...f, sirket: own }));
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -107,7 +123,7 @@ export const TicketDashboardScreen = () => {
         <LogoLoader style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} />
+          <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} allowAllCompany={isTicketAdmin} />
           {!!errMsg && (
             <View style={styles.errBox}>
               <Text style={styles.errTitle}>Veri alınamadı</Text>

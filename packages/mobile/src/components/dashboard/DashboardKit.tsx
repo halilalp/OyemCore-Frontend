@@ -9,12 +9,14 @@ import { SearchableSelectorModal } from '../SearchableSelectorModal';
 export interface DashboardFilterValue { sirket?: string; yil?: string; ay?: string; }
 
 export const DashboardFilterBar = ({
-  companies, value, onChange, showSirket = true, showYil = true, showAy = true,
+  companies, value, onChange, showSirket = true, showYil = true, showAy = true, allowAllCompany = true,
 }: {
   companies?: { sirketKodu: string; sirketAdi: string }[];
   value: DashboardFilterValue;
   onChange: (v: DashboardFilterValue) => void;
   showSirket?: boolean; showYil?: boolean; showAy?: boolean;
+  // false ise "Tüm Şirketler" seçeneği gösterilmez (admin olmayan kullanıcı).
+  allowAllCompany?: boolean;
 }) => {
   const { colors } = useThemeStore();
   const s = createStyles(colors);
@@ -26,8 +28,12 @@ export const DashboardFilterBar = ({
     { code: '', label: 'Tüm Yıl' },
     ...['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => ({ code: m, label: `${m}. Ay` })),
   ];
-  const sirketData = [{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(companies || [])];
-  const sirketAdi = value.sirket ? (companies || []).find(c => c.sirketKodu === value.sirket)?.sirketAdi || value.sirket : 'Tüm Şirketler';
+  const sirketData = allowAllCompany
+    ? [{ sirketKodu: '', sirketAdi: 'Tüm Şirketler' }, ...(companies || [])]
+    : (companies || []);
+  const sirketAdi = value.sirket
+    ? ((companies || []).find(c => c.sirketKodu === value.sirket)?.sirketAdi || value.sirket)
+    : (allowAllCompany ? 'Tüm Şirketler' : ((companies || [])[0]?.sirketAdi || 'Şirket'));
 
   return (
     <View style={s.filterBar}>

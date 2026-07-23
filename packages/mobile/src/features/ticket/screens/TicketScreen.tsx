@@ -132,6 +132,9 @@ export const TicketScreen = () => {
   const [formSirket, setFormSirket] = useState('');
   const [formKategoriID, setFormKategoriID] = useState<number | null>(null);
   const [categories, setCategories] = useState<{ id: number; tanim: string }[]>([]);
+  // Liste filtresi: şirkete bağlı kategori
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [filterCategories, setFilterCategories] = useState<{ id: number; tanim: string }[]>([]);
   const [formTur, setFormTur] = useState('Hata');
   const [formOncelik, setFormOncelik] = useState('ORTA');
   const [formDurum, setFormDurum] = useState<'HAVUZ' | 'ISLEM' | 'TEST' | 'TAMAM'>('HAVUZ');
@@ -143,6 +146,17 @@ export const TicketScreen = () => {
   useEffect(() => {
     loadTickets();
   }, [searchText, selectedCompany]);
+
+  // Filtre kategorileri seçili şirkete bağlı (admin: seçilen şirket; değilse kendi
+  // şirketi). Şirket değişince kategori seçimi sıfırlanır.
+  useEffect(() => {
+    const sirket = isTicketAdmin ? selectedCompany : ownSirket;
+    setSelectedCategory('');
+    if (!sirket) { setFilterCategories([]); return; }
+    api.getTicketCategoriesByCompany(sirket)
+      .then(l => setFilterCategories(l || []))
+      .catch(() => setFilterCategories([]));
+  }, [selectedCompany, ownSirket, isTicketAdmin]);
 
   useEffect(() => {
     loadDropdowns();
@@ -472,6 +486,7 @@ export const TicketScreen = () => {
     return tickets.filter(t => {
       if (t.surecDurumu !== activeTab) return false;
       if (onlyMine && !t.isMine) return false;
+      if (selectedCategory && String(t.kategoriID) !== selectedCategory) return false;
       return true;
     });
   };
@@ -580,11 +595,13 @@ export const TicketScreen = () => {
           })}
         </View>
 
-        {/* Şirket Filtresi */}
+        {/* Şirket Filtresi — yalnızca Ticket admin. Admin değilse sistem zaten
+            kendi şirketinin datasını getirir, şirket seçenekleri gösterilmez. */}
+        {isTicketAdmin && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
           <TouchableOpacity
             style={[styles.companyChip, selectedCompany === '' && styles.companyChipActive]}
-            onPress={() => setSelectedCompany('')}
+            onPress={() => { setSelectedCompany(''); setSelectedCategory(''); }}
           >
             <Text style={[styles.companyChipText, selectedCompany === '' && styles.companyChipTextActive]}>
               Tüm Şirketler
@@ -594,7 +611,7 @@ export const TicketScreen = () => {
             <TouchableOpacity
               key={c.sirketKodu}
               style={[styles.companyChip, selectedCompany === c.sirketKodu && styles.companyChipActive]}
-              onPress={() => setSelectedCompany(c.sirketKodu)}
+              onPress={() => { setSelectedCompany(c.sirketKodu); setSelectedCategory(''); }}
             >
               <Text style={[styles.companyChipText, selectedCompany === c.sirketKodu && styles.companyChipTextActive]}>
                 {c.sirketAdi || c.sirketKodu}
@@ -602,6 +619,28 @@ export const TicketScreen = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        )}
+
+        {/* Kategori Filtresi — seçili şirkete bağlı kategoriler */}
+        {filterCategories.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
+          <TouchableOpacity
+            style={[styles.companyChip, selectedCategory === '' && styles.companyChipActive]}
+            onPress={() => setSelectedCategory('')}
+          >
+            <Text style={[styles.companyChipText, selectedCategory === '' && styles.companyChipTextActive]}>🏷 Tüm Kategoriler</Text>
+          </TouchableOpacity>
+          {filterCategories.map(k => (
+            <TouchableOpacity
+              key={k.id}
+              style={[styles.companyChip, selectedCategory === String(k.id) && styles.companyChipActive]}
+              onPress={() => setSelectedCategory(String(k.id))}
+            >
+              <Text style={[styles.companyChipText, selectedCategory === String(k.id) && styles.companyChipTextActive]}>{k.tanim}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        )}
 
         {/* Sadece Bende Toggle */}
         <View style={styles.toggleRow}>
