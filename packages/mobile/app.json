@@ -23,7 +23,8 @@
           "NSAllowsLocalNetworking": true
         },
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Demirbaş sayımında barkod/kod okutmak için kamera kullanılır."
+        "NSCameraUsageDescription": "Demirbaş sayımında barkod/kod okutmak ve taleplerinize belge/fotoğraf eklemek için kamera kullanılır.",
+        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir."
       }
     },
     "android": {
