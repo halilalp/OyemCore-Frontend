@@ -245,6 +245,63 @@ export interface TalepHistory {
   aciklama: string;
 }
 
+// Masraf kalemi (fiş satırı). referans: tb_MagazaMasrafDetay
+export interface MasrafKalem {
+  FisNo?: string;
+  Firma?: string;
+  Tarih?: string | null;
+  Tutar: number;
+  KdvTutar: number;
+  Aciklama?: string;
+  DosyaYolu?: string;
+}
+
+// Chat sidebar öğesi (kullanıcı veya grup). referans: UserChatDto
+export interface ChatUser {
+  kullaniciID: number;
+  adSoyad: string;
+  unvan: string;
+  sicilNo: string;      // 1:1 sicil veya "GROUP_..." grup kodu
+  cinsiyet: string;     // "G" = grup
+  lastMessage: string;
+  lastMessageDate: string | null;
+  unreadCount: number;
+  isOnline: boolean;
+  olusturanSicilNo?: string;
+}
+
+// Chat mesajı. referans: GetChatHistory çıktısı
+export interface ChatMessage {
+  id: number;
+  gonderenSicilNo: string;
+  gonderenAdSoyad: string;
+  aliciSicilNo: string;
+  mesajMetni: string;
+  dosyaAdi?: string;
+  dosyaYolu?: string;
+  dosyaTipi?: string;
+  dosyaBoyutu?: number;
+  gonderimTarihi: string;
+  saat?: string;
+  okundu: boolean;
+  parentID?: number | null;
+  parentMesajMetni?: string;
+  parentGonderenAd?: string;
+}
+
+// Uygulama-içi bildirim (zil merkezi). referans: tb_Notification
+export interface AppNotification {
+  id: number;
+  sicilNo: string;
+  baslik: string;
+  aciklama: string;
+  linkUrl: string;
+  kategori: string;
+  referansID: string;
+  okundu: boolean;
+  kayitTarihi: string;
+}
+
 export interface TalepDetailResponse {
   talep: Talep;
   gelismeler: TalepGelisme[];

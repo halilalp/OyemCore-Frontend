@@ -59,6 +59,45 @@ const stripHtml = (html: string | null | undefined): string => {
     .trim();
 };
 
+// ─── Tarih ön ayarları (dinamik yıllar) ────────────────────────────────────────
+const _now = new Date();
+const _yil = _now.getFullYear();
+const DATE_PRESETS: { id: string; label: string }[] = [
+  { id: 'bu_hafta', label: 'Bu Hafta' },
+  { id: 'bu_ay', label: 'Bu Ay' },
+  { id: 'gecen_ay', label: 'Geçen Ay' },
+  { id: 'son_3_ay', label: 'Son 3 Ay' },
+  { id: 'son_6_ay', label: 'Son 6 Ay' },
+  { id: String(_yil), label: String(_yil) },
+  { id: String(_yil - 1), label: String(_yil - 1) },
+];
+
+const _fmt = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Ön ayardan yyyy-MM-dd başlangıç/bitiş aralığı üretir.
+const presetRange = (id: string): { start: string; end: string } | null => {
+  if (!id) return null;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (/^\d{4}$/.test(id)) {
+    return { start: `${id}-01-01`, end: `${id}-12-31` };
+  }
+  if (id === 'bu_hafta') {
+    const day = (today.getDay() + 6) % 7; // Pazartesi = 0
+    const start = new Date(today); start.setDate(today.getDate() - day);
+    return { start: _fmt(start), end: _fmt(today) };
+  }
+  if (id === 'bu_ay') return { start: _fmt(new Date(today.getFullYear(), today.getMonth(), 1)), end: _fmt(today) };
+  if (id === 'gecen_ay') {
+    const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const end = new Date(today.getFullYear(), today.getMonth(), 0);
+    return { start: _fmt(start), end: _fmt(end) };
+  }
+  if (id === 'son_3_ay') { const s = new Date(today); s.setMonth(today.getMonth() - 3); return { start: _fmt(s), end: _fmt(today) }; }
+  if (id === 'son_6_ay') { const s = new Date(today); s.setMonth(today.getMonth() - 6); return { start: _fmt(s), end: _fmt(today) }; }
+  return null;
+};
+
 // ─── Status / Priority Helpers ─────────────────────────────────────────────────
 
 const getStatusStyle = (durum: string) => {
@@ -141,6 +180,10 @@ export const TicketScreen = () => {
   const [formBitisTarihi, setFormBitisTarihi] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  // Filtre tarih ön ayarı (kayıt tarihine göre). Boş = tüm zamanlar.
+  const [selectedDatePreset, setSelectedDatePreset] = useState<string>('');
+  // Açık filtre seçici (dropdown → liste). Seçenekler açık gelmez, tıklayınca listeden seçilir.
+  const [openFilter, setOpenFilter] = useState<'company' | 'category' | 'date' | null>(null);
 
   // ── Load data ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -482,11 +525,24 @@ export const TicketScreen = () => {
 
   // ── Filtered list ──────────────────────────────────────────────────────────────
 
+  // "dd.MM.yyyy HH:mm" → yyyy-MM-dd (tarih karşılaştırması için).
+  const ticketDateKey = (t: any): string => {
+    const s = t?.kayitTarihiStr || '';
+    const m = /(\d{2})\.(\d{2})\.(\d{4})/.exec(s);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+  };
+
   const getFilteredTickets = () => {
+    const range = presetRange(selectedDatePreset);
     return tickets.filter(t => {
       if (t.surecDurumu !== activeTab) return false;
       if (onlyMine && !t.isMine) return false;
       if (selectedCategory && String(t.kategoriID) !== selectedCategory) return false;
+      // Tarih ön ayarı (kayıt tarihine göre aralık)
+      if (range) {
+        const k = ticketDateKey(t);
+        if (!k || k < range.start || k > range.end) return false;
+      }
       return true;
     });
   };
@@ -569,7 +625,39 @@ export const TicketScreen = () => {
         onFilterChange={(id: string) => setActiveTab(id as any)}
         filters={[]}
       >
-        {/* Durum Tabları */}
+
+        {/* Filtre butonları — seçenekler açık gelmez, tıklayınca listeden seçilir (IT HelpDesk mantığı) */}
+        <View style={styles.filterBtnRow}>
+          {isTicketAdmin && (
+            <TouchableOpacity style={styles.filterBtn} onPress={() => setOpenFilter('company')}>
+              <Text style={styles.filterBtnText} numberOfLines={1}>
+                {selectedCompany ? (companies.find(c => c.sirketKodu === selectedCompany)?.sirketAdi || selectedCompany) : 'Şirket'}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={slateTokens.textSecondary} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setOpenFilter('category')} disabled={filterCategories.length === 0}>
+            <Text style={styles.filterBtnText} numberOfLines={1}>
+              {selectedCategory ? (filterCategories.find(k => String(k.id) === selectedCategory)?.tanim || 'Kategori') : 'Kategori'}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={slateTokens.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setOpenFilter('date')}>
+            <Text style={styles.filterBtnText} numberOfLines={1}>
+              {selectedDatePreset ? (DATE_PRESETS.find(p => p.id === selectedDatePreset)?.label || 'Tarih') : 'Tarih'}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={slateTokens.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mineToggle, onlyMine && styles.mineToggleActive]}
+            onPress={() => setOnlyMine(!onlyMine)}
+          >
+            <Ionicons name="person" size={13} color={onlyMine ? '#fff' : slateTokens.textSecondary} />
+            <Text style={[styles.mineToggleText, onlyMine && { color: '#fff' }]}>Bende</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Durum Tabları — filtre kayıtları en altta */}
         <View style={styles.tabsRow}>
           {TABS.map(tab => {
             const isActive = activeTab === tab.id;
@@ -580,77 +668,15 @@ export const TicketScreen = () => {
                 style={[styles.tabBtn, isActive && styles.tabBtnActive]}
                 onPress={() => setActiveTab(tab.id)}
               >
-                <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
-                  {tab.label}
-                </Text>
+                <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>{tab.label}</Text>
                 {cnt > 0 && (
                   <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
-                      {cnt}
-                    </Text>
+                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>{cnt}</Text>
                   </View>
                 )}
               </TouchableOpacity>
             );
           })}
-        </View>
-
-        {/* Şirket Filtresi — yalnızca Ticket admin. Admin değilse sistem zaten
-            kendi şirketinin datasını getirir, şirket seçenekleri gösterilmez. */}
-        {isTicketAdmin && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
-          <TouchableOpacity
-            style={[styles.companyChip, selectedCompany === '' && styles.companyChipActive]}
-            onPress={() => { setSelectedCompany(''); setSelectedCategory(''); }}
-          >
-            <Text style={[styles.companyChipText, selectedCompany === '' && styles.companyChipTextActive]}>
-              Tüm Şirketler
-            </Text>
-          </TouchableOpacity>
-          {companies.map(c => (
-            <TouchableOpacity
-              key={c.sirketKodu}
-              style={[styles.companyChip, selectedCompany === c.sirketKodu && styles.companyChipActive]}
-              onPress={() => { setSelectedCompany(c.sirketKodu); setSelectedCategory(''); }}
-            >
-              <Text style={[styles.companyChipText, selectedCompany === c.sirketKodu && styles.companyChipTextActive]}>
-                {c.sirketAdi || c.sirketKodu}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        )}
-
-        {/* Kategori Filtresi — seçili şirkete bağlı kategoriler */}
-        {filterCategories.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyScroll}>
-          <TouchableOpacity
-            style={[styles.companyChip, selectedCategory === '' && styles.companyChipActive]}
-            onPress={() => setSelectedCategory('')}
-          >
-            <Text style={[styles.companyChipText, selectedCategory === '' && styles.companyChipTextActive]}>🏷 Tüm Kategoriler</Text>
-          </TouchableOpacity>
-          {filterCategories.map(k => (
-            <TouchableOpacity
-              key={k.id}
-              style={[styles.companyChip, selectedCategory === String(k.id) && styles.companyChipActive]}
-              onPress={() => setSelectedCategory(String(k.id))}
-            >
-              <Text style={[styles.companyChipText, selectedCategory === String(k.id) && styles.companyChipTextActive]}>{k.tanim}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        )}
-
-        {/* Sadece Bende Toggle */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Bana Atananlar</Text>
-          <TouchableOpacity
-            style={[styles.toggleSwitch, onlyMine && styles.toggleSwitchActive]}
-            onPress={() => setOnlyMine(!onlyMine)}
-          >
-            <View style={[styles.toggleCircle, onlyMine && styles.toggleCircleActive]} />
-          </TouchableOpacity>
         </View>
       </ListHeader>
 
@@ -956,32 +982,23 @@ export const TicketScreen = () => {
                 {!isClosed && (
                   <View style={[styles.fixedComposerWrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
                     <View style={styles.bottomTabBar}>
-                      {/* Yorum */}
+                      {/* Yorum — standart şablon: etiketsiz ikon */}
                       <TouchableOpacity style={styles.tabItem} onPress={() => setIsAddCommentOpen(true)}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.primary} />
-                        <Text style={styles.tabLabel}>Yorum</Text>
+                        <Ionicons name="chatbubble-ellipses-outline" size={30} color={colors.primary} />
                       </TouchableOpacity>
 
-                      {/* İşlemler (center floating) */}
+                      {/* İşlemler (merkez, notch'lu yüzen FAB — BottomNavBar ile aynı) */}
                       <TouchableOpacity style={styles.centerTabItem} onPress={() => setIsActionsMenuOpen(true)}>
-                        <View style={styles.centerPlusCircle}>
-                          <Ionicons name="ellipsis-horizontal" size={30} color="#FFF" />
+                        <View style={styles.centerFabWrapper}>
+                          <View style={styles.centerFab}>
+                            <Ionicons name="ellipsis-horizontal" size={26} color="#FFF" />
+                          </View>
                         </View>
-                        <Text style={styles.centerTabLabel}>İşlemler</Text>
                       </TouchableOpacity>
 
-                      {/* Kapat */}
-                      <TouchableOpacity
-                        style={styles.tabItem}
-                        onPress={handleCloseTicket}
-                        disabled={isClosed}
-                      >
-                        <Ionicons
-                          name="checkmark-circle-outline"
-                          size={24}
-                          color={isClosed ? '#94a3b8' : colors.success}
-                        />
-                        <Text style={[styles.tabLabel, { color: isClosed ? '#94a3b8' : colors.text }]}>Kapat</Text>
+                      {/* Kapat — etiketsiz ikon */}
+                      <TouchableOpacity style={styles.tabItem} onPress={handleCloseTicket} disabled={isClosed}>
+                        <Ionicons name="checkmark-circle-outline" size={30} color={isClosed ? '#94a3b8' : colors.success} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1382,6 +1399,39 @@ export const TicketScreen = () => {
         </View>
         <KeyboardDismissBar />
       </Modal>
+
+      {/* Şirket seçici */}
+      <SearchableSelectorModal
+        visible={openFilter === 'company'}
+        onClose={() => setOpenFilter(null)}
+        onSelect={(item) => { setSelectedCompany(item.id); setSelectedCategory(''); setOpenFilter(null); }}
+        data={[{ id: '', name: 'Tüm Şirketler' }, ...companies.map(c => ({ id: c.sirketKodu, name: c.sirketAdi || c.sirketKodu }))]}
+        keyExtractor={(item) => item.id}
+        labelExtractor={(item) => item.name}
+        title="Şirket Seçin"
+      />
+
+      {/* Kategori seçici (seçili şirkete bağlı) */}
+      <SearchableSelectorModal
+        visible={openFilter === 'category'}
+        onClose={() => setOpenFilter(null)}
+        onSelect={(item) => { setSelectedCategory(item.id); setOpenFilter(null); }}
+        data={[{ id: '', name: 'Tüm Kategoriler' }, ...filterCategories.map(k => ({ id: String(k.id), name: k.tanim }))]}
+        keyExtractor={(item) => item.id}
+        labelExtractor={(item) => item.name}
+        title="Kategori Seçin"
+      />
+
+      {/* Tarih ön ayarı seçici */}
+      <SearchableSelectorModal
+        visible={openFilter === 'date'}
+        onClose={() => setOpenFilter(null)}
+        onSelect={(item) => { setSelectedDatePreset(item.id); setOpenFilter(null); }}
+        data={[{ id: '', label: 'Tüm Zamanlar' }, ...DATE_PRESETS]}
+        keyExtractor={(item) => item.id}
+        labelExtractor={(item) => item.label}
+        title="Tarih Seçin"
+      />
     </View>
   );
 };
@@ -1412,6 +1462,48 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
 
   // ── Tab bar ──────────────────────────────────────────────────────────────────
+  filterBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  filterBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+  },
+  filterBtnText: { flex: 1, fontSize: 12.5, color: '#334155', fontWeight: '600' },
+  compactFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  datePresetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#fff',
+  },
+  datePresetChipActive: { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
+  datePresetText: { fontSize: 12.5, color: '#64748B', fontWeight: '600' },
+  datePresetTextActive: { color: '#1D4ED8', fontWeight: '700' },
+  mineToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#fff',
+  },
+  mineToggleActive: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
+  mineToggleText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
   tabsRow: {
     flexDirection: 'row',
     marginTop: 8,
@@ -1789,28 +1881,40 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   centerTabItem: {
+    flex: 1,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    height: 80,
-    marginTop: -18,
+    height: '100%',
   },
-  centerPlusCircle: {
-    // İşlemler menüsü butonu: yükseltilmiş daire, üç-nokta (⋯) ikonu, beyaz border, gölgesiz
+  // Merkez FAB — BottomNavBar / HelpDesk detay bar'ı ile birebir (notch'lu yüzen daire)
+  centerFabWrapper: {
+    position: 'absolute',
+    top: -18,
     width: 64,
     height: 64,
     borderRadius: 32,
-    borderWidth: 6,
-    borderColor: '#fff',
-    backgroundColor: colors.primary,
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  centerTabLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.primary,
-    marginTop: 2,
+  centerFab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: slateTokens.brandPrimary,
+    elevation: 8,
+    shadowColor: slateTokens.brandPrimary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
   },
 
   // ── Action sheet ──────────────────────────────────────────────────────────────

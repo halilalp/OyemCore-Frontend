@@ -44,6 +44,9 @@ import { ZimmetDashboardScreen } from './src/features/zimmet/screens/ZimmetDashb
 import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScreen';
 import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
 import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
+import { ChatListScreen } from './src/features/chat/screens/ChatListScreen';
+import { ChatConversationScreen } from './src/features/chat/screens/ChatConversationScreen';
+import { AvansMasrafScreen } from './src/features/avansmasraf/screens/AvansMasrafScreen';
 import { BakimYonetimHubScreen } from './src/features/bakim_yonetim/screens/BakimYonetimHubScreen';
 import { ProfilScreen } from './src/features/profile/screens/ProfilScreen';
 import { PerformansScreen } from './src/features/profile/screens/PerformansScreen';
@@ -304,12 +307,27 @@ export default function App() {
                 headerShown: false
               }} 
             />
-            <Stack.Screen 
-              name="BakimHelpDesk" 
-              component={BakimHelpDeskScreen} 
-              options={{ 
+            <Stack.Screen
+              name="BakimHelpDesk"
+              component={BakimHelpDeskScreen}
+              options={{
                 headerShown: false
-              }} 
+              }}
+            />
+            <Stack.Screen
+              name="ChatList"
+              component={ChatListScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ChatConversation"
+              component={ChatConversationScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AvansMasraf"
+              component={AvansMasrafScreen}
+              options={{ headerShown: false }}
             />
             <Stack.Screen name="TicketDashboard" component={TicketDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimYonetim" component={BakimYonetimHubScreen} options={{ headerShown: false }} />

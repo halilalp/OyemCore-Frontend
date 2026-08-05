@@ -14,6 +14,7 @@ export interface FilterOption {
 
 interface ListHeaderProps {
   title: string;
+  titleCaption?: string; // başlık altında küçük açıklama (ör. 'Mesajlaşma')
   subtitle?: string; // e.g., '14 talep'
   searchPlaceholder?: string;
   searchValue?: string;
@@ -33,6 +34,7 @@ interface ListHeaderProps {
 export const ListHeader: React.FC<ListHeaderProps> = ({
   compact,
   title,
+  titleCaption,
   subtitle,
   searchPlaceholder = 'Ara...',
   searchValue,
@@ -72,7 +74,14 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
-            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            {titleCaption ? (
+              <View style={{ flexShrink: 1 }}>
+                <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                <Text style={styles.titleCaption} numberOfLines={1}>{titleCaption}</Text>
+              </View>
+            ) : (
+              <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            )}
           </View>
           <View style={styles.topRight}>
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -200,6 +209,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFF',
     flexShrink: 1,
+  },
+  titleCaption: {
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+    marginTop: 1,
   },
   topRight: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim } from './types';
+import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim, AppNotification, ChatUser, ChatMessage, MasrafKalem } from './types';
 
 let token: string | null = null;
 let apiBaseUrl: string = 'https://api.oyemsoft.com/api'; // Default backend API URL (SSL aktif)
@@ -82,6 +82,109 @@ export const api = {
   // Zil bildirimleri: aksiyon bekleyen işler (onay/cevap/belge onayı)
   getUserActions: async (): Promise<{ totalCount: number; details: any[] }> => {
     const response = await apiClient.get<{ totalCount: number; details: any[] }>('/Dashboard/user-actions');
+    return response.data;
+  },
+  // ── Bildirim merkezi (zil) — referans: WebServiceBildirim ──
+  getNotifications: async (pageIndex = 0, pageSize = 20): Promise<{ success: boolean; total: number; data: AppNotification[] }> => {
+    const response = await apiClient.get<{ success: boolean; total: number; data: AppNotification[] }>('/Bildirim', { params: { pageIndex, pageSize } });
+    return response.data;
+  },
+  getUnreadNotificationCount: async (): Promise<number> => {
+    const response = await apiClient.get<{ success: boolean; count: number }>('/Bildirim/unread-count');
+    return response.data?.count ?? 0;
+  },
+  markNotificationRead: async (id: number): Promise<any> => {
+    const response = await apiClient.post<any>(`/Bildirim/${id}/read`);
+    return response.data;
+  },
+  markAllNotificationsRead: async (): Promise<any> => {
+    const response = await apiClient.post<any>('/Bildirim/read-all');
+    return response.data;
+  },
+  deleteNotification: async (id: number): Promise<any> => {
+    const response = await apiClient.delete<any>(`/Bildirim/${id}`);
+    return response.data;
+  },
+  // ── Chat (referans: WebServiceChat) ──
+  getChatUsers: async (onlyActive = false): Promise<ChatUser[]> => {
+    const response = await apiClient.get<ChatUser[]>('/Chat/users', { params: { onlyActive } });
+    return response.data || [];
+  },
+  getChatHistory: async (targetSicilNo: string, skip = 0, take = 30): Promise<ChatMessage[]> => {
+    const response = await apiClient.get<ChatMessage[]>('/Chat/history', { params: { targetSicilNo, skip, take } });
+    return response.data || [];
+  },
+  markChatConversationRead: async (targetSicilNo: string): Promise<any> => {
+    const response = await apiClient.post<any>('/Chat/mark-read', { targetSicilNo });
+    return response.data;
+  },
+  getChatMessageDetails: async (messageID: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/Chat/message/${messageID}/details`);
+    return response.data;
+  },
+  sendChatMessage: async (payload: { aliciSicilNo: string; mesajMetni: string; dosyaAdi?: string; dosyaYolu?: string; dosyaTipi?: string; dosyaBoyutu?: number; parentID?: number | null }): Promise<{ success: boolean; ID: number }> => {
+    const response = await apiClient.post<{ success: boolean; ID: number }>('/Chat/send', payload);
+    return response.data;
+  },
+  createChatGroup: async (groupName: string, memberSicils: string[]): Promise<{ success: boolean; GroupCode: string }> => {
+    const response = await apiClient.post<{ success: boolean; GroupCode: string }>('/Chat/group', { groupName, memberSicils });
+    return response.data;
+  },
+  updateChatGroupMembers: async (groupCode: string, memberSicils: string[]): Promise<any> => {
+    const response = await apiClient.put<any>(`/Chat/group/${groupCode}/members`, { memberSicils });
+    return response.data;
+  },
+  getChatGroupDetails: async (groupCode: string): Promise<any> => {
+    const response = await apiClient.get<any>(`/Chat/group/${groupCode}`);
+    return response.data;
+  },
+  leaveChatGroup: async (groupCode: string): Promise<any> => {
+    const response = await apiClient.post<any>(`/Chat/group/${groupCode}/leave`);
+    return response.data;
+  },
+  getChatSharedFiles: async (targetSicilNo: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Chat/shared-files', { params: { targetSicilNo } });
+    return response.data || [];
+  },
+  getChatUnreadCount: async (): Promise<number> => {
+    const response = await apiClient.get<{ success: boolean; totalUnread: number }>('/Chat/unread-count');
+    return response.data?.totalUnread ?? 0;
+  },
+  // SignalR hub URL (baseUrl'den /api atılıp /hubs/chat eklenir).
+  getChatHubUrl: (sicilNo: string): string => {
+    const root = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -'/api'.length) : apiBaseUrl;
+    return `${root}/hubs/chat?sicilNo=${encodeURIComponent(sicilNo)}`;
+  },
+  // ── Avans-Masraf (referans: WebServiceAvansMasraf) ──
+  getAvansListesi: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/AvansMasraf/avanslar');
+    return response.data || [];
+  },
+  getMasrafListesi: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/AvansMasraf/masraflar');
+    return response.data || [];
+  },
+  getMasrafDetay: async (masrafID: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/AvansMasraf/masraf/${masrafID}`);
+    return response.data;
+  },
+  getAvansMasrafOnayBekleyenler: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/AvansMasraf/onay-bekleyenler');
+    return response.data || [];
+  },
+  saveAvans: async (payload: { id?: number; tutar: number; aciklama: string }): Promise<{ success: boolean; message: string; BelgeNo?: string }> => {
+    const response = await apiClient.post<any>('/AvansMasraf/avans', { ID: payload.id || 0, Tutar: payload.tutar, Aciklama: payload.aciklama });
+    return response.data;
+  },
+  saveMasraf: async (payload: { id?: number; toplamTutar: number; aciklama: string; iliskiliAvansID?: number | null; kalemler: MasrafKalem[] }): Promise<{ success: boolean; message: string; BelgeNo?: string }> => {
+    const response = await apiClient.post<any>('/AvansMasraf/masraf', {
+      ID: payload.id || 0, ToplamTutar: payload.toplamTutar, Aciklama: payload.aciklama,
+      IliskiliAvansID: payload.iliskiliAvansID ?? null, Kalemler: payload.kalemler,
+    });
+    return response.data;
+  },
+  avansMasrafOnaylaReddet: async (tip: string, id: number, onay: boolean, aciklama: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<any>('/AvansMasraf/onayla-reddet', { Tip: tip, ID: id, Onay: onay, Aciklama: aciklama });
     return response.data;
   },
   // ── Proje / Toplantı yönetimi (Faz 1) ──

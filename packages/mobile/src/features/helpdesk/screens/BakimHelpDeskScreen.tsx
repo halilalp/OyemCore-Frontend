@@ -2014,8 +2014,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
                     if (detailData?.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo) {
                       return (
-                        <View style={styles.footerActionRow}>
-                          <TouchableOpacity 
+                        <View style={[styles.footerActionRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                          <TouchableOpacity
                             style={[styles.actionButton, styles.actionButtonDanger]}
                             onPress={() => {
                               setIsApproveAction(false);
@@ -2749,7 +2749,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   onChangeText={setWoFormAciklama}
                 />
               </ScrollView>
-              <View style={styles.pageFormActionsRow}>
+              <View style={[styles.pageFormActionsRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
                 <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => setIsWorkOrderCloseModalOpen(false)}>
                   <Text style={styles.pageFormCancelBtnText}>İptal</Text>
                 </TouchableOpacity>
@@ -2808,7 +2808,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 </View>
               ))}
             </ScrollView>
-            <View style={styles.pageFormActionsRow}>
+            <View style={[styles.pageFormActionsRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
               <TouchableOpacity style={styles.pageFormCancelBtn} onPress={() => setIsKontrolFormOpen(false)}>
                 <Text style={styles.pageFormCancelBtnText}>Kapat</Text>
               </TouchableOpacity>

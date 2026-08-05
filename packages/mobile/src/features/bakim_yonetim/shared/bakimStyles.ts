@@ -257,7 +257,7 @@ export const createBakimStyles = (colors: any, theme: string) => StyleSheet.crea
     fontSize: 12,
   },
   listContainer: {
-    padding: 12,
+    paddingVertical: 12,
     gap: 12,
   },
   card: {

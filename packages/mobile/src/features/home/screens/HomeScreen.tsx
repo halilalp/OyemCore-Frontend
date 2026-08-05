@@ -23,6 +23,7 @@ import { mapKeenIconToIonicons } from '../../../utils/iconMapper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
 import { UserAvatar } from '../../../components/UserAvatar';
+import { NotificationCenter } from '../../../components/NotificationCenter';
 import { BottomNavBar, BottomNavBarHandle } from '../../../components/BottomNavBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import EventMonthCalendar from '../../../components/EventMonthCalendar';
@@ -99,6 +100,10 @@ export const HomeScreen = () => {
   // Zil bildirimleri (aksiyon bekleyen işler)
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  // Yenilenen bildirim merkezi (tb_Notification) okunmamış sayısı — zil rozeti.
+  const [bildirimUnread, setBildirimUnread] = useState(0);
+  // Chat okunmamış mesaj sayısı — sohbet ikonu rozeti.
+  const [chatUnread, setChatUnread] = useState(0);
   // Metrik kartları: her HelpDesk türü için {açtığım, işlem bekleyen, onay bekleyen}
   type TalepStat = { actigim: number; islem: number; onay: number };
   const bosStat: TalepStat = { actigim: 0, islem: 0, onay: 0 };
@@ -146,6 +151,16 @@ export const HomeScreen = () => {
             try { Notifications.setBadgeCountAsync(r?.totalCount ?? (r?.details?.length || 0)); } catch (_) {}
           })
           .catch(() => setNotifications([]));
+
+        // Yenilenen bildirim merkezi okunmamış sayısı (zil rozeti).
+        api.getUnreadNotificationCount()
+          .then(c => setBildirimUnread(c))
+          .catch(() => setBildirimUnread(0));
+
+        // Chat okunmamış mesaj sayısı (sohbet ikonu rozeti).
+        api.getChatUnreadCount()
+          .then(c => setChatUnread(c))
+          .catch(() => setChatUnread(0));
 
         // Proje özeti: açık proje / görev / gecikmiş görev (backend hesaplar). Sessiz.
         api.getProjeOzet()
@@ -271,7 +286,11 @@ export const HomeScreen = () => {
     { title: 'Demirbaş', icon: 'cube-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ZimmetDashboard', params: undefined, requires: ['DemirbasYonetim', 'Zimmetlerim'] },
     { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined, requires: ['Tedarikci'] },
   ];
-  const allowedDashboards = allDashboards.filter(d => d.requires.some(r => allowedMobilUrls.has(r)));
+  const allowedDashboards = [
+    ...allDashboards.filter(d => d.requires.some(r => allowedMobilUrls.has(r))),
+    // Avans & Masraf — yeni mobil modül (her kullanıcıda görünür; backend yetki denetler)
+    { title: 'Avans & Masraf', icon: 'wallet-outline', color: '#0891b2', bg: '#ecfeff', screen: 'AvansMasraf', params: undefined as any, requires: [] as string[] },
+  ];
   
   // Modulleri Projeye gore grupla (Modal icin)
   const groupedModules = mobilePages.reduce((acc, m) => {
@@ -382,11 +401,19 @@ export const HomeScreen = () => {
             />
             
             <View style={styles.topActions}>
+              <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={() => navigation.navigate('ChatList')}>
+                <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
+                {chatUnread > 0 && (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeText}>{chatUnread > 9 ? '9+' : chatUnread}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
               <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={() => setIsNotifOpen(true)}>
                 <Ionicons name="notifications-outline" size={20} color="#fff" />
-                {notifications.length > 0 && (
+                {bildirimUnread > 0 && (
                   <View style={styles.bellBadge}>
-                    <Text style={styles.bellBadgeText}>{notifications.length > 9 ? '9+' : notifications.length}</Text>
+                    <Text style={styles.bellBadgeText}>{bildirimUnread > 9 ? '9+' : bildirimUnread}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -410,9 +437,17 @@ export const HomeScreen = () => {
                   )}
                 </View>
 
-                <View style={styles.roleBadge}>
-                  <Ionicons name="business-outline" size={12} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.roleText}>{userTitle}</Text>
+                <View style={styles.roleRow}>
+                  <View style={styles.roleBadge}>
+                    <Ionicons name="business-outline" size={12} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={styles.roleText}>{userTitle}</Text>
+                  </View>
+                  {/* Yıllık İzin — unvan yanında, unvan boyutunda rozet */}
+                  <TouchableOpacity style={styles.izinBadge} activeOpacity={0.8} onPress={() => navigation.navigate('Izin')}>
+                    <Ionicons name="calendar-outline" size={12} color="rgba(255,255,255,0.85)" style={{ marginRight: 5 }} />
+                    <Text style={styles.izinBadgeLabel}>Yıllık İzin: </Text>
+                    <Text style={[styles.izinBadgeValue, { color: (Number((user as any)?.yillikIzin) || 0) < 0 ? '#FCA5A5' : '#86EFAC' }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
+                  </TouchableOpacity>
                 </View>
               </>
             ) : (
@@ -429,83 +464,8 @@ export const HomeScreen = () => {
           {/* Metrik Kartları — Satır 1: İzin + Proje · Satır 2: IT/ERP/Bakım
               Her satır ayrı; alignItems flex-start → kartlar içerik boyuna göre
               kısalır (0 satırlar gizli), boşluk kalmaz. */}
-          {/* Satır 1: Sol sütun (Yıllık İzin üstte + Zimmetli Demirbaş altta) + HelpDesk matris */}
-          <View style={styles.metricRow}>
-            <View style={styles.leftCol}>
-              <View style={[styles.metricCard, styles.leftColCard]}>
-                <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
-                <Text style={styles.metricLabel}>Yıllık İzin</Text>
-                <View style={styles.izinValueWrap}>
-                  <Text style={[styles.metricValue, { color: slateTokens.danger, marginBottom: 0, fontSize: 22 }]}>{(user as any)?.yillikIzin ?? '-'}</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={[styles.metricCard, styles.leftColCard, { marginTop: 10 }]} activeOpacity={0.8}
-                onPress={() => navigation.navigate('Zimmetlerim')}>
-                <Ionicons name="cube-outline" size={16} color="rgba(255,255,255,0.6)" style={styles.metricIcon} />
-                <Text style={styles.metricLabel}>Zimmetli</Text>
-                <View style={styles.izinValueWrap}>
-                  <Text style={[styles.metricValue, { marginBottom: 0, fontSize: 22 }]}>{zimmetSayisi ?? '-'}</Text>
-                </View>
-                <Text style={styles.metricSub}>demirbaş</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.metricCard, styles.metricCardHd]}>
-              <View style={styles.matrixHeadRow}>
-                <Text style={styles.matrixTitle}>HelpDesk</Text>
-                <View style={styles.matrixCols}>
-                  {([
-                    { tur: 'IT', label: 'IT', title: 'IT HelpDesk' },
-                    { tur: 'ERP', label: 'ERP', title: 'ERP HelpDesk' },
-                    { tur: 'BAKIM', label: 'Bakım', title: 'Bakım HelpDesk' },
-                  ] as const).map(c => (
-                    <TouchableOpacity key={c.tur} style={styles.matrixColHead} activeOpacity={0.7}
-                      onPress={() => navigation.navigate('HelpDeskDashboard', { tur: c.tur, title: c.title })}>
-                      <Text style={styles.matrixColHeadText}>{c.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <View style={styles.matrixDivider} />
-              <View style={styles.matrixRows}>
-                {([
-                  { key: 'actigim', label: 'Talep Edilen' },
-                  { key: 'islem', label: 'İşlem' },
-                  { key: 'onay', label: 'Onay', color: slateTokens.warning },
-                ] as const).map((r) => (
-                  <View key={r.key} style={styles.matrixRow}>
-                    <Text style={styles.matrixRowLabel} numberOfLines={1}>{r.label}</Text>
-                    <View style={styles.matrixCols}>
-                      {(['IT', 'ERP', 'BAKIM'] as const).map(t => (
-                        <Text key={t} style={[styles.matrixCell, (r as any).color ? { color: (r as any).color } : null]}>
-                          {talepStats[t][r.key]}
-                        </Text>
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {/* Satır 2: Proje — tek satır kompakt */}
-          <TouchableOpacity style={[styles.metricCard, styles.projeRowCard]} activeOpacity={0.8} onPress={() => bottomNavRef.current?.openProjectsMenu?.()}>
-            <Ionicons name="briefcase-outline" size={16} color="rgba(255,255,255,0.75)" />
-            <Text style={styles.projeRowTitle}>Proje</Text>
-            <View style={styles.projeRowStats}>
-              <View style={styles.projeStat}>
-                <Text style={styles.projeNum}>{projeOzet?.acikProje ?? 0}</Text>
-                <Text style={styles.projeLbl}>Açık proje</Text>
-              </View>
-              <View style={styles.projeStat}>
-                <Text style={styles.projeNum}>{projeOzet?.gorev ?? 0}</Text>
-                <Text style={styles.projeLbl}>Görev</Text>
-              </View>
-              <View style={styles.projeStat}>
-                <Text style={[styles.projeNum, { color: slateTokens.danger }]}>{projeOzet?.gecikmis ?? 0}</Text>
-                <Text style={styles.projeLbl}>Gecikmiş</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+          {/* Zimmetli / HelpDesk matris / Proje özet kartları kaldırıldı (kullanıcı isteği).
+              Bu rakamlar Panolar ve ilgili ekranlardan erişilebilir. */}
         </SafeAreaView>
 
         {/* ── İÇERİK (Beyaz Overlap Alanı) ──────────────────── */}
@@ -766,24 +726,8 @@ export const HomeScreen = () => {
             })}
           </View>
 
-          {/* Bugünün Görevleri */}
-          <View style={[styles.section, { paddingBottom: 100 }]}>
-            <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="checkbox-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.sectionTitle}>Bugünün görevleri</Text>
-            </View>
-
-            {tasks.map(task => (
-              <TouchableOpacity key={task.id} style={styles.taskCard} activeOpacity={0.7}>
-                <View style={[styles.taskDot, { backgroundColor: task.dot }]} />
-                <View style={styles.taskContent}>
-                  <Text style={styles.taskTitle}>{task.title}</Text>
-                  <Text style={styles.taskSub}>{task.sub}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
+          {/* Alt boşluk (BottomNavBar için) */}
+          <View style={{ height: 100 }} />
           </>
           )}
           
@@ -946,72 +890,22 @@ export const HomeScreen = () => {
         </View>
       </Modal>
 
-      {/* Bildirimler (zil) — aksiyon bekleyen işler */}
-      <Modal
+      {/* Bildirim merkezi (zil) — yenilenen tb_Notification modülü */}
+      <NotificationCenter
         visible={isNotifOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsNotifOpen(false)}
-      >
-        <View style={styles.bottomSheetOverlay}>
-          <View style={styles.bottomSheetContent}>
-            <View style={styles.bottomSheetHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="notifications-outline" size={22} color={colors.primary} />
-                <Text style={styles.bottomSheetTitle}>Bildirimler</Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsNotifOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {notifications.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-                <Ionicons name="checkmark-done-circle-outline" size={56} color={colors.textSecondary} />
-                <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>Aksiyon bekleyen işiniz yok.</Text>
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 40 }}>
-                {notifications.map((n, i) => {
-                  const m = (n.modul || '').toUpperCase();
-                  const icon = m === 'IT' ? 'laptop-outline'
-                    : m === 'ERP' ? 'server-outline'
-                    : m === 'BAKIM' ? 'construct-outline'
-                    : (m === 'IZIN' || m === 'İZİN') ? 'calendar-outline'
-                    : m === 'TOPLANTI' ? 'people-outline'
-                    : 'notifications-outline';
-                  return (
-                    <TouchableOpacity
-                      key={`${n.kod}-${i}`}
-                      style={styles.notifItem}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setIsNotifOpen(false);
-                        setTimeout(() => {
-                          if (m === 'IT') navigation.navigate('ITHelpDesk');
-                          else if (m === 'ERP') navigation.navigate('ERPHelpDesk');
-                          else if (m === 'BAKIM') navigation.navigate('BakimHelpDesk');
-                          else if (m === 'IZIN' || m === 'İZİN') navigation.navigate('Izin');
-                        }, 200);
-                      }}
-                    >
-                      <View style={[styles.notifIconBox, { backgroundColor: colors.primaryLight + '40' }]}>
-                        <Ionicons name={icon as any} size={20} color={colors.primary} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.notifCategory}>{n.category || 'Bildirim'}</Text>
-                        <Text style={styles.notifDesc} numberOfLines={2}>{n.description || ''}</Text>
-                        <Text style={styles.notifMeta}>{n.kod}{n.date ? ` · ${n.date}` : ''}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setIsNotifOpen(false)}
+        onUnreadChange={setBildirimUnread}
+        onNavigate={(n) => {
+          const k = (n.kategori || '').toLowerCase();
+          setIsNotifOpen(false);
+          setTimeout(() => {
+            if (k === 'talep' || k === 'bakim') navigation.navigate('BakimHelpDesk');
+            else if (k === 'ticket') navigation.navigate('TicketDashboard');
+            else if (k === 'zimmet') navigation.navigate('Zimmetlerim');
+            else if (k === 'izin') navigation.navigate('Izin');
+          }, 200);
+        }}
+      />
 
       <BottomNavBar ref={bottomNavRef} currentScreen="Home" />
     </View>
@@ -1193,6 +1087,32 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       fontSize: 11,
       fontWeight: '700',
       color: '#FFF',
+    },
+    // Unvan + Yıllık İzin rozetleri yan yana (aynı boyut)
+    roleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+    },
+    izinBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 'auto',
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      alignSelf: 'flex-start',
+    },
+    izinBadgeLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: 'rgba(255,255,255,0.85)',
+    },
+    izinBadgeValue: {
+      fontSize: 11,
+      fontWeight: '800',
     },
 
     // METRICS

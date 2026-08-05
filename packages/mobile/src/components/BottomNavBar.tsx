@@ -9,7 +9,8 @@ import {
   TouchableWithoutFeedback,
   ScrollView,
   LayoutAnimation,
-  UIManager
+  UIManager,
+  Alert
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -42,6 +43,31 @@ interface BottomNavBarProps {
 export interface BottomNavBarHandle {
   openProjectsMenu: () => void;
 }
+
+// App.tsx'te kayıtlı (navigate edilebilir) ekranlar. DB'deki tb_Sayfa.MobilUrl
+// bunlardan biriyle eşleşmezse navigate sessizce başarısız olurdu; artık
+// kullanıcıya net uyarı veriyoruz (menü DB'den geldiği için veri kaynaklı).
+const REGISTERED_SCREENS = new Set<string>([
+  'Home', 'Ticket', 'Izin', 'IzinScreen', 'ITHelpDesk', 'ERPHelpDesk', 'BakimHelpDesk',
+  'ChatList', 'ChatConversation', 'AvansMasraf', 'TicketDashboard', 'BakimYonetim',
+  'BakimDashboard', 'BakimRapor', 'BakimPlan', 'ProjeList', 'ProjeDetail', 'PeriyodikKontrol',
+  'IzinDashboard', 'HelpDeskDashboard', 'ZimmetDashboard', 'TedarikciDashboard', 'Performans',
+  'Profil', 'Zimmetlerim', 'DemirbasYonetim', 'DemirbasSayim', 'Tedarikci', 'AdminAyarlar',
+  'AdminKullanici', 'AdminHelpDesk', 'AdminHiyerarsi', 'AdminLogs', 'AdminTarihce', 'Calendar',
+  'Training', 'Announcement', 'SatSas', 'SatDetail', 'SasDetail',
+]);
+
+// DB'deki eski/farklı MobilUrl değerlerini geçerli rotaya çevir (#60'ta 'Bakim'
+// ekranı 'BakimYonetim' hub'ına taşındı vb.).
+const ROUTE_ALIASES: Record<string, string> = {
+  Bakim: 'BakimYonetim',
+  BakimScreen: 'BakimYonetim',
+  Talepler: 'ITHelpDesk',
+  TalepScreen: 'ITHelpDesk',
+  Zimmet: 'Zimmetlerim',
+  Demirbas: 'DemirbasYonetim',
+  DemirbasYonetimi: 'DemirbasYonetim',
+};
 
 // ─── Hızlı Kayıt Seçenekleri ─────────────────────────────────────────────────
 
@@ -177,6 +203,18 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     }
   };
 
+  // Menü modülüne git. mobilUrl DB'den gelir; alias uygula, kayıtlı değilse uyar.
+  const navigateToModule = (mobilUrl?: string, sayfaAdi?: string) => {
+    let hedef = (mobilUrl || '').trim();
+    if (ROUTE_ALIASES[hedef]) hedef = ROUTE_ALIASES[hedef];
+    if (!hedef || !REGISTERED_SCREENS.has(hedef)) {
+      Alert.alert('Kullanılamıyor', `"${sayfaAdi || 'Bu modül'}" mobil uygulamada henüz mevcut değil.`);
+      return;
+    }
+    setIsProjectsMenuVisible(false);
+    setTimeout(() => navigation.navigate(hedef as any), 150);
+  };
+
   return (
     <>
       <View style={styles.container}>
@@ -303,7 +341,7 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
         <TouchableWithoutFeedback onPress={() => setIsProjectsMenuVisible(false)}>
           <View style={styles.bottomSheetOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.bottomSheetContent}>
+              <View style={[styles.bottomSheetContent, { flex: 1, maxHeight: '100%', borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingTop: insets.top + 8 }]}>
                 <View style={styles.bottomSheetHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Ionicons name="folder-open" size={22} color={colors.primary} />
@@ -389,16 +427,7 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
                                         marginBottom: 2,
                                       }}
                                       activeOpacity={0.7}
-                                      onPress={() => {
-                                        setIsProjectsMenuVisible(false);
-                                        setTimeout(() => {
-                                          // #60'ta 'Bakim' ekranı silindi; eski mobilUrl'i
-                                          // BakimYonetim hub'ına yönlendir.
-                                          let hedef = m.mobilUrl || 'Home';
-                                          if (hedef === 'Bakim' || hedef === 'BakimScreen') hedef = 'BakimYonetim';
-                                          navigation.navigate(hedef);
-                                        }, 150);
-                                      }}
+                                      onPress={() => navigateToModule(m.mobilUrl, m.sayfaAdi)}
                                     >
                                       <View
                                         style={{

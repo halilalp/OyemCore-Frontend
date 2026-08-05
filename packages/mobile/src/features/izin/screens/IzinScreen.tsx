@@ -683,7 +683,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     marginTop: 40,
   },
   listContainer: {
-    padding: 16,
+    paddingVertical: 16,
     gap: 8,
     paddingBottom: 32,
   },
