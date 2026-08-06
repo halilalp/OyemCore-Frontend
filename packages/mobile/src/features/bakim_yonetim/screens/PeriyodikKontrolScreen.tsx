@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform } from 'react-native';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { api, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { useThemeStore } from '../../../store/useThemeStore';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
+import { UserAvatar } from '../../../components/UserAvatar';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
@@ -45,6 +46,10 @@ export const PeriyodikKontrolScreen = () => {
   const [ctrlSarfiyats, setCtrlSarfiyats] = useState<PeriyodikSarfiyat[]>([]);
   const [ctrlSubTab, setCtrlSubTab] = useState<'gelisme' | 'sarfiyat'>('gelisme');
   const [newCtrlNot, setNewCtrlNot] = useState('');
+  // İşlem aksiyonları: orta FAB → menü (Not/Gelişme Ekle / Sarfiyat Ekle) → modal
+  const [ctrlActionsOpen, setCtrlActionsOpen] = useState(false);
+  const [ctrlNotModalOpen, setCtrlNotModalOpen] = useState(false);
+  const [ctrlSarfModalOpen, setCtrlSarfModalOpen] = useState(false);
   const [ctrlDosyaUrl, setCtrlDosyaUrl] = useState<string | null>(null);
   const [ctrlDosyaName, setCtrlDosyaName] = useState<string | null>(null);
   const [isCtrlFilePickerOpen, setIsCtrlFilePickerOpen] = useState(false);
@@ -59,6 +64,7 @@ export const PeriyodikKontrolScreen = () => {
   const [isCtrlDurumFltOpen, setIsCtrlDurumFltOpen] = useState(false);
 
   const [isNewCtrlOpen, setIsNewCtrlOpen] = useState(false);
+  const [editCtrlKodu, setEditCtrlKodu] = useState(''); // boş=yeni, dolu=güncelleme
   const [formCtrlKodu, setFormCtrlKodu] = useState('');
   const [formCtrlBolum, setFormCtrlBolum] = useState('');
   const [formCtrlTur, setFormCtrlTur] = useState('Elektrik');
@@ -155,6 +161,18 @@ export const PeriyodikKontrolScreen = () => {
     }
   };
 
+  // Kontrol bilgilerini düzenleme moduna al (yeni kontrol modalını doldurup açar).
+  const openEditCtrl = () => {
+    if (!selectedCtrl) return;
+    setEditCtrlKodu(selectedCtrl.kontrolKodu);
+    setFormCtrlBolum(selectedCtrl.bolumKodu || '');
+    setFormCtrlBaslangic(selectedCtrl.hedefBaslangicStr || '');
+    setFormCtrlBitis(selectedCtrl.hedefBitisStr || '');
+    setFormCtrlAciklama(selectedCtrl.aciklama || '');
+    setSelectedCtrl(null);
+    setIsNewCtrlOpen(true);
+  };
+
   const handleAddCtrlGelisme = async () => {
     if (!selectedCtrl || !newCtrlNot.trim()) return;
     try {
@@ -164,6 +182,7 @@ export const PeriyodikKontrolScreen = () => {
       setCtrlDosyaName(null);
       const gelismeler = await api.getPeriyodikGelismeler(selectedCtrl.kontrolKodu);
       setCtrlGelismeler(gelismeler || []);
+      setCtrlNotModalOpen(false);
       Alert.alert('Başarılı', 'Gelişme notu eklendi.');
     } catch (err: any) {
       Alert.alert('Hata', apiHataMesaji(err, 'Gelişme kaydedilemedi.'));
@@ -198,7 +217,7 @@ export const PeriyodikKontrolScreen = () => {
     }
     try {
       const res = await api.savePeriyodikKontrol({
-        kontrolKodu: '', // boş → backend KON-YYYYAA-ID olarak üretir
+        kontrolKodu: editCtrlKodu, // boş → yeni (KON-YYYYAA-ID); dolu → güncelle
         bolumKodu: formCtrlBolum,
         kontrolTuru: 'PERİYODİK KONTROL', // referans sabit değer
         hedefBaslangic: toISODate(formCtrlBaslangic),
@@ -206,8 +225,9 @@ export const PeriyodikKontrolScreen = () => {
         aciklama: formCtrlAciklama
       });
       if (res.success) {
-        Alert.alert('Başarılı', 'Periyodik kontrol kaydı oluşturuldu.');
+        Alert.alert('Başarılı', editCtrlKodu ? 'Periyodik kontrol güncellendi.' : 'Periyodik kontrol kaydı oluşturuldu.');
         setIsNewCtrlOpen(false);
+        setEditCtrlKodu('');
         setFormCtrlBolum('');
         setFormCtrlBaslangic('');
         setFormCtrlBitis('');
@@ -254,6 +274,7 @@ export const PeriyodikKontrolScreen = () => {
       setMaterialsList([]);
       const sarfiyatlar = await api.getPeriyodikSarfiyats(selectedCtrl.kontrolKodu);
       setCtrlSarfiyats(sarfiyatlar || []);
+      setCtrlSarfModalOpen(false);
       Alert.alert('Başarılı', 'Sarfiyat başarıyla eklendi.');
     } catch (err: any) {
       Alert.alert('Hata', apiHataMesaji(err, 'Sarfiyat kaydedilemedi.'));
@@ -364,7 +385,6 @@ export const PeriyodikKontrolScreen = () => {
                   <Text style={styles.cardDesc} numberOfLines={2}>{item.aciklama}</Text>
                   <View style={styles.cardFooter}>
                     <Text style={styles.cardFooterText}>📅 {item.hedefBaslangicStr} - {item.hedefBitisStr}</Text>
-                    <Text style={styles.cardFooterText}>👤 {item.kayitYapan}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -414,6 +434,8 @@ export const PeriyodikKontrolScreen = () => {
                   </View>
                 </View>
 
+                {/* Tüm aksiyonlar orta FAB → menüden (Düzenle/Başlat/Gelişme/Sarfiyat/Tamamla/İptal) */}
+
                 {/* Kontrol işlemleri artık sabit alt barda (aşağıda) */}
 
                 {/* Inner Subtabs (Gelişme vs Sarfiyat) */}
@@ -440,7 +462,10 @@ export const PeriyodikKontrolScreen = () => {
                       ctrlGelismeler.map(n => (
                         <View key={n.id} style={styles.logCard}>
                           <View style={styles.logHeader}>
-                            <Text style={styles.logUser}>👤 {n.personel}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                              <UserAvatar sicilNo={(n as any).kayitSicil} name={n.personel} size={26} />
+                              <Text style={styles.logUser} numberOfLines={1}>{n.personel}</Text>
+                            </View>
                             <Text style={styles.logTime}>{n.tarihStr}</Text>
                           </View>
                           <Text style={styles.logBody}>{n.aciklama}</Text>
@@ -451,39 +476,7 @@ export const PeriyodikKontrolScreen = () => {
                       ))
                     )}
 
-                    {/* Add note */}
-                    {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
-                      <View style={styles.addNoteForm}>
-                        <TextInput
-                          style={styles.textInput}
-                          placeholder="Gelişme açıklaması..."
-                          placeholderTextColor={colors.placeholder}
-                          value={newCtrlNot}
-                          onChangeText={setNewCtrlNot}
-                        />
-                        {ctrlDosyaName && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
-                            <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
-                            <Text style={{ marginLeft: 6, color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
-                              {ctrlDosyaName}
-                            </Text>
-                            <TouchableOpacity onPress={() => { setCtrlDosyaUrl(null); setCtrlDosyaName(null); }}>
-                              <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                        <TouchableOpacity
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, marginTop: 8 }}
-                          onPress={() => setIsCtrlFilePickerOpen(true)}
-                        >
-                          <Ionicons name="attach-outline" size={18} color={colors.primary} />
-                          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Dosya Ekle</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleAddCtrlGelisme}>
-                          <Text style={styles.submitBtnText}>Gelişme Ekle</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                    {/* Gelişme ekleme artık orta FAB → modalından yapılıyor */}
                   </View>
                 ) : (
                   <View style={styles.sarfiyatSection}>
@@ -504,104 +497,13 @@ export const PeriyodikKontrolScreen = () => {
                       ))
                     )}
 
-                    {/* Add Sarfiyat form */}
-                    {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
-                      <View style={styles.addSarfiyatForm}>
-                        <Text style={styles.sectionHeader}>Yeni Sarfiyat Ekle</Text>
-                        
-                        {/* Material Search */}
-                        <View style={styles.formGroup}>
-                          <Text style={styles.formLabel}>Malzeme Arama *</Text>
-                          <TextInput
-                            style={styles.textInput}
-                            placeholder="Malzeme adı veya kodu yazın..."
-                            placeholderTextColor={colors.placeholder}
-                            value={materialSearch}
-                            onChangeText={handleMaterialSearch}
-                          />
-                          {materialsList.length > 0 && (
-                            <View style={styles.searchResultsDropdown}>
-                              {materialsList.map(m => (
-                                <TouchableOpacity 
-                                  key={m.malzemeKodu} 
-                                  style={styles.searchResultItem}
-                                  onPress={() => {
-                                    setSelectedMaterial(m);
-                                    setMaterialSearch(`${m.malzemeAdi} (${m.malzemeKodu})`);
-                                    setMaterialsList([]);
-                                  }}
-                                >
-                                  <Text style={styles.searchResultText}>{m.malzemeAdi} ({m.olcuBirimi})</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          )}
-                        </View>
-
-                        {/* Miktar */}
-                        <View style={styles.formGroup}>
-                          <Text style={styles.formLabel}>Miktar *</Text>
-                          <TextInput
-                            style={styles.textInput}
-                            placeholder="Örn: 2"
-                            placeholderTextColor={colors.placeholder}
-                            keyboardType="numeric"
-                            value={materialQty}
-                            onChangeText={setMaterialQty}
-                          />
-                        </View>
-
-                        {/* Makine Selection */}
-                        <View style={styles.formGroup}>
-                          <Text style={styles.formLabel}>İlgili Makine *</Text>
-                          <TouchableOpacity style={styles.selectBox} onPress={() => setIsSarfMachineOpen(true)}>
-                            <Text style={styles.selectBoxText}>
-                              {dropdowns?.makines?.find((m: any) => m.makineKodu === selectedMachineKodu)?.makineAdi || 'Makine Seçin'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleAddSarfiyat}>
-                          <Text style={styles.submitBtnText}>Sarfiyatı Ekle</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                    {/* Sarfiyat ekleme artık orta FAB → modalından yapılıyor */}
                   </View>
                 )}
               </ScrollView>
             </View>
 
-            {/* Sabit alt işlem barı — kontrol aksiyonları (başlat/tamamla/iptal) */}
-            {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
-              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 26, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card }}>
-                {selectedCtrl.durum === 'BEKLEMEDE' && (
-                  <TouchableOpacity
-                    style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.infoLight, justifyContent: 'center', alignItems: 'center' }}
-                    onPress={() => handleUpdateCtrlStatus('DEVAM')}
-                  >
-                    <Ionicons name="play" size={18} color={colors.info} />
-                    <Text style={{ color: colors.info, fontWeight: '700' }}>Başlat</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' }}
-                  onPress={() => handleUpdateCtrlStatus('TAMAMLANDI')}
-                >
-                  <Ionicons name="checkmark-done" size={18} color={colors.primary} />
-                  <Text style={{ color: colors.primary, fontWeight: '700' }}>Tamamla</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ flex: 1, flexDirection: 'row', gap: 6, height: 48, borderRadius: 12, backgroundColor: colors.dangerLight, justifyContent: 'center', alignItems: 'center' }}
-                  onPress={() => Alert.alert('Kontrolü İptal Et', 'Bu periyodik kontrolü iptal etmek istediğinize emin misiniz?', [
-                    { text: 'Vazgeç', style: 'cancel' },
-                    { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdateCtrlStatus('IPTAL') },
-                  ])}
-                >
-                  <Ionicons name="close-circle" size={18} color={colors.danger} />
-                  <Text style={{ color: colors.danger, fontWeight: '700' }}>İptal Et</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            {/* İşlem aksiyonları tek orta FAB → menüde (aşağıda) */}
 
             {/* Makine seçici detay modalının İÇİNDE — üstte açılması için */}
             <SearchableSelectorModal
@@ -623,15 +525,132 @@ export const PeriyodikKontrolScreen = () => {
                 setCtrlDosyaName(file.fileName);
               }}
             />
+
+            {/* Standart alt bar (HelpDesk formatı): Gelişme | ⋯ menü | Tamamla */}
+            {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#FFFFFF', borderRadius: 30, height: 66, marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16, elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, overflow: 'visible' }}>
+                <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} onPress={() => setCtrlNotModalOpen(true)}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.primary} />
+                </TouchableOpacity>
+                <View style={{ flex: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <TouchableOpacity style={{ position: 'absolute', top: -18, width: 64, height: 64, borderRadius: 32, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }} onPress={() => setCtrlActionsOpen(true)}>
+                    <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10 }}>
+                      <Ionicons name="ellipsis-horizontal" size={26} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} onPress={() => handleUpdateCtrlStatus('TAMAMLANDI')}>
+                  <Ionicons name="checkmark-circle-outline" size={30} color={colors.success} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Aksiyon menüsü — Düzenle/Başlat/Gelişme/Sarfiyat/Tamamla/İptal */}
+            <Modal visible={ctrlActionsOpen} transparent animationType="fade" onRequestClose={() => setCtrlActionsOpen(false)}>
+              <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setCtrlActionsOpen(false)}>
+                <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 32 }}>
+                  <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 8 }} />
+                  {mode === 'plan' && selectedCtrl.durum === 'BEKLEMEDE' && (
+                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setCtrlActionsOpen(false); openEditCtrl(); }}>
+                      <Ionicons name="create-outline" size={22} color={colors.primary} />
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Kontrolü Düzenle</Text>
+                    </TouchableOpacity>
+                  )}
+                  {selectedCtrl.durum === 'BEKLEMEDE' && (
+                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setCtrlActionsOpen(false); handleUpdateCtrlStatus('DEVAM'); }}>
+                      <Ionicons name="play" size={22} color={colors.info} />
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Başlat</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setCtrlActionsOpen(false); setCtrlSarfModalOpen(true); }}>
+                    <Ionicons name="cube-outline" size={22} color={colors.primary} />
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Sarfiyat Ekle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 }} onPress={() => { setCtrlActionsOpen(false); Alert.alert('Kontrolü İptal Et', 'Bu periyodik kontrolü iptal etmek istediğinize emin misiniz?', [{ text: 'Vazgeç', style: 'cancel' }, { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdateCtrlStatus('IPTAL') }]); }}>
+                    <Ionicons name="close-circle" size={22} color={colors.danger} />
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.danger }}>İptal Et</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+            {/* Gelişme Ekle modal (dosya ekleme dahil) */}
+            <Modal visible={ctrlNotModalOpen} transparent animationType="fade" onRequestClose={() => setCtrlNotModalOpen(false)}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+                <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Gelişme Ekle</Text>
+                    <TouchableOpacity onPress={() => setCtrlNotModalOpen(false)}><Ionicons name="close" size={22} color={colors.textSecondary} /></TouchableOpacity>
+                  </View>
+                  <TextInput style={[styles.textInput, { height: 90, textAlignVertical: 'top' }]} placeholder="Gelişme açıklaması..." placeholderTextColor={colors.placeholder} value={newCtrlNot} onChangeText={setNewCtrlNot} multiline />
+                  {ctrlDosyaName && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
+                      <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
+                      <Text style={{ marginLeft: 6, color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>{ctrlDosyaName}</Text>
+                      <TouchableOpacity onPress={() => { setCtrlDosyaUrl(null); setCtrlDosyaName(null); }}>
+                        <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, marginTop: 8 }} onPress={() => setIsCtrlFilePickerOpen(true)}>
+                    <Ionicons name="attach-outline" size={18} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Dosya Ekle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.submitBtn, { marginTop: 12 }]} onPress={handleAddCtrlGelisme}>
+                    <Text style={styles.submitBtnText}>Kaydet</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+
+            {/* Sarfiyat Ekle modal */}
+            <Modal visible={ctrlSarfModalOpen} transparent animationType="fade" onRequestClose={() => setCtrlSarfModalOpen(false)}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+                <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18, maxHeight: '80%' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Sarfiyat Ekle</Text>
+                    <TouchableOpacity onPress={() => setCtrlSarfModalOpen(false)}><Ionicons name="close" size={22} color={colors.textSecondary} /></TouchableOpacity>
+                  </View>
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    <View style={styles.formGroup}>
+                      <Text style={styles.formLabel}>Malzeme Arama *</Text>
+                      <TextInput style={styles.textInput} placeholder="Malzeme adı veya kodu yazın..." placeholderTextColor={colors.placeholder} value={materialSearch} onChangeText={handleMaterialSearch} />
+                      {materialsList.length > 0 && (
+                        <View style={styles.searchResultsDropdown}>
+                          {materialsList.map(m => (
+                            <TouchableOpacity key={m.malzemeKodu} style={styles.searchResultItem} onPress={() => { setSelectedMaterial(m); setMaterialSearch(`${m.malzemeAdi} (${m.malzemeKodu})`); setMaterialsList([]); }}>
+                              <Text style={styles.searchResultText}>{m.malzemeAdi} ({m.olcuBirimi})</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.formLabel}>Miktar *</Text>
+                      <TextInput style={styles.textInput} placeholder="Örn: 2" placeholderTextColor={colors.placeholder} keyboardType="numeric" value={materialQty} onChangeText={setMaterialQty} />
+                    </View>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.formLabel}>İlgili Makine *</Text>
+                      <TouchableOpacity style={styles.selectBox} onPress={() => setIsSarfMachineOpen(true)}>
+                        <Text style={styles.selectBoxText}>{dropdowns?.makines?.find((m: any) => m.makineKodu === selectedMachineKodu)?.makineAdi || 'Makine Seçin'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={[styles.submitBtn, { marginTop: 6 }]} onPress={handleAddSarfiyat}>
+                      <Text style={styles.submitBtnText}>Kaydet</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </View>
+            </Modal>
           </View>
         )}
         <KeyboardDismissBar />
       </Modal>
 
       {/* NEW PERIODIC CONTROL MODAL */}
-      <Modal visible={isNewCtrlOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsNewCtrlOpen(false)}>
+      <Modal visible={isNewCtrlOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => { setIsNewCtrlOpen(false); setEditCtrlKodu(''); }}>
         <View style={styles.modalContainer}>
-          <CreateModalHeader title="Yeni Periyodik Kontrol" onClose={() => setIsNewCtrlOpen(false)} colorTheme="purple" />
+          <CreateModalHeader title={editCtrlKodu ? 'Periyodik Kontrol Düzenle' : 'Yeni Periyodik Kontrol'} onClose={() => { setIsNewCtrlOpen(false); setEditCtrlKodu(''); }} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
             <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
@@ -713,7 +732,7 @@ export const PeriyodikKontrolScreen = () => {
               </View>
 
               <View style={styles.formActionsRow}>
-                <TouchableOpacity style={styles.formCancelBtn} onPress={() => setIsNewCtrlOpen(false)}>
+                <TouchableOpacity style={styles.formCancelBtn} onPress={() => { setIsNewCtrlOpen(false); setEditCtrlKodu(''); }}>
                   <Text style={styles.formCancelBtnText}>İptal</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.formSubmitBtn} onPress={handleSaveCtrl}>
@@ -804,7 +823,7 @@ export const PeriyodikKontrolScreen = () => {
         customAction={
           // Yeni kontrol yalnız planlama modunda; işlem modunda mevcut kayıt işlenir.
           mode === 'plan'
-            ? { icon: 'add', label: 'Yeni Kontrol', onPress: () => setIsNewCtrlOpen(true) }
+            ? { icon: 'add', label: 'Yeni Kontrol', onPress: () => { setEditCtrlKodu(''); setFormCtrlBolum(''); setFormCtrlBaslangic(''); setFormCtrlBitis(''); setFormCtrlAciklama(''); setIsNewCtrlOpen(true); } }
             : undefined
         }
       />

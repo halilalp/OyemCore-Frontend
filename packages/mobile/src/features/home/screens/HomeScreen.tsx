@@ -286,11 +286,8 @@ export const HomeScreen = () => {
     { title: 'Demirbaş', icon: 'cube-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ZimmetDashboard', params: undefined, requires: ['DemirbasYonetim', 'Zimmetlerim'] },
     { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined, requires: ['Tedarikci'] },
   ];
-  const allowedDashboards = [
-    ...allDashboards.filter(d => d.requires.some(r => allowedMobilUrls.has(r))),
-    // Avans & Masraf — yeni mobil modül (her kullanıcıda görünür; backend yetki denetler)
-    { title: 'Avans & Masraf', icon: 'wallet-outline', color: '#0891b2', bg: '#ecfeff', screen: 'AvansMasraf', params: undefined as any, requires: [] as string[] },
-  ];
+  // Avans & Masraf artık panolarda değil; Yetkili Projeler menüsünde (BottomNavBar).
+  const allowedDashboards = allDashboards.filter(d => d.requires.some(r => allowedMobilUrls.has(r)));
   
   // Modulleri Projeye gore grupla (Modal icin)
   const groupedModules = mobilePages.reduce((acc, m) => {
@@ -903,6 +900,7 @@ export const HomeScreen = () => {
             else if (k === 'ticket') navigation.navigate('TicketDashboard');
             else if (k === 'zimmet') navigation.navigate('Zimmetlerim');
             else if (k === 'izin') navigation.navigate('Izin');
+            else if (k === 'avans' || k === 'masraf') navigation.navigate('AvansMasraf');
           }, 200);
         }}
       />

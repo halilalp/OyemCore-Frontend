@@ -12,6 +12,7 @@ import { DatePickerModal } from '../../../components/DatePickerModal';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { FilePickerSheet } from '../../../components/FilePickerSheet';
 import { AttachmentPreview } from '../../../components/AttachmentPreview';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { apiHataMesaji } from '../../../utils/apiError';
 
 // Proje / Toplantı detayı (Faz 1). Referans: ToplantiDetay + HelpDesk talep detay standardı.
@@ -88,7 +89,7 @@ export const ProjeDetailScreen = () => {
         baslamaTar: gBaslama,
         terminTar: gTermin,
       });
-      setGorevModal(false);
+      closeGorevModal();
       setGAciklama(''); setGSorumlu(null); setGBaslama(''); setGTermin('');
       load();
     } catch (e: any) {
@@ -132,6 +133,28 @@ export const ProjeDetailScreen = () => {
     } catch (e: any) {
       Alert.alert('Hata', apiHataMesaji(e, 'Personel listesi alınamadı.'));
     }
+  };
+
+  // Sorumlu seçici: tüm aktif personelden (katılımcı yoksa liste boş kalmasın).
+  const acSorumluSecici = async () => {
+    try {
+      if (personeller.length === 0) {
+        const list = await api.getProjeAktifPersoneller('');
+        setPersoneller(list || []);
+      }
+      setSorumluSelect(true);
+    } catch (e: any) {
+      Alert.alert('Hata', apiHataMesaji(e, 'Personel listesi alınamadı.'));
+    }
+  };
+
+  // Görev modalını kapatırken açık kalan alt seçicileri de kapat (iç içe modal
+  // orphan overlay → UI kilitlenmesi önlenir).
+  const closeGorevModal = () => {
+    setSorumluSelect(false);
+    setBaslamaPicker(false);
+    setTerminPicker(false);
+    setGorevModal(false);
   };
 
   const ekleKatilimci = async (eposta: string) => {
@@ -420,12 +443,12 @@ export const ProjeDetailScreen = () => {
       </Modal>
 
       {/* Yeni Görev Modalı */}
-      <Modal visible={gorevModal} transparent animationType="slide" onRequestClose={() => setGorevModal(false)}>
+      <Modal visible={gorevModal} transparent animationType="slide" onRequestClose={closeGorevModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Yeni Görev</Text>
-              <TouchableOpacity onPress={() => setGorevModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <TouchableOpacity onPress={closeGorevModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -441,7 +464,7 @@ export const ProjeDetailScreen = () => {
             />
 
             <Text style={styles.formLabel}>Sorumlu *</Text>
-            <TouchableOpacity style={styles.selectBox} onPress={() => setSorumluSelect(true)}>
+            <TouchableOpacity style={styles.selectBox} onPress={acSorumluSecici}>
               <Text style={{ color: gSorumlu ? colors.text : colors.placeholder }}>
                 {gSorumlu ? gSorumlu.ad : 'Sorumlu seçin'}
               </Text>
@@ -469,16 +492,17 @@ export const ProjeDetailScreen = () => {
               <Text style={styles.kaydetText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
             </TouchableOpacity>
           </View>
+          <KeyboardDismissBar />
         </View>
       </Modal>
 
       <SearchableSelectorModal
         visible={sorumluSelect}
         onClose={() => setSorumluSelect(false)}
-        onSelect={(item) => setGSorumlu(item)}
-        data={sorumluAdaylari}
+        onSelect={(item) => setGSorumlu({ eposta: item.eposta, ad: item.ad })}
+        data={personeller}
         keyExtractor={(item) => item.eposta}
-        labelExtractor={(item) => item.ad}
+        labelExtractor={(item) => `${item.ad}${item.sicilNo ? ` (${item.sicilNo})` : ''}`}
         title="Sorumlu Seçin"
       />
       <DatePickerModal visible={baslamaPicker} onClose={() => setBaslamaPicker(false)} onSelectDate={(d) => setGBaslama(d)} title="Başlama Tarihi" />

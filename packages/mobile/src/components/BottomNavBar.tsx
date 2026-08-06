@@ -69,6 +69,21 @@ const ROUTE_ALIASES: Record<string, string> = {
   DemirbasYonetimi: 'DemirbasYonetim',
 };
 
+// Bakım Yönetimi alt sayfaları DB'de ayrı mobilUrl'lerle gelir ama mobilde
+// BakimPlan/PeriyodikKontrol ekranları mode paramıyla açılır (BakimYonetim hub
+// ile aynı hedefler). Sayfa adına göre doğru ekran+moda yönlendir.
+const resolveBakimRoute = (s: string): { screen: string; params?: any } | null => {
+  const has = (w: string) => s.includes(w);
+  if (!(has('bakım') || has('bakim') || has('periyodik'))) return null;
+  const islem = has('işlem') || has('islem') || has('uygula');
+  if (has('periyodik')) return { screen: 'PeriyodikKontrol', params: { mode: islem ? 'uygula' : 'plan' } };
+  if (has('plan')) return { screen: 'BakimPlan', params: { mode: islem ? 'uygula' : 'plan' } };
+  if (has('dashboard') || has('pano') || has('gösterge')) return { screen: 'BakimDashboard' };
+  if (has('rapor')) return { screen: 'BakimRapor' };
+  if (has('talep') || has('arıza') || has('ariza')) return { screen: 'BakimHelpDesk' };
+  return { screen: 'BakimYonetim' };
+};
+
 // ─── Hızlı Kayıt Seçenekleri ─────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
@@ -141,6 +156,16 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     }
   });
 
+  // Avans & Masraf — mobile özel modül; DB menüsünde yok, Yetkili Projeler'e statik eklenir
+  // (backend ekran açılışında yetki denetler).
+  if (!mobilePages.some(m => m.mobilUrl === 'AvansMasraf')) {
+    mobilePages.push({
+      sayfaAdi: 'Avans & Masraf', mobilUrl: 'AvansMasraf', sayfaUrl: 'AvansMasraf',
+      projeAdi: 'Avans & Masraf', ikon: 'wallet-outline', mobilIcon: 'wallet-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
   const groupedModules = mobilePages.reduce((acc, m) => {
     const proj = m.projeAdi || 'Diğer';
     if (!acc[proj]) acc[proj] = [];
@@ -155,6 +180,7 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     if (name.includes('proje') || name.includes('görev')) return 'calendar-outline';
     if (name.includes('data') || name.includes('veri')) return 'server-outline';
     if (name.includes('performans')) return 'analytics-outline';
+    if (name.includes('avans') || name.includes('masraf')) return 'wallet-outline';
     if (name.includes('kasa') || name.includes('muhasebe') || name.includes('finans')) return 'cash-outline';
     if (name.includes('helpdesk') || name.includes('talep') || name.includes('ticket')) return 'keypad-outline';
     if (name.includes('fikir')) return 'bulb-outline';
@@ -207,7 +233,16 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const navigateToModule = (mobilUrl?: string, sayfaAdi?: string) => {
     let hedef = (mobilUrl || '').trim();
     if (ROUTE_ALIASES[hedef]) hedef = ROUTE_ALIASES[hedef];
-    if (!hedef || !REGISTERED_SCREENS.has(hedef)) {
+
+    // Kayıtlı değilse: bakım alt sayfalarını sayfa adına göre doğru ekran+moda
+    // yönlendir (Bakım Planı→plan, Bakım Planı İşlem→uygula, Periyodik→..., vb.).
+    if (!REGISTERED_SCREENS.has(hedef)) {
+      const br = resolveBakimRoute(`${sayfaAdi || ''} ${mobilUrl || ''}`.toLowerCase());
+      if (br) {
+        setIsProjectsMenuVisible(false);
+        setTimeout(() => navigation.navigate(br.screen as any, br.params as any), 150);
+        return;
+      }
       Alert.alert('Kullanılamıyor', `"${sayfaAdi || 'Bu modül'}" mobil uygulamada henüz mevcut değil.`);
       return;
     }

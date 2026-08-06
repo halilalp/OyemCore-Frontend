@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, StatusBar, Platform, KeyboardAvoidingView, Alert, Modal, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, StatusBar, Platform, KeyboardAvoidingView, Alert, Modal, ScrollView, Image, Vibration } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { getBase64FromFileUri } from '../../../utils/fileUtils';
+import { getBase64FromFileUri, isImageFile, buildFileDownloadUrl, openFileLink } from '../../../utils/fileUtils';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { api, ChatMessage, slateTokens } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
@@ -70,6 +71,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
   const [infoLoading, setInfoLoading] = useState(false);
   const [msgInfo, setMsgInfo] = useState<any | null>(null);
   const [actionMsg, setActionMsg] = useState<ChatMessage | null>(null);
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
 
   const belongsHere = useCallback((m: ChatMessage): boolean => {
@@ -235,8 +237,9 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
     ]);
   };
 
-  // Mesaja basılı tut → aksiyon menüsü (Yanıtla / Bilgi)
+  // Mesaja basılı tut → hafif titreşim + aksiyon menüsü (Yanıtla / Bilgi)
   const openActions = (item: ChatMessage) => {
+    try { Vibration.vibrate(20); } catch (_) {}
     setActionMsg(item);
   };
 
@@ -288,10 +291,27 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
             </View>
           )}
           {!!item.dosyaAdi && (
-            <View style={styles.fileBox}>
-              <Ionicons name="document-outline" size={18} color={colors.primary} />
-              <Text style={styles.fileName} numberOfLines={1}>{item.dosyaAdi}</Text>
-            </View>
+            isImageFile(item.dosyaAdi) ? (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setViewerImage(buildFileDownloadUrl({ relativePath: (item as any).dosyaYolu || '' }, { inline: true }))}
+              >
+                <Image
+                  source={{ uri: buildFileDownloadUrl({ relativePath: (item as any).dosyaYolu || '' }, { inline: true }) }}
+                  style={styles.imageThumb}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.fileBox} activeOpacity={0.7} onPress={() => openFileLink((item as any).dosyaYolu || '')}>
+                <Ionicons name="document-outline" size={20} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fileName} numberOfLines={1}>{item.dosyaAdi}</Text>
+                  <Text style={styles.fileHint}>İndirmek için dokun</Text>
+                </View>
+                <Ionicons name="download-outline" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )
           )}
           {!!item.mesajMetni && <Text style={styles.msgText}>{item.mesajMetni}</Text>}
           <View style={styles.msgMeta}>
@@ -474,6 +494,20 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
           </View>
         </View>
       </Modal>
+
+      {/* Tam ekran resim görüntüleyici */}
+      <Modal visible={!!viewerImage} transparent animationType="fade" onRequestClose={() => setViewerImage(null)}>
+        <View style={styles.viewerBackdrop}>
+          <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerImage(null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+          {!!viewerImage && (
+            <Image source={{ uri: viewerImage }} style={styles.viewerImage} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
+
+      <KeyboardDismissBar />
     </View>
   );
 };
@@ -508,8 +542,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   headerStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   attachBtn: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
-  fileBox: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
-  fileName: { fontSize: 13, color: colors.text, flex: 1 },
+  fileBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  fileName: { fontSize: 13, color: colors.text },
+  fileHint: { fontSize: 10.5, color: colors.textMuted, marginTop: 1 },
+  imageThumb: { width: 200, height: 200, borderRadius: 12, backgroundColor: colors.border },
+  viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', alignItems: 'center', justifyContent: 'center' },
+  viewerClose: { position: 'absolute', top: 48, right: 20, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  viewerImage: { width: '100%', height: '80%' },
   actionBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
   actionSheet: { backgroundColor: colors.card, borderRadius: 16, minWidth: 200, paddingVertical: 4, elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   actionItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14 },

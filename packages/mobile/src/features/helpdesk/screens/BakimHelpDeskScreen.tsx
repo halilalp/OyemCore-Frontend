@@ -1993,7 +1993,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
               {/* Fixed Bottom Action & Composer Bar Wrapper */}
               {selectedRequest.durum !== 'Kapalı' && selectedRequest.durum !== 'KAPATILDI' && (
-                <View style={[styles.fixedComposerWrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+                <View style={styles.fixedComposerWrapper}>
                   {progressDosyaName && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 6, borderRadius: 6, marginBottom: 6, marginHorizontal: 12, borderWidth: 1, borderColor: colors.border }}>
                       <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
