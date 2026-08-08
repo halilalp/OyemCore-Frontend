@@ -1052,8 +1052,19 @@ export const TicketScreen = () => {
                     </TouchableOpacity>
                   </View>
 
+                  {/* Havuza Al */}
+                  {surecDurumu !== 'HAVUZ' && (
+                    <TouchableOpacity
+                      style={[styles.sheetItem, { backgroundColor: colors.accentLight + '80', borderColor: colors.accent + '40' }]}
+                      onPress={() => handleUpdateStatus('HAVUZ')}
+                    >
+                      <Ionicons name="archive-outline" size={22} color={colors.accent} />
+                      <Text style={[styles.sheetItemText, { color: colors.accent, fontWeight: '700' }]}>Havuza Al</Text>
+                    </TouchableOpacity>
+                  )}
+
                   {/* İşleme Al */}
-                  {surecDurumu !== 'ISLEM' && surecDurumu !== 'TAMAM' && (
+                  {surecDurumu !== 'ISLEM' && (
                     <TouchableOpacity
                       style={[styles.sheetItem, { backgroundColor: colors.warningLight + '80', borderColor: colors.warning + '40' }]}
                       onPress={() => handleUpdateStatus('ISLEM')}
@@ -1064,7 +1075,7 @@ export const TicketScreen = () => {
                   )}
 
                   {/* Teste Al */}
-                  {surecDurumu !== 'TEST' && surecDurumu !== 'TAMAM' && (
+                  {surecDurumu !== 'TEST' && (
                     <TouchableOpacity
                       style={[styles.sheetItem, { backgroundColor: colors.primaryLight + '80', borderColor: colors.primary + '40' }]}
                       onPress={() => handleUpdateStatus('TEST')}
