@@ -484,7 +484,7 @@ export const BakimPlanScreen = () => {
             {/* Makine seçici (hatta bağlı) — detay modalının İÇİNDE (iOS'ta üstte) */}
             <SearchableSelectorModal
               visible={isSarfMachineOpen}
-              onClose={() => setIsSarfMachineOpen(false)}
+              onClose={() => { setIsSarfMachineOpen(false); setSarfModalOpen(true); }}
               onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
               data={hatMakines}
               keyExtractor={(item) => item.makineKodu}
@@ -584,7 +584,7 @@ export const BakimPlanScreen = () => {
                     </View>
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>İlgili Makine (hatta bağlı) *</Text>
-                      <TouchableOpacity style={styles.selectBox} onPress={() => setIsSarfMachineOpen(true)}>
+                      <TouchableOpacity style={styles.selectBox} onPress={() => { setSarfModalOpen(false); setIsSarfMachineOpen(true); }}>
                         <Text style={styles.selectBoxText}>{hatMakines.find((m: any) => m.makineKodu === selectedMachineKodu)?.makineAdi || 'Makine Seçin'}</Text>
                       </TouchableOpacity>
                     </View>

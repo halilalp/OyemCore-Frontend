@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { BarChart } from 'react-native-gifted-charts';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
+// const BarChart: any = null;
+const BarChart: any = null;
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused, useRoute } from '@react-navigation/native';
@@ -17,6 +18,7 @@ export const HelpDeskDashboardScreen = () => {
   const isFocused = useIsFocused();
   const route = useRoute<any>();
   const styles = createStyles(colors);
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath');
 
   const tur: string = route.params?.tur || 'IT';
   const baslik: string = route.params?.title || (tur === 'ERP' ? 'ERP HelpDesk' : tur === 'BAKIM' ? 'Bakım HelpDesk' : 'IT HelpDesk');
@@ -94,7 +96,7 @@ export const HelpDeskDashboardScreen = () => {
             <StatTile label="Ort. İş Yükü" value={num(kpi, 'ortIsYuku').toFixed(1)} icon="people-outline" color="#14b8a6" />
           </View>
 
-          {perfBars.length > 0 && (
+          {perfBars.length > 0 && isSvgSupported && (
             <ChartCard title="Personel Performansı" subtitle="Tamamlanan talep sayısı">
               <BarChart data={perfBars} width={chartWidth} height={180} barWidth={24} spacing={14}
                 initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}

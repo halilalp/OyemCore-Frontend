@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { LineChart, BarChart } from 'react-native-gifted-charts';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
+// const LineChart: any = null; const BarChart: any = null;
+const LineChart: any = null;
+const BarChart: any = null;
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
@@ -18,6 +20,7 @@ export const TicketDashboardScreen = () => {
   const { colors } = useThemeStore();
   const isFocused = useIsFocused();
   const styles = createStyles(colors);
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath');
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -143,18 +146,29 @@ export const TicketDashboardScreen = () => {
           {/* Trend (Son 15 gün) */}
           <ChartCard title="Yeni Talep Trendi" subtitle="Son 15 gün, günlük açılan bilet">
             {trendData.length > 0 ? (
-              <LineChart
-                data={trendData} width={chartWidth} height={180}
-                areaChart curved
-                color={colors.primary} startFillColor={colors.primary}
-                startOpacity={0.35} endOpacity={0.03} thickness={2}
-                yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4} rulesColor={colors.border}
-                spacing={Math.max(18, chartWidth / Math.max(trendData.length, 1) - 6)}
-                initialSpacing={12} hideDataPoints={trendData.length > 12}
-              />
+              isSvgSupported ? (
+                <LineChart
+                  data={trendData} width={chartWidth} height={180}
+                  areaChart curved
+                  color={colors.primary} startFillColor={colors.primary}
+                  startOpacity={0.35} endOpacity={0.03} thickness={2}
+                  yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4} rulesColor={colors.border}
+                  spacing={Math.max(18, chartWidth / Math.max(trendData.length, 1) - 6)}
+                  initialSpacing={12} hideDataPoints={trendData.length > 12}
+                />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {trendData.slice(-6).map((t, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{t.value} Bilet</Text>
+                    </View>
+                  ))}
+                </View>
+              )
             ) : <Text style={styles.empty}>Trend verisi yok.</Text>}
           </ChartCard>
 
@@ -162,13 +176,15 @@ export const TicketDashboardScreen = () => {
           <ChartCard title="Kategori Dağılımı" subtitle="En çok talep gelen 5 kategori">
             {catBars.length > 0 ? (
               <>
-                <BarChart
-                  data={catBars} width={chartWidth} height={180} barWidth={26} spacing={16}
-                  initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
-                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                  noOfSections={4} rulesColor={colors.border}
-                />
+                {isSvgSupported && (
+                  <BarChart
+                    data={catBars} width={chartWidth} height={180} barWidth={26} spacing={16}
+                    initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
+                    xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                    yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                    noOfSections={4} rulesColor={colors.border}
+                  />
+                )}
                 <View style={{ width: '100%', marginTop: 12 }}>
                   {byCategory.map((c, i) => (
                     <View key={i} style={styles.catRow}>
@@ -188,13 +204,24 @@ export const TicketDashboardScreen = () => {
           {/* Personel Yükü (yığılmış) */}
           {staffStack.length > 0 && (
             <ChartCard title="Personel İş Yükü" subtitle="Havuz / İşlem / Test / Tamam">
-              <BarChart
-                stackData={staffStack as any} width={chartWidth} height={200} barWidth={24} spacing={16}
-                initialSpacing={12} yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4} rulesColor={colors.border}
-              />
+              {isSvgSupported ? (
+                <BarChart
+                  stackData={staffStack as any} width={chartWidth} height={200} barWidth={24} spacing={16}
+                  initialSpacing={12} yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4} rulesColor={colors.border}
+                />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {byStaff.slice(0, 5).map((s, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{s.staffName}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Hvz: {s.havuzCount} / İşl: {s.islemCount} / Tst: {s.testCount} / Tam: {s.completedCount}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               <LegendRow items={[
                 { label: 'Havuz', color: '#a1a5b7' },
                 { label: 'İşlem', color: '#f59e0b' },
@@ -207,13 +234,24 @@ export const TicketDashboardScreen = () => {
           {/* Şirket Dağılımı */}
           {companyBars.length > 0 && (
             <ChartCard title="Şirket Dağılımı" subtitle="Şirkete göre talep sayısı">
-              <BarChart
-                data={companyBars} width={chartWidth} height={180} barWidth={26} spacing={16}
-                initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4} rulesColor={colors.border}
-              />
+              {isSvgSupported ? (
+                <BarChart
+                  data={companyBars} width={chartWidth} height={180} barWidth={26} spacing={16}
+                  initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4} rulesColor={colors.border}
+                />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {byCompany.slice(0, 5).map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.sirketAdi}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.count} Bilet</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 

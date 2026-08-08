@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { PieChart } from 'react-native-gifted-charts';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, UIManager } from 'react-native';
+// const PieChart: any = null;
+const PieChart: any = null;
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
@@ -13,6 +14,7 @@ export const ZimmetDashboardScreen = () => {
   const { colors } = useThemeStore();
   const isFocused = useIsFocused();
   const styles = createStyles(colors);
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath');
 
   const [counts, setCounts] = useState({ toplam: 0, bosta: 0, zimmetli: 0 });
   const [loading, setLoading] = useState(true);
@@ -71,16 +73,18 @@ export const ZimmetDashboardScreen = () => {
           <ChartCard title="Zimmet Durumu" subtitle="Boşta / Zimmetli dağılımı">
             {pieData.length > 0 ? (
               <>
-                <PieChart
-                  data={pieData} donut radius={90} innerRadius={58}
-                  innerCircleColor={colors.card}
-                  centerLabelComponent={() => (
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>%{oran}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>Zimmetli</Text>
-                    </View>
-                  )}
-                />
+                {isSvgSupported && (
+                  <PieChart
+                    data={pieData} donut radius={90} innerRadius={58}
+                    innerCircleColor={colors.card}
+                    centerLabelComponent={() => (
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>%{oran}</Text>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>Zimmetli</Text>
+                      </View>
+                    )}
+                  />
+                )}
                 <LegendRow items={[
                   { label: 'Boşta', color: typeColors.bosta, value: counts.bosta },
                   { label: 'Zimmetli', color: typeColors.zimmetli, value: counts.zimmetli },

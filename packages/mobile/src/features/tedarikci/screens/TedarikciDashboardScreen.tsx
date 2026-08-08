@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { LineChart, BarChart, PieChart } from 'react-native-gifted-charts';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
+// const LineChart: any = null; const BarChart: any = null; const PieChart: any = null;
+const LineChart: any = null;
+const BarChart: any = null;
+const PieChart: any = null;
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
@@ -16,6 +19,7 @@ export const TedarikciDashboardScreen = () => {
   const { colors } = useThemeStore();
   const isFocused = useIsFocused();
   const styles = createStyles(colors);
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath');
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -104,33 +108,46 @@ export const TedarikciDashboardScreen = () => {
           {/* Aylık trend: Oluşturulan vs Tamamlanan */}
           <ChartCard title="Aylık Değerlendirme Trendi" subtitle="Oluşturulan / Tamamlanan">
             {createdLine.length > 0 ? (
-              <>
-                <LineChart
-                  data={createdLine} data2={completedLine}
-                  width={chartWidth} height={180} curved
-                  color1={colors.primary} color2="#10b981" thickness={2}
-                  yAxisThickness={0} xAxisThickness={0}
-                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                  noOfSections={4} rulesColor={colors.border}
-                  spacing={Math.max(30, chartWidth / Math.max(createdLine.length, 1) - 6)} initialSpacing={14}
-                />
-                <LegendRow items={[
-                  { label: 'Oluşturulan', color: colors.primary },
-                  { label: 'Tamamlanan', color: '#10b981' },
-                ]} />
-              </>
+              isSvgSupported ? (
+                <>
+                  <LineChart
+                    data={createdLine} data2={completedLine}
+                    width={chartWidth} height={180} curved
+                    color1={colors.primary} color2="#10b981" thickness={2}
+                    yAxisThickness={0} xAxisThickness={0}
+                    xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                    yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                    noOfSections={4} rulesColor={colors.border}
+                    spacing={Math.max(30, chartWidth / Math.max(createdLine.length, 1) - 6)} initialSpacing={14}
+                  />
+                  <LegendRow items={[
+                    { label: 'Oluşturulan', color: colors.primary },
+                    { label: 'Tamamlanan', color: '#10b981' },
+                  ]} />
+                </>
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {createdLine.slice(-6).map((t, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Oluşturulan: {t.value} / Tamamlanan: {completedLine[idx]?.value || 0}</Text>
+                    </View>
+                  ))}
+                </View>
+              )
             ) : <Text style={styles.empty}>Trend verisi yok.</Text>}
           </ChartCard>
 
           {/* Sınıf dağılımı */}
           {classPie.length > 0 && (
             <ChartCard title="Sınıf Dağılımı" subtitle="A / B / C / D">
-              <PieChart data={classPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card}
-                centerLabelComponent={() => (
-                  <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{completed}</Text>
-                )}
-              />
+              {isSvgSupported && (
+                <PieChart data={classPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card}
+                  centerLabelComponent={() => (
+                    <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{completed}</Text>
+                  )}
+                />
+              )}
               <LegendRow items={classDist.map((c, i) => ({ label: c.class, color: CHART_PALETTE[i % CHART_PALETTE.length], value: num(c, 'count') }))} />
             </ChartCard>
           )}
@@ -138,30 +155,54 @@ export const TedarikciDashboardScreen = () => {
           {/* Tür dağılımı */}
           {typeBars.length > 0 && (
             <ChartCard title="Faaliyet Türü" subtitle="Değerlendirme sayısı">
-              <BarChart data={typeBars} width={chartWidth} height={180} barWidth={22} spacing={12}
-                initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={typeBars} width={chartWidth} height={180} barWidth={22} spacing={12}
+                  initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {byType.slice(0, 5).map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.type}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.count} Değ.</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 
           {/* En iyi tedarikçiler */}
           {supplierBars.length > 0 && (
             <ChartCard title="En İyi 7 Tedarikçi" subtitle="Ortalama puana göre">
-              <BarChart data={supplierBars} width={chartWidth} height={180} barWidth={22} spacing={12}
-                initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
-                maxValue={100}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={supplierBars} width={chartWidth} height={180} barWidth={22} spacing={12}
+                  initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
+                  maxValue={100}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {topSuppliers.slice(0, 5).map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.supplier}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Puan: {x.score}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 
           {/* Risk dağılımı */}
           {riskPie.length > 0 && (
             <ChartCard title="Risk Dağılımı" subtitle="Tamamlanan değerlendirmeler">
-              <PieChart data={riskPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card} />
+              {isSvgSupported && (
+                <PieChart data={riskPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card} />
+              )}
               <LegendRow items={riskDist.map((r, i) => ({ label: r.risk, color: riskColors[r.risk] || CHART_PALETTE[i % CHART_PALETTE.length], value: num(r, 'count') }))} />
             </ChartCard>
           )}

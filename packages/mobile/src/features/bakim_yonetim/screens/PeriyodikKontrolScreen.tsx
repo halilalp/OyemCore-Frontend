@@ -438,24 +438,9 @@ export const PeriyodikKontrolScreen = () => {
 
                 {/* Kontrol işlemleri artık sabit alt barda (aşağıda) */}
 
-                {/* Inner Subtabs (Gelişme vs Sarfiyat) */}
-                <View style={styles.subtabsContainer}>
-                  <TouchableOpacity 
-                    style={[styles.subtabBtn, ctrlSubTab === 'gelisme' && styles.activeSubtab]}
-                    onPress={() => setCtrlSubTab('gelisme')}
-                  >
-                    <Text style={[styles.subtabText, ctrlSubTab === 'gelisme' && styles.activeSubtabText]}>Gelişmeler ({ctrlGelismeler.length})</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.subtabBtn, ctrlSubTab === 'sarfiyat' && styles.activeSubtab]}
-                    onPress={() => setCtrlSubTab('sarfiyat')}
-                  >
-                    <Text style={[styles.subtabText, ctrlSubTab === 'sarfiyat' && styles.activeSubtabText]}>Sarfiyatlar ({ctrlSarfiyats.length})</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {ctrlSubTab === 'gelisme' ? (
-                  <View style={styles.logsSection}>
+                {/* Gelişme Notları */}
+                <View style={styles.logsSection}>
+                  <Text style={styles.sectionHeader}>Gelişme Notları ({ctrlGelismeler.length})</Text>
                     {ctrlGelismeler.length === 0 ? (
                       <Text style={styles.noDataText}>Henüz gelişme eklenmemiş.</Text>
                     ) : (
@@ -476,10 +461,12 @@ export const PeriyodikKontrolScreen = () => {
                       ))
                     )}
 
-                    {/* Gelişme ekleme artık orta FAB → modalından yapılıyor */}
-                  </View>
-                ) : (
-                  <View style={styles.sarfiyatSection}>
+                  {/* Gelişme ekleme artık orta FAB → modalından yapılıyor */}
+                </View>
+
+                {/* Malzeme Sarfiyatı */}
+                <View style={styles.sarfiyatSection}>
+                  <Text style={styles.sectionHeader}>Malzeme Sarfiyatı ({ctrlSarfiyats.length})</Text>
                     {ctrlSarfiyats.length === 0 ? (
                       <Text style={styles.noDataText}>Henüz sarfiyat kaydı yok.</Text>
                     ) : (
@@ -497,9 +484,8 @@ export const PeriyodikKontrolScreen = () => {
                       ))
                     )}
 
-                    {/* Sarfiyat ekleme artık orta FAB → modalından yapılıyor */}
-                  </View>
-                )}
+                  {/* Sarfiyat ekleme artık orta FAB → modalından yapılıyor */}
+                </View>
               </ScrollView>
             </View>
 
@@ -508,7 +494,7 @@ export const PeriyodikKontrolScreen = () => {
             {/* Makine seçici detay modalının İÇİNDE — üstte açılması için */}
             <SearchableSelectorModal
               visible={isSarfMachineOpen}
-              onClose={() => setIsSarfMachineOpen(false)}
+              onClose={() => { setIsSarfMachineOpen(false); setCtrlSarfModalOpen(true); }}
               onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
               data={(dropdowns?.makines || []).filter((m: any) => selectedCtrl && m.bolumKodu === selectedCtrl.bolumKodu)}
               keyExtractor={(item) => item.makineKodu}
@@ -631,7 +617,7 @@ export const PeriyodikKontrolScreen = () => {
                     </View>
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>İlgili Makine *</Text>
-                      <TouchableOpacity style={styles.selectBox} onPress={() => setIsSarfMachineOpen(true)}>
+                      <TouchableOpacity style={styles.selectBox} onPress={() => { setCtrlSarfModalOpen(false); setIsSarfMachineOpen(true); }}>
                         <Text style={styles.selectBoxText}>{dropdowns?.makines?.find((m: any) => m.makineKodu === selectedMachineKodu)?.makineAdi || 'Makine Seçin'}</Text>
                       </TouchableOpacity>
                     </View>

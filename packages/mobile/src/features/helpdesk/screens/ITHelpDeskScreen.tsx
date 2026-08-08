@@ -236,21 +236,18 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   }, [isFocused, type]);
 
-  // Auto-open detail if route parameter id is passed from notification click
+  // Bildirim dokunuşundan detay aç. HelpDesk talepKodu üzerinden yürür; bu yüzden
+  // önce talepKodu (code) ile listede eşleştiriyoruz (bazı bildirimler sadece code
+  // gönderir, id yok). Bulunamazsa id ile geri düşülür.
   useEffect(() => {
-    if (isFocused && route.params?.id) {
-      const talepId = parseInt(route.params.id);
-      if (!isNaN(talepId) && selectedRequest?.talepID !== talepId) {
-        const found = requests.find(r => r.talepID === talepId);
-        if (found) {
-          handleOpenDetail(found);
-        } else {
-          // If not in the list, construct a dummy request to trigger loading details
-          handleOpenDetail({ talepID: talepId } as Talep);
-        }
-      }
-    }
-  }, [isFocused, route.params?.id, requests]);
+    const code = route.params?.code as string | undefined;
+    const idNum = route.params?.id ? parseInt(route.params.id) : NaN;
+    if (!isFocused || (!code && isNaN(idNum))) return;
+    if (selectedRequest && ((code && selectedRequest.talepKodu === code) || (!isNaN(idNum) && selectedRequest.talepID === idNum))) return;
+    const found = requests.find(r => (code && r.talepKodu === code) || (!isNaN(idNum) && r.talepID === idNum));
+    if (found) handleOpenDetail(found);
+    else if (!isNaN(idNum)) handleOpenDetail({ talepID: idNum } as Talep);
+  }, [isFocused, route.params?.code, route.params?.id, requests]);
 
   // Ana sayfa FAB'ından "Yeni Talep" ile gelindiğinde formu otomatik aç
   useEffect(() => {

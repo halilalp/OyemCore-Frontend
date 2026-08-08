@@ -1,4 +1,5 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
+import { UIManager } from 'react-native';
 
 // Uygulama genelinde paylaşılan navigasyon referansı. Bildirim dokunuşları gibi
 // bileşen ağacı dışından yapılan yönlendirmelerde kullanılır. App.tsx ile
@@ -21,6 +22,23 @@ export function navigateFromNotificationData(data: any, _retry = 0) {
   }
 
   let targetScreen = data.screen;
+
+  // SVG desteği olmayan cihaz/emülatör ortamlarında panoları doğrudan işlem sayfalarına yönlendir
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');
+  if (!isSvgSupported) {
+    const dashboardFallbacks: Record<string, string> = {
+      IzinDashboard: 'Izin',
+      TicketDashboard: 'Ticket',
+      BakimDashboard: 'BakimYonetim',
+      ZimmetDashboard: 'Zimmetlerim',
+      TedarikciDashboard: 'Tedarikci',
+      HelpDeskDashboard: 'ITHelpDesk'
+    };
+    if (dashboardFallbacks[targetScreen]) {
+      targetScreen = dashboardFallbacks[targetScreen];
+    }
+  }
+
   if (targetScreen === 'IzinScreen') targetScreen = 'Izin';
   if (targetScreen === 'TalepScreen' || targetScreen === 'Talepler') {
     if (data.type === 'ERP') targetScreen = 'ERPHelpDesk';

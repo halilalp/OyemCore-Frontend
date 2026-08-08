@@ -279,7 +279,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
       <View style={[styles.msgRow, mine ? styles.msgRowMine : styles.msgRowOther]}>
         <TouchableOpacity
           activeOpacity={0.85}
-          delayLongPress={230}
+          delayLongPress={130}
           onLongPress={() => openActions(item)}
           style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
         >

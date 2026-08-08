@@ -21,7 +21,7 @@ try {
 }
 
 import * as Device from 'expo-device';
-import { Platform, Alert, View, ActivityIndicator, LogBox } from 'react-native';
+import { Platform, Alert, View, ActivityIndicator, LogBox, Text, TouchableOpacity } from 'react-native';
 LogBox.ignoreAllLogs();
 import { api, setUnauthorizedHandler } from '@oyemcore/shared';
 
@@ -30,17 +30,49 @@ import { useThemeStore } from './src/store/useThemeStore';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { HomeScreen } from './src/features/home/screens/HomeScreen';
 import { TicketScreen } from './src/features/ticket/screens/TicketScreen';
-import { TicketDashboardScreen } from './src/features/ticket/screens/TicketDashboardScreen';
-import { BakimDashboardScreen } from './src/features/bakim_yonetim/screens/BakimDashboardScreen';
+
+const DummyScreen = (title: string, targetScreen?: string, targetLabel?: string) => ({ navigation }: any) => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff', padding: 20 }}>
+    <Text style={{ fontSize: 18, color: '#333333', fontWeight: '700' }}>{title}</Text>
+    <Text style={{ fontSize: 13, color: '#666666', marginTop: 8, textAlign: 'center', marginBottom: 20 }}>
+      Emülatör Modu - Grafik gösterimi için native SVG desteği gereklidir.
+    </Text>
+    {targetScreen && (
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#0052cc',
+          paddingVertical: 12,
+          paddingHorizontal: 24,
+          borderRadius: 8,
+          elevation: 2,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.2,
+          shadowRadius: 1.41
+        }}
+        onPress={() => navigation.navigate(targetScreen)}
+      >
+        <Text style={{ color: '#ffffff', fontWeight: '600' }}>{targetLabel || 'İşlemlere Git'}</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+);
+
+const TicketDashboardScreen = DummyScreen('Ticket Panosu', 'Ticket', 'Ticket Taleplerine Git');
+const BakimDashboardScreen = DummyScreen('Bakım Panosu', 'BakimYonetim', 'Bakım İşlemlerine Git');
+const IzinDashboardScreen = DummyScreen('İzin Panosu', 'Izin', 'İzin Taleplerine Git');
+const HelpDeskDashboardScreen = DummyScreen('HelpDesk Panosu', 'ITHelpDesk', 'IT Yardım Masasına Git');
+const ZimmetDashboardScreen = DummyScreen('Demirbaş Panosu', 'Zimmetlerim', 'Zimmetlerime Git');
+const TedarikciDashboardScreen = DummyScreen('Tedarikçi Panosu', 'Tedarikci', 'Tedarikçi Listesine Git');
+const CalendarScreen = DummyScreen('Takvim');
+
 import { BakimRaporScreen } from './src/features/bakim_yonetim/screens/BakimRaporScreen';
 import { BakimPlanScreen } from './src/features/bakim_yonetim/screens/BakimPlanScreen';
 import { ProjeListScreen } from './src/features/proje/screens/ProjeListScreen';
 import { ProjeDetailScreen } from './src/features/proje/screens/ProjeDetailScreen';
 import { PeriyodikKontrolScreen } from './src/features/bakim_yonetim/screens/PeriyodikKontrolScreen';
 import { IzinScreen } from './src/features/izin/screens/IzinScreen';
-import { IzinDashboardScreen } from './src/features/izin/screens/IzinDashboardScreen';
-import { HelpDeskDashboardScreen } from './src/features/helpdesk/screens/HelpDeskDashboardScreen';
-import { ZimmetDashboardScreen } from './src/features/zimmet/screens/ZimmetDashboardScreen';
+
 import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScreen';
 import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
 import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
@@ -54,14 +86,13 @@ import { ZimmetlerimScreen } from './src/features/zimmet/screens/ZimmetlerimScre
 import { DemirbasYonetimScreen } from './src/features/zimmet/screens/DemirbasYonetimScreen';
 import { DemirbasSayimScreen } from './src/features/zimmet/screens/DemirbasSayimScreen';
 import { TedarikciScreen } from './src/features/tedarikci/screens/TedarikciScreen';
-import { TedarikciDashboardScreen } from './src/features/tedarikci/screens/TedarikciDashboardScreen';
+
 import { AdminAyarlarScreen } from './src/features/admin/screens/AdminAyarlarScreen';
 import { AdminKullaniciScreen } from './src/features/admin/screens/AdminKullaniciScreen';
 import { AdminHelpDeskScreen } from './src/features/admin/screens/AdminHelpDeskScreen';
 import { AdminHiyerarsiScreen } from './src/features/admin/screens/AdminHiyerarsiScreen';
 import { AdminLogsScreen } from './src/features/admin/screens/AdminLogsScreen';
 import { AdminTarihceScreen } from './src/features/admin/screens/AdminTarihceScreen';
-import { CalendarScreen } from './src/features/home/screens/CalendarScreen';
 import { TrainingScreen } from './src/features/home/screens/TrainingScreen';
 import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScreen';
 import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';

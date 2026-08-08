@@ -10,8 +10,10 @@ import {
   ScrollView,
   LayoutAnimation,
   UIManager,
-  Alert
+  Alert,
+  Vibration
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -84,6 +86,26 @@ const resolveBakimRoute = (s: string): { screen: string; params?: any } | null =
   return { screen: 'BakimYonetim' };
 };
 
+// FAB'ın iki yanındaki özelleştirilebilir kısayol butonları — kullanıcı uzun basıp seçer.
+const NAV_SLOT_OPTIONS: { key: string; label: string; icon: any; action?: 'projects' }[] = [
+  { key: 'Home', label: 'Ana Sayfa', icon: 'home-outline' },
+  { key: 'Projeler', label: 'Yetkili Projeler', icon: 'grid-outline', action: 'projects' },
+  { key: 'Calendar', label: 'Takvim', icon: 'calendar-outline' },
+  { key: 'ChatList', label: 'Sohbet', icon: 'chatbubbles-outline' },
+  // Panolar (params'sız dashboard ekranları)
+  { key: 'TicketDashboard', label: 'Ticket Panosu', icon: 'albums-outline' },
+  { key: 'IzinDashboard', label: 'İzin Panosu', icon: 'people-outline' },
+  { key: 'BakimDashboard', label: 'Bakım Panosu', icon: 'bar-chart-outline' },
+  { key: 'ZimmetDashboard', label: 'Demirbaş Panosu', icon: 'cube-outline' },
+  { key: 'TedarikciDashboard', label: 'Tedarikçi Panosu', icon: 'clipboard-outline' },
+  // Modüller
+  { key: 'Ticket', label: 'Ticket', icon: 'ticket-outline' },
+  { key: 'Izin', label: 'İzin', icon: 'airplane-outline' },
+  { key: 'AvansMasraf', label: 'Avans/Masraf', icon: 'wallet-outline' },
+];
+const NAV_SLOT_LEFT_KEY = 'navSlotLeft';
+const NAV_SLOT_RIGHT_KEY = 'navSlotRight';
+
 // ─── Hızlı Kayıt Seçenekleri ─────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
@@ -122,6 +144,20 @@ const QUICK_ACTIONS = [
     color: slateTokens.danger,
     params: { openCreate: true },
   },
+  {
+    screen: 'AvansMasraf' as any,
+    icon: 'wallet-outline' as const,
+    label: 'Yeni Avans',
+    color: slateTokens.brandPrimary,
+    params: { openCreate: 'avans' },
+  },
+  {
+    screen: 'AvansMasraf' as any,
+    icon: 'receipt-outline' as const,
+    label: 'Yeni Masraf',
+    color: slateTokens.brandAccent,
+    params: { openCreate: 'masraf' },
+  },
 ];
 
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
@@ -138,6 +174,38 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const [isProjectsMenuVisible, setIsProjectsMenuVisible] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  // FAB'ın iki yanındaki özelleştirilebilir kısayollar (cihazda kayıtlı).
+  const [slotLeft, setSlotLeft] = useState('Home');
+  const [slotRight, setSlotRight] = useState('Calendar');
+  const [slotPickerFor, setSlotPickerFor] = useState<'left' | 'right' | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(NAV_SLOT_LEFT_KEY).then(v => { if (v) setSlotLeft(v); }).catch(() => {});
+    AsyncStorage.getItem(NAV_SLOT_RIGHT_KEY).then(v => { if (v) setSlotRight(v); }).catch(() => {});
+  }, []);
+
+  const selectSlot = (side: 'left' | 'right', key: string) => {
+    if (side === 'left') { setSlotLeft(key); AsyncStorage.setItem(NAV_SLOT_LEFT_KEY, key).catch(() => {}); }
+    else { setSlotRight(key); AsyncStorage.setItem(NAV_SLOT_RIGHT_KEY, key).catch(() => {}); }
+    setSlotPickerFor(null);
+  };
+
+  const renderSlot = (side: 'left' | 'right') => {
+    const key = side === 'left' ? slotLeft : slotRight;
+    const opt = NAV_SLOT_OPTIONS.find(o => o.key === key) || NAV_SLOT_OPTIONS[0];
+    const active = currentScreen === (opt.key as any);
+    return (
+      <TouchableOpacity
+        style={styles.navTab}
+        activeOpacity={0.7}
+        onPress={() => { if (opt.action === 'projects') setIsProjectsMenuVisible(true); else navigateToModule(opt.key, opt.label); }}
+        onLongPress={() => { try { Vibration.vibrate(20); } catch (_) {} setSlotPickerFor(side); }}
+        delayLongPress={250}
+      >
+        <Ionicons name={opt.icon} size={26} color={active ? '#3445C5' : slateTokens.textMuted} />
+      </TouchableOpacity>
+    );
+  };
 
   useImperativeHandle(ref, () => ({
     openProjectsMenu: () => setIsProjectsMenuVisible(true),
@@ -234,6 +302,22 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     let hedef = (mobilUrl || '').trim();
     if (ROUTE_ALIASES[hedef]) hedef = ROUTE_ALIASES[hedef];
 
+    // SVG desteği olmayan cihaz/emülatör ortamlarında panoları doğrudan işlem sayfalarına yönlendir
+    const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');
+    if (!isSvgSupported) {
+      const dashboardFallbacks: Record<string, string> = {
+        IzinDashboard: 'Izin',
+        TicketDashboard: 'Ticket',
+        BakimDashboard: 'BakimYonetim',
+        ZimmetDashboard: 'Zimmetlerim',
+        TedarikciDashboard: 'Tedarikci',
+        HelpDeskDashboard: 'ITHelpDesk'
+      };
+      if (dashboardFallbacks[hedef]) {
+        hedef = dashboardFallbacks[hedef];
+      }
+    }
+
     // Kayıtlı değilse: bakım alt sayfalarını sayfa adına göre doğru ekran+moda
     // yönlendir (Bakım Planı→plan, Bakım Planı İşlem→uygula, Periyodik→..., vb.).
     if (!REGISTERED_SCREENS.has(hedef)) {
@@ -253,31 +337,17 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   return (
     <>
       <View style={styles.container}>
-        {/* Sol 1: Anasayfa */}
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => navigation.navigate('Home')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isHomeActive ? "home" : "home-outline"}
-            size={26}
-            color={isHomeActive ? '#3445C5' : slateTokens.textMuted}
-          />
-        </TouchableOpacity>
-
-        {/* Sol 2: Projeler (Menü) */}
+        {/* Sol 1: Yetkili Projeler (yetki menüsü) — Anasayfa yerine */}
         <TouchableOpacity
           style={styles.navTab}
           onPress={() => setIsProjectsMenuVisible(true)}
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="menu-outline"
-            size={28}
-            color={slateTokens.textMuted}
-          />
+          <Ionicons name="grid-outline" size={26} color={slateTokens.textMuted} />
         </TouchableOpacity>
+
+        {/* Sol 2: Özelleştirilebilir kısayol (uzun bas → seç) */}
+        {renderSlot('left')}
 
         {/* Orta: FAB */}
         <View style={styles.centerTab}>
@@ -292,18 +362,8 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
           </TouchableOpacity>
         </View>
 
-        {/* Sağ 1: Takvim */}
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => navigation.navigate('Calendar')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isCalendarActive ? "calendar" : "calendar-outline"}
-            size={26}
-            color={isCalendarActive ? '#3445C5' : slateTokens.textMuted}
-          />
-        </TouchableOpacity>
+        {/* Sağ 1: Özelleştirilebilir kısayol (uzun bas → seç) */}
+        {renderSlot('right')}
 
         {/* Sağ 2: Ayarlar */}
         <TouchableOpacity
@@ -318,6 +378,32 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
           />
         </TouchableOpacity>
       </View>
+
+      {/* ── KISAYOL SEÇİCİ (uzun bas) ─────────────────────── */}
+      <Modal visible={!!slotPickerFor} transparent animationType="fade" onRequestClose={() => setSlotPickerFor(null)}>
+        <TouchableWithoutFeedback onPress={() => setSlotPickerFor(null)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.menuSheet}>
+                <View style={styles.sheetHandle} />
+                <Text style={styles.menuTitle}>Kısayol Seç</Text>
+                <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                  {NAV_SLOT_OPTIONS.map(o => {
+                    const cur = (slotPickerFor === 'left' ? slotLeft : slotRight) === o.key;
+                    return (
+                      <TouchableOpacity key={o.key} style={styles.slotOptionRow} onPress={() => slotPickerFor && selectSlot(slotPickerFor, o.key)} activeOpacity={0.7}>
+                        <Ionicons name={o.icon} size={22} color={cur ? colors.primary : colors.text} />
+                        <Text style={[styles.slotOptionLabel, cur && { color: colors.primary, fontWeight: '800' }]}>{o.label}</Text>
+                        {cur && <Ionicons name="checkmark" size={20} color={colors.primary} style={{ marginLeft: 'auto' }} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* ── HIZLI KAYIT MODAL ─────────────────────────────── */}
       <Modal
@@ -647,6 +733,20 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
+    },
+    slotOptionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: slateTokens.border,
+    },
+    slotOptionLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
     },
     closeBtn: {
       backgroundColor: colors.background,

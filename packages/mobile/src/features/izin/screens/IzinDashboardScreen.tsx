@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { LineChart, BarChart, PieChart } from 'react-native-gifted-charts';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
+// const LineChart: any = null; const BarChart: any = null; const PieChart: any = null;
+const LineChart: any = null;
+const BarChart: any = null;
+const PieChart: any = null;
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
@@ -16,6 +19,7 @@ export const IzinDashboardScreen = () => {
   const { colors } = useThemeStore();
   const isFocused = useIsFocused();
   const styles = createStyles(colors);
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath');
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -94,30 +98,43 @@ export const IzinDashboardScreen = () => {
           {/* Turnover (giren/çıkan son 12 ay) */}
           <ChartCard title="Personel Hareketi" subtitle="Son 12 ay: İşe alınan / Çıkan">
             {girenLine.length > 0 ? (
-              <>
-                <LineChart
-                  data={girenLine} data2={cikanLine} width={chartWidth} height={180} curved
-                  color1="#10b981" color2="#ef4444" thickness={2}
-                  yAxisThickness={0} xAxisThickness={0}
-                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 7 }}
-                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                  noOfSections={4} rulesColor={colors.border}
-                  spacing={Math.max(22, chartWidth / Math.max(girenLine.length, 1) - 4)} initialSpacing={12}
-                  hideDataPoints
-                />
-                <LegendRow items={[
-                  { label: 'İşe Alınan', color: '#10b981' },
-                  { label: 'Çıkan', color: '#ef4444' },
-                ]} />
-              </>
+              isSvgSupported ? (
+                <>
+                  <LineChart
+                    data={girenLine} data2={cikanLine} width={chartWidth} height={180} curved
+                    color1="#10b981" color2="#ef4444" thickness={2}
+                    yAxisThickness={0} xAxisThickness={0}
+                    xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 7 }}
+                    yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                    noOfSections={4} rulesColor={colors.border}
+                    spacing={Math.max(22, chartWidth / Math.max(girenLine.length, 1) - 4)} initialSpacing={12}
+                    hideDataPoints
+                  />
+                  <LegendRow items={[
+                    { label: 'İşe Alınan', color: '#10b981' },
+                    { label: 'Çıkan', color: '#ef4444' },
+                  ]} />
+                </>
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {girenLine.slice(-6).map((t, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Giren: <Text style={{ color: '#10b981' }}>{t.value}</Text> / Çıkan: <Text style={{ color: '#ef4444' }}>{cikanLine[idx]?.value || 0}</Text></Text>
+                    </View>
+                  ))}
+                </View>
+              )
             ) : <Text style={styles.empty}>Veri yok.</Text>}
           </ChartCard>
 
           {/* Cinsiyet */}
           {genderPie.length > 0 && (
             <ChartCard title="Cinsiyet Dağılımı" subtitle="Aktif personel">
-              <PieChart data={genderPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card}
-                centerLabelComponent={() => <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{totalActive}</Text>} />
+              {isSvgSupported && (
+                <PieChart data={genderPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card}
+                  centerLabelComponent={() => <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>{totalActive}</Text>} />
+              )}
               <LegendRow items={gender.map((g, i) => ({ label: g.label, color: genderColors[g.label] || CHART_PALETTE[i % CHART_PALETTE.length], value: num(g, 'value') }))} />
             </ChartCard>
           )}
@@ -125,27 +142,51 @@ export const IzinDashboardScreen = () => {
           {/* Yaş grupları */}
           {age.some(a => num(a, 'value') > 0) && (
             <ChartCard title="Yaş Dağılımı" subtitle="Aktif personel">
-              <BarChart data={toBars(age, 6)} width={chartWidth} height={170} barWidth={30} spacing={16}
-                initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={toBars(age, 6)} width={chartWidth} height={170} barWidth={30} spacing={16}
+                  initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {age.map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.value} Kişi</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 
           {/* Kıdem */}
           {tenure.some(t => num(t, 'value') > 0) && (
             <ChartCard title="Kıdem Dağılımı" subtitle="Çalışma süresi">
-              <BarChart data={barBlock(tenure, '#8b5cf6')} width={chartWidth} height={170} barWidth={20} spacing={10}
-                initialSpacing={10} roundedTop yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={barBlock(tenure, '#8b5cf6')} width={chartWidth} height={170} barWidth={20} spacing={10}
+                  initialSpacing={10} roundedTop yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {tenure.map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.value} Kişi</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 
           {/* Yaka */}
           {collarPie.length > 0 && (
             <ChartCard title="Yaka Dağılımı" subtitle="Mavi / Beyaz / Gri">
-              <PieChart data={collarPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card} />
+              {isSvgSupported && (
+                <PieChart data={collarPie} donut radius={90} innerRadius={58} innerCircleColor={colors.card} />
+              )}
               <LegendRow items={collar.map((c, i) => ({ label: c.label, color: collarColors[c.label] || CHART_PALETTE[i % CHART_PALETTE.length], value: num(c, 'value') }))} />
             </ChartCard>
           )}
@@ -153,30 +194,63 @@ export const IzinDashboardScreen = () => {
           {/* Şirket */}
           {company.length > 0 && (
             <ChartCard title="Şirket Dağılımı" subtitle="Aktif personel sayısı">
-              <BarChart data={toBars(company, 8)} width={chartWidth} height={180} barWidth={22} spacing={12}
-                initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={toBars(company, 8)} width={chartWidth} height={180} barWidth={22} spacing={12}
+                  initialSpacing={12} roundedTop frontColor="#10b981" yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {company.slice(0, 5).map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.value} Kişi</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 
           {/* Departman */}
           {department.length > 0 && (
             <ChartCard title="Departman Dağılımı" subtitle="En kalabalık 8 departman">
-              <BarChart data={toBars(department, 8)} width={chartWidth} height={180} barWidth={22} spacing={12}
-                initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={toBars(department, 8)} width={chartWidth} height={180} barWidth={22} spacing={12}
+                  initialSpacing={12} roundedTop yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {department.slice(0, 5).map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.value} Kişi</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 
           {/* Ünvan */}
           {title.length > 0 && (
             <ChartCard title="Ünvan Dağılımı" subtitle="En yaygın 8 ünvan">
-              <BarChart data={toBars(title, 8)} width={chartWidth} height={180} barWidth={22} spacing={12}
-                initialSpacing={12} roundedTop frontColor="#f59e0b" yAxisThickness={0} xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              {isSvgSupported ? (
+                <BarChart data={toBars(title, 8)} width={chartWidth} height={180} barWidth={22} spacing={12}
+                  initialSpacing={12} roundedTop frontColor="#f59e0b" yAxisThickness={0} xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 8 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }} noOfSections={4} rulesColor={colors.border} />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {title.slice(0, 5).map((x, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{x.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{x.value} Kişi</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ChartCard>
           )}
 

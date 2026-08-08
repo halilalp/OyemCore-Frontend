@@ -11,7 +11,8 @@ import {
   Modal,
   TextInput,
   Linking,
-  Alert
+  Alert,
+  UIManager
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -98,7 +99,7 @@ export const HomeScreen = () => {
   // ayrılamadığı için getTaleps(IT/ERP/BAKIM) verisinden hesaplanıyor.
   const [helpdeskBadges, setHelpdeskBadges] = useState<{ IT: string; ERP: string; BAKIM: string }>({ IT: '', ERP: '', BAKIM: '' });
   // Zil bildirimleri (aksiyon bekleyen işler)
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
   // Yenilenen bildirim merkezi (tb_Notification) okunmamış sayısı — zil rozeti.
   const [bildirimUnread, setBildirimUnread] = useState(0);
@@ -894,13 +895,19 @@ export const HomeScreen = () => {
         onUnreadChange={setBildirimUnread}
         onNavigate={(n) => {
           const k = (n.kategori || '').toLowerCase();
+          const refVal = n.referansID;
           setIsNotifOpen(false);
           setTimeout(() => {
-            if (k === 'talep' || k === 'bakim') navigation.navigate('BakimHelpDesk');
-            else if (k === 'ticket') navigation.navigate('TicketDashboard');
-            else if (k === 'zimmet') navigation.navigate('Zimmetlerim');
-            else if (k === 'izin') navigation.navigate('Izin');
-            else if (k === 'avans' || k === 'masraf') navigation.navigate('AvansMasraf');
+            const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');
+            const routeParams = refVal ? { id: refVal, code: refVal } : {};
+
+            if (k === 'talep' || k === 'bakim') navigation.navigate('BakimHelpDesk', routeParams);
+            else if (k === 'ticket') navigation.navigate(isSvgSupported ? 'TicketDashboard' : 'Ticket', routeParams);
+            else if (k === 'zimmet') navigation.navigate('Zimmetlerim', routeParams);
+            else if (k === 'izin') navigation.navigate('Izin', routeParams);
+            else if (k === 'avans' || k === 'masraf') navigation.navigate('AvansMasraf', routeParams);
+            else if (k === 'tedarikci') navigation.navigate('Tedarikci', routeParams);
+            else if (k === 'proje' || k === 'toplanti' || k === 'gorev') navigation.navigate('ProjeList', routeParams);
           }, 200);
         }}
       />

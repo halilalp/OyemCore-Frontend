@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
-import { PieChart, BarChart } from 'react-native-gifted-charts';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
+// const PieChart: any = null; const BarChart: any = null;
+const PieChart: any = null;
+const BarChart: any = null;
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
@@ -18,6 +20,7 @@ export const BakimDashboardScreen = () => {
   const { colors } = useThemeStore();
   const isFocused = useIsFocused();
   const styles = createStyles(colors);
+  const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath');
 
   const [months, setMonths] = useState<any[]>([]);
   const [ozet, setOzet] = useState<any>(null);
@@ -115,22 +118,33 @@ export const BakimDashboardScreen = () => {
           {/* Aylık toplam kontrol - bar */}
           <ChartCard title="Aylık Kontrol Sayısı" subtitle={`${year} yılı ay bazında`}>
             {barData.some(b => b.value > 0) ? (
-              <BarChart
-                data={barData}
-                width={chartWidth}
-                height={180}
-                barWidth={16}
-                spacing={8}
-                initialSpacing={10}
-                roundedTop
-                frontColor={colors.primary}
-                yAxisThickness={0}
-                xAxisThickness={0}
-                xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
-                noOfSections={4}
-                rulesColor={colors.border}
-              />
+              isSvgSupported ? (
+                <BarChart
+                  data={barData}
+                  width={chartWidth}
+                  height={180}
+                  barWidth={16}
+                  spacing={8}
+                  initialSpacing={10}
+                  roundedTop
+                  frontColor={colors.primary}
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 9 }}
+                  noOfSections={4}
+                  rulesColor={colors.border}
+                />
+              ) : (
+                <View style={{ width: '100%', gap: 6 }}>
+                  {barData.slice(0, 6).map((b, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{b.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{b.value} Kontrol</Text>
+                    </View>
+                  ))}
+                </View>
+              )
             ) : (
               <Text style={styles.empty}>Bu yıla ait kontrol verisi yok.</Text>
             )}
@@ -140,19 +154,21 @@ export const BakimDashboardScreen = () => {
           <ChartCard title="Kontrol Türü Dağılımı" subtitle="Elektrik / Mekanik">
             {pieData.length > 0 ? (
               <>
-                <PieChart
-                  data={pieData}
-                  donut
-                  radius={90}
-                  innerRadius={58}
-                  innerCircleColor={colors.card}
-                  centerLabelComponent={() => (
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{elektrik + mekanik}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>Toplam</Text>
-                    </View>
-                  )}
-                />
+                {isSvgSupported && (
+                  <PieChart
+                    data={pieData}
+                    donut
+                    radius={90}
+                    innerRadius={58}
+                    innerCircleColor={colors.card}
+                    centerLabelComponent={() => (
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{elektrik + mekanik}</Text>
+                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>Toplam</Text>
+                      </View>
+                    )}
+                  />
+                )}
                 <LegendRow items={[
                   { label: 'Elektrik', color: typeColors.elektrik, value: elektrik },
                   { label: 'Mekanik', color: typeColors.mekanik, value: mekanik },

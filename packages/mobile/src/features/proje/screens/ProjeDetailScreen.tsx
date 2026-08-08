@@ -136,17 +136,24 @@ export const ProjeDetailScreen = () => {
   };
 
   // Sorumlu seçici: tüm aktif personelden (katılımcı yoksa liste boş kalmasın).
+  // Alt seçiciler iç içe Modal olarak açılınca Android'de kilitleniyor/görünmüyor;
+  // bu yüzden seçici açılırken görev modalını gizliyoruz (state korunur), seçici
+  // kapanınca geri açıyoruz.
   const acSorumluSecici = async () => {
     try {
       if (personeller.length === 0) {
         const list = await api.getProjeAktifPersoneller('');
         setPersoneller(list || []);
       }
+      setGorevModal(false);
       setSorumluSelect(true);
     } catch (e: any) {
       Alert.alert('Hata', apiHataMesaji(e, 'Personel listesi alınamadı.'));
     }
   };
+
+  // Alt seçiciden görev modalına geri dön.
+  const backToGorevModal = () => setGorevModal(true);
 
   // Görev modalını kapatırken açık kalan alt seçicileri de kapat (iç içe modal
   // orphan overlay → UI kilitlenmesi önlenir).
@@ -429,7 +436,7 @@ export const ProjeDetailScreen = () => {
               <Text style={styles.sheetItemText}>Katılımcı Ekle</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); setFilePicker(true); }}>
+            <TouchableOpacity style={styles.sheetItem} onPress={() => { setActionsMenu(false); setTimeout(() => setFilePicker(true), 300); }}>
               <Ionicons name="cloud-upload-outline" size={22} color={slateTokens.brandPrimary} />
               <Text style={styles.sheetItemText}>Dosya Yükle</Text>
             </TouchableOpacity>
@@ -474,14 +481,14 @@ export const ProjeDetailScreen = () => {
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.formLabel}>Başlama</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setBaslamaPicker(true)}>
+                <TouchableOpacity style={styles.selectBox} onPress={() => { setGorevModal(false); setBaslamaPicker(true); }}>
                   <Text style={{ color: gBaslama ? colors.text : colors.placeholder }}>{gBaslama || 'Tarih'}</Text>
                   <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.formLabel}>Termin</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setTerminPicker(true)}>
+                <TouchableOpacity style={styles.selectBox} onPress={() => { setGorevModal(false); setTerminPicker(true); }}>
                   <Text style={{ color: gTermin ? colors.text : colors.placeholder }}>{gTermin || 'Tarih'}</Text>
                   <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -498,15 +505,15 @@ export const ProjeDetailScreen = () => {
 
       <SearchableSelectorModal
         visible={sorumluSelect}
-        onClose={() => setSorumluSelect(false)}
+        onClose={() => { setSorumluSelect(false); backToGorevModal(); }}
         onSelect={(item) => setGSorumlu({ eposta: item.eposta, ad: item.ad })}
         data={personeller}
         keyExtractor={(item) => item.eposta}
         labelExtractor={(item) => `${item.ad}${item.sicilNo ? ` (${item.sicilNo})` : ''}`}
         title="Sorumlu Seçin"
       />
-      <DatePickerModal visible={baslamaPicker} onClose={() => setBaslamaPicker(false)} onSelectDate={(d) => setGBaslama(d)} title="Başlama Tarihi" />
-      <DatePickerModal visible={terminPicker} onClose={() => setTerminPicker(false)} onSelectDate={(d) => setGTermin(d)} title="Termin Tarihi" />
+      <DatePickerModal visible={baslamaPicker} onClose={() => { setBaslamaPicker(false); backToGorevModal(); }} onSelectDate={(d) => setGBaslama(d)} title="Başlama Tarihi" />
+      <DatePickerModal visible={terminPicker} onClose={() => { setTerminPicker(false); backToGorevModal(); }} onSelectDate={(d) => setGTermin(d)} title="Termin Tarihi" />
 
       <SearchableSelectorModal
         visible={katilimciSelect}

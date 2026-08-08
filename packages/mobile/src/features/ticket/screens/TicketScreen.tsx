@@ -205,20 +205,35 @@ export const TicketScreen = () => {
     loadDropdowns();
   }, []);
 
-  // Auto-open ticket detail if route parameter id is passed from notification
+  // Auto-open ticket detail if route parameter id or code is passed from notification
   useEffect(() => {
-    if (isFocused && route.params?.id) {
-      const tktId = parseInt(route.params.id);
-      if (!isNaN(tktId) && selectedTicket?.id !== tktId) {
-        const found = tickets.find(t => t.id === tktId);
-        if (found) {
-          handleTicketPress(found);
+    if (isFocused && (route.params?.id || route.params?.code)) {
+      const pId = route.params.id;
+      const pCode = route.params.code;
+      const rawVal = String(pCode || pId || '').trim();
+
+      if (rawVal) {
+        // takipKodu ile eşleşen var mı bak (ör. "ONSET-221")
+        const foundByCode = tickets.find(t => t.takipKodu === rawVal);
+        if (foundByCode) {
+          if (selectedTicket?.id !== foundByCode.id) {
+            handleTicketPress(foundByCode);
+          }
         } else {
-          handleTicketPress({ id: tktId } as Ticket);
+          // Sayısal id ile ara (ör. 221)
+          const tktId = parseInt(rawVal);
+          if (!isNaN(tktId) && selectedTicket?.id !== tktId) {
+            const foundById = tickets.find(t => t.id === tktId);
+            if (foundById) {
+              handleTicketPress(foundById);
+            } else {
+              handleTicketPress({ id: tktId } as Ticket);
+            }
+          }
         }
       }
     }
-  }, [isFocused, route.params?.id, tickets]);
+  }, [isFocused, route.params?.id, route.params?.code, tickets]);
 
   // Ana sayfa FAB'ından "Yeni Ticket" ile gelindiğinde formu otomatik aç
   useEffect(() => {
@@ -980,7 +995,7 @@ export const TicketScreen = () => {
 
                 {/* ── Bottom Action Bar ─────────────────────────────────────── */}
                 {!isClosed && (
-                  <View style={[styles.fixedComposerWrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+                  <View style={styles.fixedComposerWrapper}>
                     <View style={styles.bottomTabBar}>
                       {/* Yorum — standart şablon: etiketsiz ikon */}
                       <TouchableOpacity style={styles.tabItem} onPress={() => setIsAddCommentOpen(true)}>
@@ -1836,18 +1851,14 @@ const createStyles = (colors: any) => StyleSheet.create({
 
   // ── Bottom action bar ─────────────────────────────────────────────────────────
   fixedComposerWrapper: {
+    // Saydam: yüzen kapsül kendi beyaz zeminini taşıyor (HelpDesk detay ile aynı).
+    // Beyaz panel + üst çizgi konunca kapsülün arkasında ikinci yüzey oluşuyordu.
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    backgroundColor: 'transparent',
     paddingTop: 8,
-    elevation: 10,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
     shadowRadius: 6,
   },
   bottomTabBar: {
