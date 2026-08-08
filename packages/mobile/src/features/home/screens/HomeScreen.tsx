@@ -99,7 +99,7 @@ export const HomeScreen = () => {
   // ayrılamadığı için getTaleps(IT/ERP/BAKIM) verisinden hesaplanıyor.
   const [helpdeskBadges, setHelpdeskBadges] = useState<{ IT: string; ERP: string; BAKIM: string }>({ IT: '', ERP: '', BAKIM: '' });
   // Zil bildirimleri (aksiyon bekleyen işler)
-  const [isNotifOpen, setIsNotifOpen] = useState(true);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   // Yenilenen bildirim merkezi (tb_Notification) okunmamış sayısı — zil rozeti.
   const [bildirimUnread, setBildirimUnread] = useState(0);
