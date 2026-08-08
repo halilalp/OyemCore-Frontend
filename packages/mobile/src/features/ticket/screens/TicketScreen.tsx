@@ -151,6 +151,7 @@ export const TicketScreen = () => {
   const [details, setDetails] = useState<{ ticket: Ticket | null; yorumlar: any[]; dosyalar: any[]; tarihce: any[] } | null>(null);
   const [isCommentsExpanded, setIsCommentsExpanded] = useState(true);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [activeImageUri, setActiveImageUri] = useState<string | null>(null);
 
   // ── Comment modal state ───────────────────────────────────────────────────────
   const [isAddCommentOpen, setIsAddCommentOpen] = useState(false);
@@ -811,11 +812,16 @@ export const TicketScreen = () => {
                       return (
                         <View style={{ marginTop: 6 }}>
                           {imgs.map((src, idx) => (
-                            <Image
+                            <TouchableOpacity
                               key={idx}
-                              source={{ uri: src }}
-                              style={{ width: '100%', height: 160, borderRadius: 6, marginBottom: 4, resizeMode: 'contain', backgroundColor: '#f5f5f5' }}
-                            />
+                              activeOpacity={0.9}
+                              onPress={() => setActiveImageUri(src)}
+                            >
+                              <Image
+                                source={{ uri: src }}
+                                style={{ width: '100%', height: 160, borderRadius: 6, marginBottom: 4, resizeMode: 'contain', backgroundColor: '#f5f5f5' }}
+                              />
+                            </TouchableOpacity>
                           ))}
                         </View>
                       );
@@ -934,11 +940,16 @@ export const TicketScreen = () => {
                                       const imgs = extractImagesFromHtml(c.aciklama);
                                       if (!imgs.length) return null;
                                       return imgs.map((src, idx) => (
-                                        <Image
+                                        <TouchableOpacity
                                           key={idx}
-                                          source={{ uri: src }}
-                                          style={{ width: '100%', height: 120, borderRadius: 8, marginTop: 6, resizeMode: 'contain', backgroundColor: colors.background }}
-                                        />
+                                          activeOpacity={0.9}
+                                          onPress={() => setActiveImageUri(src)}
+                                        >
+                                          <Image
+                                            source={{ uri: src }}
+                                            style={{ width: '100%', height: 120, borderRadius: 8, marginTop: 6, resizeMode: 'contain', backgroundColor: colors.background }}
+                                          />
+                                        </TouchableOpacity>
                                       ));
                                     })()}
                                   </View>
@@ -1458,6 +1469,50 @@ export const TicketScreen = () => {
         labelExtractor={(item) => item.label}
         title="Tarih Seçin"
       />
+
+      {/* Görsel Büyütme Modalı */}
+      <Modal
+        visible={!!activeImageUri}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveImageUri(null)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20
+          }}
+          activeOpacity={1}
+          onPress={() => setActiveImageUri(null)}
+        >
+          {/* Kapat Butonu */}
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              top: 50,
+              right: 20,
+              zIndex: 10,
+              padding: 10,
+            }}
+            onPress={() => setActiveImageUri(null)}
+          >
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+          {activeImageUri && (
+            <Image
+              source={{ uri: activeImageUri }}
+              style={{
+                width: '100%',
+                height: '80%',
+                resizeMode: 'contain'
+              }}
+            />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
