@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, Scrol
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
+import { UserAvatar } from '../../../components/UserAvatar';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { ListHeader } from '../../../components/ListHeader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
@@ -111,6 +112,9 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
         try {
           const d = await api.getMasrafDetay(mid);
           setDetayKalemler(d?.kalemler || d?.Kalemler || d?.detaylar || []);
+          if (d?.masraf) {
+            setDetayItem((prev: any) => prev ? { ...prev, ...d.masraf } : d.masraf);
+          }
         } catch (_) { /* sessiz */ } finally { setDetayLoading(false); }
       }
     }
@@ -231,6 +235,38 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
                   <View style={styles.detayRow}><Text style={styles.detayLabel}>Tutar</Text><Text style={styles.detayValue}>{fmtTL(tutar)}</Text></View>
                   <View style={styles.detayRow}><Text style={styles.detayLabel}>Talep Tarihi</Text><Text style={styles.detayValue}>{fmtTarih(detayItem.talepTarihi)}</Text></View>
                   <View style={styles.detayRow}><Text style={styles.detayLabel}>Bekleyen Onay</Text><Text style={styles.detayValue}>{detayItem.bekleyenOnayAdSoyad || '-'}</Text></View>
+                  {/* İşlem Yapan Amir Bilgisi (Onaylayan veya Reddeden) */}
+                  {(() => {
+                    const islemYapanAd = (detayTip === 'AVANS' ? detayItem.islemYapanAdSoyad : detayItem.IslemYapanAdSoyad) || detayItem.islemYapanAdSoyad || detayItem.IslemYapanAdSoyad;
+                    const islemYapanSicil = (detayTip === 'AVANS' ? detayItem.islemYapanSicil : detayItem.IslemYapanSicil) || detayItem.islemYapanSicil || detayItem.IslemYapanSicil;
+                    if (!islemYapanAd) return null;
+                    return (
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: colors.card,
+                        padding: 12,
+                        borderRadius: 10,
+                        marginTop: 14,
+                        borderWidth: 1,
+                        borderColor: colors.border
+                      }}>
+                        <UserAvatar 
+                          sicilNo={islemYapanSicil} 
+                          name={islemYapanAd} 
+                          size={36} 
+                        />
+                        <View style={{ marginLeft: 10, flex: 1 }}>
+                          <Text style={{ fontSize: 9, color: colors.placeholder, fontWeight: '700', letterSpacing: 0.5 }}>
+                            {detayItem.surecDurum === 'REDDEDILDI' ? 'REDDEDEN AMİR' : 'ONAYLAYAN AMİR'}
+                          </Text>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, marginTop: 2 }}>
+                            {islemYapanAd}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })()}
                   {!!detayItem.aciklama && (
                     <View style={{ marginTop: 10 }}>
                       <Text style={styles.detayLabel}>Açıklama</Text>
