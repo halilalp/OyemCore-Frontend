@@ -402,9 +402,7 @@ export const BakimPlanScreen = () => {
               renderItem={({ item }) => {
                 const durumColor = getStatusTextColor(item.durum);
                 return (
-                  <TouchableOpacity style={styles.card} onPress={() => handleOpenPlan(item)}>
-                    {/* Sol durum çizgisi - Açık tonda pastel renk */}
-                    <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
+                  <TouchableOpacity style={[styles.card, { borderLeftWidth: 5, borderLeftColor: durumColor }]} onPress={() => handleOpenPlan(item)}>
                     <View style={styles.cardInner}>
                       <View style={styles.cardHeader}>
                         <Text style={styles.cardCode}>{item.planKodu}</Text>
