@@ -537,15 +537,15 @@ export const DemirbasYonetimScreen = () => {
               ) : null
             }
             renderItem={({ item }) => (
-              <TouchableOpacity style={[styles.itemCard, { borderLeftWidth: 5, borderLeftColor: item.durum ? colors.success : colors.info }]} onPress={() => handleAssetClick(item)}>
+              <TouchableOpacity style={[styles.itemCard, { borderLeftWidth: 5, borderLeftColor: item.durum ? colors.success : colors.primary }]} onPress={() => handleAssetClick(item)}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.assetTitle}>{item.tanim}</Text>
                   <View style={[styles.badge, item.durum ? styles.successBadge : styles.infoBadge]}>
-                    <Text style={styles.badgeText}>{item.durum ? 'Boşta' : 'Zimmetli'}</Text>
+                    <Text style={[styles.badgeText, { color: item.durum ? colors.success : colors.primary }]}>{item.durum ? 'Boşta' : 'Zimmetli'}</Text>
                   </View>
                   {item.hataBildir && (
                     <View style={[styles.badge, styles.dangerBadge, { marginLeft: 6 }]}>
-                      <Text style={styles.badgeText}>İtiraz</Text>
+                      <Text style={[styles.badgeText, { color: colors.danger }]}>İtiraz</Text>
                     </View>
                   )}
                 </View>
@@ -1168,15 +1168,12 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   dangerBadge: {
     backgroundColor: colors.dangerLight,
-    color: colors.danger,
   },
   successBadge: {
-    backgroundColor: colors.primaryLight,
-    color: colors.primary,
+    backgroundColor: colors.successLight,
   },
   infoBadge: {
-    backgroundColor: colors.infoLight,
-    color: colors.info,
+    backgroundColor: colors.primaryLight,
   },
   cardInfoGrid: {
     flexDirection: 'row',
