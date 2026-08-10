@@ -134,72 +134,74 @@ export const ProjeListScreen = () => {
         </View>
       </ListHeader>
 
-      {loading ? (
-        <LogoLoader style={{ marginTop: 40 }} />
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: 16, paddingBottom: 90 }}
-          renderItem={({ item }) => {
-            const proje = item.tur === 'P';
-            const tamamlandi = item.durum === 'TAMAMLANDI';
-            const durumColor = tamamlandi ? colors.success : colors.warning;
-            return (
-              <TouchableOpacity
-                style={styles.card}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('ProjeDetail', { id: item.id })}
-              >
-                {/* Sol durum çizgisi - Açık tonda pastel renk */}
-                <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
-                <View style={styles.cardInner}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.turBadge}>
-                      <Ionicons
-                        name={proje ? 'briefcase-outline' : 'people-outline'}
-                        size={13}
-                        color={slateTokens.primary}
-                      />
-                      <Text style={styles.turBadgeText}>{item.turAdi}{item.projeTur ? ` · ${item.projeTur}` : ''}</Text>
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <LogoLoader style={{ marginTop: 40 }} />
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => String(item.id)}
+            contentContainerStyle={{ padding: 16, paddingBottom: 90 }}
+            renderItem={({ item }) => {
+              const proje = item.tur === 'P';
+              const tamamlandi = item.durum === 'TAMAMLANDI';
+              const durumColor = tamamlandi ? colors.success : colors.warning;
+              return (
+                <TouchableOpacity
+                  style={styles.card}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('ProjeDetail', { id: item.id })}
+                >
+                  {/* Sol durum çizgisi - Açık tonda pastel renk */}
+                  <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
+                  <View style={styles.cardInner}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.turBadge}>
+                        <Ionicons
+                          name={proje ? 'briefcase-outline' : 'people-outline'}
+                          size={13}
+                          color={slateTokens.primary}
+                        />
+                        <Text style={styles.turBadgeText}>{item.turAdi}{item.projeTur ? ` · ${item.projeTur}` : ''}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? colors.successLight : colors.warningLight }]}>
+                        <Text style={[styles.statusText, { color: tamamlandi ? colors.success : colors.warning }]}>{item.durum}</Text>
+                      </View>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? colors.successLight : colors.warningLight }]}>
-                      <Text style={[styles.statusText, { color: tamamlandi ? colors.success : colors.warning }]}>{item.durum}</Text>
+
+                    <Text style={styles.cardTitle} numberOfLines={2}>{item.konu || '(Konu yok)'}</Text>
+
+                    <View style={styles.cardFooter}>
+                      <View style={styles.footerLeft}>
+                        {item.sicilNo
+                          ? <UserAvatar sicilNo={item.sicilNo} name={item.ad} size={22} style={{ marginRight: 5 }} />
+                          : <Ionicons name="person-outline" size={16} color={colors.textSecondary} style={{ marginRight: 5 }} />}
+                        <Text style={styles.footerText} numberOfLines={1}>{(item.ad || '-').split(' ')[0]}</Text>
+                      </View>
+                      <View style={styles.footerRight}>
+                        {!!item.ozet && (
+                          <View style={styles.gorevChip}>
+                            <Ionicons name="checkbox-outline" size={12} color={slateTokens.primary} />
+                            <Text style={styles.gorevChipText}>{item.ozet}</Text>
+                          </View>
+                        )}
+                        <Ionicons name="time-outline" size={13} color={colors.textMuted} />
+                        <Text style={styles.footerDate}>{item.basTarih}</Text>
+                      </View>
                     </View>
                   </View>
-
-                  <Text style={styles.cardTitle} numberOfLines={2}>{item.konu || '(Konu yok)'}</Text>
-
-                  <View style={styles.cardFooter}>
-                    <View style={styles.footerLeft}>
-                      {item.sicilNo
-                        ? <UserAvatar sicilNo={item.sicilNo} name={item.ad} size={22} style={{ marginRight: 5 }} />
-                        : <Ionicons name="person-outline" size={16} color={colors.textSecondary} style={{ marginRight: 5 }} />}
-                      <Text style={styles.footerText} numberOfLines={1}>{(item.ad || '-').split(' ')[0]}</Text>
-                    </View>
-                    <View style={styles.footerRight}>
-                      {!!item.ozet && (
-                        <View style={styles.gorevChip}>
-                          <Ionicons name="checkbox-outline" size={12} color={slateTokens.primary} />
-                          <Text style={styles.gorevChipText}>{item.ozet}</Text>
-                        </View>
-                      )}
-                      <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-                      <Text style={styles.footerDate}>{item.basTarih}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Ionicons name="folder-open-outline" size={52} color={colors.textMuted} />
-              <Text style={{ marginTop: 12, color: colors.textSecondary }}>Kayıt bulunamadı.</Text>
-            </View>
-          }
-        />
-      )}
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+                <Ionicons name="folder-open-outline" size={52} color={colors.textMuted} />
+                <Text style={{ marginTop: 12, color: colors.textSecondary }}>Kayıt bulunamadı.</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
 
       <BottomNavBar
         currentScreen="Home"
