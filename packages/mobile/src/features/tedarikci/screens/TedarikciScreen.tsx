@@ -425,84 +425,86 @@ export const TedarikciScreen = () => {
         onFilterChange={() => {}}
         filters={[]}
       >
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll} style={styles.filtersScrollView}>
-          <View style={styles.filterChipContainer}>
+        <View style={{ gap: 8, width: '100%' }}>
+          <View style={styles.headerFiltersRow}>
             {/* Supplier Filter */}
             <TouchableOpacity 
-              style={[styles.filterChip, selectedTedFilter !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              style={[styles.headerFilterBtn, selectedTedFilter !== '' && styles.headerFilterBtnActive]}
               onPress={() => setIsFilterSupplierSelectOpen(true)}
             >
-              <Text style={[styles.filterChipText, selectedTedFilter !== '' && styles.activeFilterChipText]}>
-                {selectedTedFilter === '' ? 'Tedarikçi Seç' : (suppliers.find(s => s.id === selectedTedFilter)?.name || 'Tedarikçi')}
+              <Text style={[styles.headerFilterBtnText, selectedTedFilter !== '' && styles.headerFilterBtnTextActive]} numberOfLines={1}>
+                {selectedTedFilter === '' ? 'Tedarikçi' : 'Tedarikçi Seçildi'}
               </Text>
               {selectedTedFilter !== '' && (
                 <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedTedFilter(''); }} style={{ marginLeft: 6 }}>
-                  <Ionicons name="close-circle" size={14} color="#fff" />
+                  <Ionicons name="close-circle" size={14} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
 
             {/* Faaliyet Alanı Filter */}
             <TouchableOpacity 
-              style={[styles.filterChip, selectedTurFilter !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              style={[styles.headerFilterBtn, selectedTurFilter !== '' && styles.headerFilterBtnActive]}
               onPress={() => setIsFilterTurSelectOpen(true)}
             >
-              <Text style={[styles.filterChipText, selectedTurFilter !== '' && styles.activeFilterChipText]}>
-                {selectedTurFilter === '' ? 'Faaliyet Alanı Seç' : (turler.find(t => t.id === selectedTurFilter)?.name || 'Faaliyet Alanı')}
+              <Text style={[styles.headerFilterBtnText, selectedTurFilter !== '' && styles.headerFilterBtnTextActive]} numberOfLines={1}>
+                {selectedTurFilter === '' ? 'Faaliyet Alanı' : (turler.find(t => t.id === selectedTurFilter)?.name || 'Alan')}
               </Text>
               {selectedTurFilter !== '' && (
                 <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedTurFilter(''); }} style={{ marginLeft: 6 }}>
-                  <Ionicons name="close-circle" size={14} color="#fff" />
+                  <Ionicons name="close-circle" size={14} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
 
             {/* Durum Filter */}
             <TouchableOpacity 
-              style={[styles.filterChip, selectedDurumFilter !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              style={[styles.headerFilterBtn, selectedDurumFilter !== '' && styles.headerFilterBtnActive]}
               onPress={() => setIsFilterDurumSelectOpen(true)}
             >
-              <Text style={[styles.filterChipText, selectedDurumFilter !== '' && styles.activeFilterChipText]}>
-                {selectedDurumFilter === '' ? 'Durum Seç' : selectedDurumFilter}
+              <Text style={[styles.headerFilterBtnText, selectedDurumFilter !== '' && styles.headerFilterBtnTextActive]} numberOfLines={1}>
+                {selectedDurumFilter === '' ? 'Durum' : selectedDurumFilter}
               </Text>
               {selectedDurumFilter !== '' && (
                 <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedDurumFilter(''); }} style={{ marginLeft: 6 }}>
-                  <Ionicons name="close-circle" size={14} color="#fff" />
+                  <Ionicons name="close-circle" size={14} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
+          </View>
 
+          <View style={styles.headerFiltersRow}>
             {/* Start Date Filter */}
             <TouchableOpacity 
-              style={[styles.filterChip, startDateFilter !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              style={[styles.headerFilterBtn, startDateFilter !== '' && styles.headerFilterBtnActive]}
               onPress={() => setIsStartDatePickerOpen(true)}
             >
-              <Text style={[styles.filterChipText, startDateFilter !== '' && styles.activeFilterChipText]}>
-                {startDateFilter === '' ? 'Başlangıç Tar.' : startDateFilter}
+              <Text style={[styles.headerFilterBtnText, startDateFilter !== '' && styles.headerFilterBtnTextActive]} numberOfLines={1}>
+                {startDateFilter === '' ? 'Başlangıç' : startDateFilter}
               </Text>
               {startDateFilter !== '' && (
                 <TouchableOpacity onPress={(e) => { e.stopPropagation(); setStartDateFilter(''); }} style={{ marginLeft: 6 }}>
-                  <Ionicons name="close-circle" size={14} color="#fff" />
+                  <Ionicons name="close-circle" size={14} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
 
             {/* End Date Filter */}
             <TouchableOpacity 
-              style={[styles.filterChip, endDateFilter !== '' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
+              style={[styles.headerFilterBtn, endDateFilter !== '' && styles.headerFilterBtnActive]}
               onPress={() => setIsEndDatePickerOpen(true)}
             >
-              <Text style={[styles.filterChipText, endDateFilter !== '' && styles.activeFilterChipText]}>
-                {endDateFilter === '' ? 'Bitiş Tar.' : endDateFilter}
+              <Text style={[styles.headerFilterBtnText, endDateFilter !== '' && styles.headerFilterBtnTextActive]} numberOfLines={1}>
+                {endDateFilter === '' ? 'Bitiş' : endDateFilter}
               </Text>
               {endDateFilter !== '' && (
                 <TouchableOpacity onPress={(e) => { e.stopPropagation(); setEndDateFilter(''); }} style={{ marginLeft: 6 }}>
-                  <Ionicons name="close-circle" size={14} color="#fff" />
+                  <Ionicons name="close-circle" size={14} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </ListHeader>
 
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
@@ -519,47 +521,47 @@ export const TedarikciScreen = () => {
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.evalCard} onPress={() => openDetail(item.belgeNo)}>
+                {/* Sol durum dikey çizgisi */}
+                <View style={[styles.evalLeftLine, { backgroundColor: getStatusColor(item.durum) }]} />
                 <View style={styles.evalCardInner}>
-                <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
-                    <Text style={styles.supplierTitle}>{item.unvan}</Text>
+                  <View style={styles.cardHeader}>
+                    <View>
+                      <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+                      <Text style={styles.supplierTitle}>{item.unvan}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.durum) + '15' }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(item.durum) }]}>{item.durum}</Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.durum) + '15' }]}>
-                    <Text style={[styles.statusText, { color: getStatusColor(item.durum) }]}>{item.durum}</Text>
+                  <Text style={styles.activitySub}>Alan: {item.tedTurTanim || item.turKod}</Text>
+                  
+                  <View style={styles.scoreRow}>
+                    <View style={styles.scoreCol}>
+                      <Text style={styles.scoreLabel}>Yıl</Text>
+                      <Text style={styles.scoreValue}>{item.mahsulYil}</Text>
+                    </View>
+                    <View style={styles.scoreCol}>
+                      <Text style={styles.scoreLabel}>Kalite</Text>
+                      <Text style={styles.scoreValue}>{item.kalitePuani || '-'}</Text>
+                    </View>
+                    <View style={styles.scoreCol}>
+                      <Text style={styles.scoreLabel}>Fiyat</Text>
+                      <Text style={styles.scoreValue}>{item.fiyatPuani || '-'}</Text>
+                    </View>
+                    <View style={styles.scoreCol}>
+                      <Text style={styles.scoreLabel}>Teslim</Text>
+                      <Text style={styles.scoreValue}>{item.teslimPuani || '-'}</Text>
+                    </View>
+                    <View style={styles.scoreCol}>
+                      <Text style={styles.scoreLabel}>Toplam</Text>
+                      <Text style={[styles.scoreValue, { color: colors.primary }]}>{item.toplamPuan || '-'}</Text>
+                    </View>
+                    <View style={styles.scoreCol}>
+                      <Text style={styles.scoreLabel}>Risk</Text>
+                      <Text style={[styles.scoreValue, { color: item.sinif === 'A' ? colors.primary : colors.warning }]}>{item.sinif || '-'}</Text>
+                    </View>
                   </View>
                 </View>
-                <Text style={styles.activitySub}>Alan: {item.tedTurTanim || item.turKod}</Text>
-                
-                <View style={styles.scoreRow}>
-                  <View style={styles.scoreCol}>
-                    <Text style={styles.scoreLabel}>Yıl</Text>
-                    <Text style={styles.scoreValue}>{item.mahsulYil}</Text>
-                  </View>
-                  <View style={styles.scoreCol}>
-                    <Text style={styles.scoreLabel}>Kalite</Text>
-                    <Text style={styles.scoreValue}>{item.kalitePuani || '-'}</Text>
-                  </View>
-                  <View style={styles.scoreCol}>
-                    <Text style={styles.scoreLabel}>Fiyat</Text>
-                    <Text style={styles.scoreValue}>{item.fiyatPuani || '-'}</Text>
-                  </View>
-                  <View style={styles.scoreCol}>
-                    <Text style={styles.scoreLabel}>Teslim</Text>
-                    <Text style={styles.scoreValue}>{item.teslimPuani || '-'}</Text>
-                  </View>
-                  <View style={styles.scoreCol}>
-                    <Text style={styles.scoreLabel}>Toplam</Text>
-                    <Text style={[styles.scoreValue, { color: colors.primary }]}>{item.toplamPuan || '-'}</Text>
-                  </View>
-                  <View style={styles.scoreCol}>
-                    <Text style={styles.scoreLabel}>Risk</Text>
-                    <Text style={[styles.scoreValue, { color: item.sinif === 'A' ? colors.primary : colors.warning }]}>{item.sinif || '-'}</Text>
-                  </View>
-                </View>
-                </View>
-                {/* Durum renkli alt çizgi (diğer listelerle aynı) */}
-                <View style={[styles.evalBottomLine, { backgroundColor: getStatusColor(item.durum) }]} />
               </TouchableOpacity>
             )}
             ListEmptyComponent={
@@ -926,7 +928,7 @@ export const TedarikciScreen = () => {
                     onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.sectionTitle}>İşlem Geçmişi</Text>
+                    <Text style={styles.sectionTitle}>Tarihçe</Text>
                     <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.textSecondary }}>
                       {isHistoryExpanded ? '▲' : '▼'}
                     </Text>
@@ -938,13 +940,14 @@ export const TedarikciScreen = () => {
                         <Text style={styles.noHistoryText}>Herhangi bir işlem kaydı bulunamadı.</Text>
                       ) : (
                         history.map((log) => (
-                          <View key={log.belgeTarihceID.toString()} style={styles.historyTimelineItem}>
-                            <View style={styles.timelinePoint} />
-                            <View style={styles.timelineContent}>
-                              <Text style={styles.timelineDate}>{log.kayitTarStr}</Text>
-                              <Text style={styles.timelineTitle}>{log.konu}</Text>
-                              <View style={{ marginTop: 4 }}>
-                                {renderHtml(log.aciklama, styles.timelineDesc, { fontWeight: 'bold', color: colors.text })}
+                          <View key={log.belgeTarihceID.toString()} style={styles.historyItem}>
+                            <View style={styles.historyItemLeft}>
+                              <Text style={styles.historyItemTime}>{log.kayitTarStr}</Text>
+                            </View>
+                            <View style={styles.historyItemRight}>
+                              <Text style={styles.historyItemSubject}>{log.konu}</Text>
+                              <View style={{ marginTop: 2 }}>
+                                {renderHtml(log.aciklama, styles.historyItemContent, { fontWeight: 'bold', color: colors.text })}
                               </View>
                             </View>
                           </View>
@@ -1172,14 +1175,16 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 8,
     elevation: 1,
+    flexDirection: 'row',
     overflow: 'hidden', // alt çizginin köşelere düzgün oturması için
   },
   evalCardInner: {
+    flex: 1,
     padding: 16,
   },
-  evalBottomLine: {
-    height: 3,
-    width: '100%',
+  evalLeftLine: {
+    width: 6,
+    height: '100%',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1699,37 +1704,62 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '700',
   },
-  filtersScroll: {
-    paddingHorizontal: 4,
-    paddingVertical: 8,
-  },
-  filtersScrollView: {
-    flexGrow: 0,
-    backgroundColor: 'transparent',
-  },
-  filterChipContainer: {
+  headerFiltersRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 8,
   },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  headerFilterBtn: {
+    flex: 1,
+    backgroundColor: '#FFF',
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
   },
-  activeFilterChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+  headerFilterBtnActive: {
+    borderWidth: 1.5,
+    borderColor: colors.primary,
   },
-  filterChipText: {
-    fontSize: 12,
+  headerFilterBtnText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
   },
-  activeFilterChipText: {
-    color: '#fff',
+  headerFilterBtnTextActive: {
+    color: colors.primary,
     fontWeight: '700',
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  historyItemLeft: {
+    width: 110,
+    paddingRight: 8,
+  },
+  historyItemRight: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  historyItemSubject: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  historyItemTime: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  historyItemContent: {
+    fontSize: 11,
+    color: colors.textSecondary,
   }
 });
