@@ -14,11 +14,13 @@ import { FilePickerSheet } from '../../../components/FilePickerSheet';
 import { AttachmentPreview } from '../../../components/AttachmentPreview';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { apiHataMesaji } from '../../../utils/apiError';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 
 // Proje / Toplantı detayı (Faz 1). Referans: ToplantiDetay + HelpDesk talep detay standardı.
 // Tamamlanan kayıt readonly'ye geçer (webportalda "yeniden aç" yoktur).
 export const ProjeDetailScreen = () => {
   const isFocused = useIsFocused();
+  const { user } = useAuthStore();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const id: number = route.params?.id ?? 0;
@@ -49,11 +51,14 @@ export const ProjeDetailScreen = () => {
   // Dosya
   const [filePicker, setFilePicker] = useState(false);
   // Collapsible sections
-  const [katilimcilarExpanded, setKatilimcilarExpanded] = useState(true);
+  const [katilimcilarExpanded, setKatilimcilarExpanded] = useState(false);
   const [gorevlerExpanded, setGorevlerExpanded] = useState(true);
-  const [dosyalarExpanded, setDosyalarExpanded] = useState(true);
+  const [dosyalarExpanded, setDosyalarExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);   // upload + kayıt süresince overlay
   const pickedRef = useRef(false);                       // onPicked çağrıldıysa upload sonu overlay'i kapatma
+
+  const t = detail?.toplanti;
+  const isCreator = !!(user && t && (user.eposta === t.kullaniciEposta || user.sicilNo === t.olusturanSicil));
 
   const load = useCallback(async () => {
     if (!id) { setLoading(false); return; }
@@ -104,6 +109,10 @@ export const ProjeDetailScreen = () => {
   };
 
   const tamamlaGorev = (gorevId: number) => {
+    if (!isCreator) {
+      Alert.alert('Yetki Hatası', 'Görevleri sadece projeyi oluşturan kişi tamamlayabilir.');
+      return;
+    }
     Alert.alert('Görevi Tamamla', 'Bu görevi tamamlandı olarak işaretlemek istiyor musunuz?', [
       { text: 'İptal', style: 'cancel' },
       {
@@ -117,6 +126,10 @@ export const ProjeDetailScreen = () => {
   };
 
   const silGorev = (gorevId: number) => {
+    if (!isCreator) {
+      Alert.alert('Yetki Hatası', 'Görevleri sadece projeyi oluşturan kişi silebilir.');
+      return;
+    }
     Alert.alert('Görevi Sil', 'Bu görevi silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       {
@@ -241,10 +254,9 @@ export const ProjeDetailScreen = () => {
     );
   }
 
-  const t = detail.toplanti;
-  const tamamlandi = t.durum === 'TAMAMLANDI';
+  const tamamlandi = t?.durum === 'TAMAMLANDI';
   const readonly = tamamlandi;                 // Tamamlanan kayıt salt-okunur
-  const canManage = t.yonetebilir && !readonly;
+  const canManage = t?.yonetebilir && !readonly;
   const showBar = canManage;                    // Alt bar yalnız yönetilebilir & açık kayıtta
 
   return (
@@ -397,13 +409,13 @@ export const ProjeDetailScreen = () => {
                       <View style={styles.gorevFooter}>
                         <Text style={styles.gorevMeta}>{g.sorumluAd}{g.terminTarStr ? ` · Termin: ${g.terminTarStr}` : ''}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          {!gTamam && !readonly && (
+                          {!gTamam && !readonly && isCreator && (
                             <TouchableOpacity style={styles.tamamlaBtn} onPress={() => tamamlaGorev(g.id)}>
                               <Ionicons name="checkmark" size={14} color={colors.success} />
                               <Text style={styles.tamamlaText}>Tamamla</Text>
                             </TouchableOpacity>
                           )}
-                          {canManage && (
+                          {canManage && isCreator && (
                             <TouchableOpacity style={styles.silBtn} onPress={() => silGorev(g.id)}>
                               <Ionicons name="trash-outline" size={15} color={colors.danger} />
                             </TouchableOpacity>

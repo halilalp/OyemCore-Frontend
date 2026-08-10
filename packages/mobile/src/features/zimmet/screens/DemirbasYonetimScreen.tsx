@@ -5,7 +5,7 @@ import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
-import { api } from '@oyemcore/shared';
+import { api, slateTokens } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
@@ -470,14 +470,17 @@ export const DemirbasYonetimScreen = () => {
         <ListHeader
           title="Demirbaş Yönetimi"
           subtitle={`${totalAssetsCount} Kayıt`}
-          // Demirbaş Sayımı ekranı yazılmıştı ama hiçbir yerden erişilmiyordu.
           rightAction={{ icon: 'scan-outline', onPress: () => navigation.navigate('DemirbasSayim') }}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Tanım, barkod, seri/sicil no..."
-          activeFilter=""
-          onFilterChange={() => {}}
-          filters={[]}
+          activeFilter={selectedStatus}
+          onFilterChange={(id) => setSelectedStatus(id)}
+          filters={[
+            { id: '0', label: 'Tümü' },
+            { id: '1', label: 'Boşta' },
+            { id: '2', label: 'Zimmetli' }
+          ]}
         >
           <ScrollView keyboardShouldPersistTaps="handled" 
             horizontal 
@@ -485,26 +488,6 @@ export const DemirbasYonetimScreen = () => {
             style={styles.filtersScrollContainer}
             contentContainerStyle={styles.filtersScrollContent}
           >
-            {/* Status Filters */}
-            <TouchableOpacity 
-              style={[styles.filterChip, selectedStatus === '0' && styles.activeFilterChip]}
-              onPress={() => setSelectedStatus('0')}
-            >
-              <Text style={[styles.filterChipText, selectedStatus === '0' && styles.activeFilterChipText]}>Tümü</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.filterChip, selectedStatus === '1' && styles.activeFilterChip]}
-              onPress={() => setSelectedStatus('1')}
-            >
-              <Text style={[styles.filterChipText, selectedStatus === '1' && styles.activeFilterChipText]}>Boşta</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.filterChip, selectedStatus === '2' && styles.activeFilterChip]}
-              onPress={() => setSelectedStatus('2')}
-            >
-              <Text style={[styles.filterChipText, selectedStatus === '2' && styles.activeFilterChipText]}>Zimmetli</Text>
-            </TouchableOpacity>
-
             {/* Category Filter */}
             <TouchableOpacity 
               style={[styles.filterChip, selectedCategory !== '0' && styles.activeFilterChip, { flexDirection: 'row', alignItems: 'center' }]}
@@ -554,7 +537,7 @@ export const DemirbasYonetimScreen = () => {
               ) : null
             }
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.itemCard} onPress={() => handleAssetClick(item)}>
+              <TouchableOpacity style={[styles.itemCard, { borderLeftWidth: 5, borderLeftColor: item.durum ? colors.success : colors.info }]} onPress={() => handleAssetClick(item)}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.assetTitle}>{item.tanim}</Text>
                   <View style={[styles.badge, item.durum ? styles.successBadge : styles.infoBadge]}>
@@ -773,18 +756,26 @@ export const DemirbasYonetimScreen = () => {
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Kategori</Text>
             <TouchableOpacity style={styles.selectBox} onPress={() => setActiveSelector('createCategory')}>
-              <Text style={styles.selectBoxText}>
-                {createKategori ? createKategori.name : 'Kategori Seçiniz...'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="folder-outline" size={18} color={slateTokens.textMuted} />
+                <Text style={styles.selectBoxText}>
+                  {createKategori ? createKategori.name : 'Kategori Seçiniz...'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Marka</Text>
             <TouchableOpacity style={styles.selectBox} onPress={() => setActiveSelector('createBrand')}>
-              <Text style={styles.selectBoxText}>
-                {createMarka ? createMarka.name : 'Marka Seçiniz...'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="pricetag-outline" size={18} color={slateTokens.textMuted} />
+                <Text style={styles.selectBoxText}>
+                  {createMarka ? createMarka.name : 'Marka Seçiniz...'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -812,9 +803,13 @@ export const DemirbasYonetimScreen = () => {
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Sorumlu Departman</Text>
             <TouchableOpacity style={styles.selectBox} onPress={() => setActiveSelector('createDep')}>
-              <Text style={styles.selectBoxText}>
-                {createSorumluDepKod ? createSorumluDepKod.name : 'Departman Seçiniz...'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="business-outline" size={18} color={slateTokens.textMuted} />
+                <Text style={styles.selectBoxText}>
+                  {createSorumluDepKod ? createSorumluDepKod.name : 'Departman Seçiniz...'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -876,9 +871,13 @@ export const DemirbasYonetimScreen = () => {
           <View style={styles.formGroup}>
             <Text style={styles.formLabel}>Personel *</Text>
             <TouchableOpacity style={styles.selectBox} onPress={() => setActiveSelector('personel')}>
-              <Text style={styles.selectBoxText}>
-                {assignPersonel ? assignPersonel.name : 'Seçiniz...'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="person-outline" size={18} color={slateTokens.textMuted} />
+                <Text style={styles.selectBoxText}>
+                  {assignPersonel ? assignPersonel.name : 'Seçiniz...'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -1425,14 +1424,13 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   selectBox: {
     height: 48,
-    // HelpDesk formundaki tema: beyaz kart (colors.card) sayfa zemininde
-    // panel gibi belirir. Önce colors.background idi (zeminle aynı), input'lar
-    // görünmüyordu.
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -1576,8 +1574,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     marginVertical: 10,
   },
   assignBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
+    backgroundColor: slateTokens.brandPurple,
+    borderRadius: 12,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1589,17 +1587,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 14,
   },
   releaseBtn: {
-    backgroundColor: colors.dangerLight,
+    backgroundColor: '#fee2e2',
     borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: 10,
+    borderColor: '#ef4444',
+    borderRadius: 12,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
   },
   releaseBtnText: {
-    color: colors.danger,
+    color: '#dc2626',
     fontWeight: '700',
     fontSize: 14,
   },

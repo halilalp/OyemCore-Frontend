@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import * as Notifications from 'expo-notifications';
 import {
   StyleSheet,
   Text,
@@ -149,7 +148,14 @@ export const HomeScreen = () => {
           .then(r => {
             setNotifications(r?.details || []);
             // Uygulama ikonu rozeti = aksiyon bekleyen sayısı (iOS + OEM Android).
-            try { Notifications.setBadgeCountAsync(r?.totalCount ?? (r?.details?.length || 0)); } catch (_) {}
+            try {
+              const dev = require('expo-device');
+              const Constants = require('expo-constants').default || require('expo-constants');
+              const isExpoGo = Constants.appOwnership === 'expo';
+              if (dev.isDevice && !isExpoGo) {
+                require('expo-notifications').setBadgeCountAsync(r?.totalCount ?? (r?.details?.length || 0));
+              }
+            } catch (_) {}
           })
           .catch(() => setNotifications([]));
 

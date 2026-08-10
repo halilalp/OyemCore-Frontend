@@ -2,6 +2,8 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Constants from 'expo-constants';
+
 let Notifications: any = {
   setNotificationHandler: () => {},
   addNotificationReceivedListener: () => ({ remove: () => {} }),
@@ -15,7 +17,15 @@ let Notifications: any = {
 };
 
 try {
-  Notifications = require('expo-notifications');
+  const dev = require('expo-device');
+  const isExpoGo = Constants.appOwnership === 'expo';
+  const isEmulator = !dev.isDevice;
+  
+  if (!isExpoGo && !isEmulator) {
+    Notifications = require('expo-notifications');
+  } else {
+    console.log(`Notifications mocked - Expo Go: ${isExpoGo}, Emulator: ${isEmulator}`);
+  }
 } catch (e) {
   console.warn('expo-notifications could not be loaded:', e);
 }
@@ -72,6 +82,7 @@ import { ProjeListScreen } from './src/features/proje/screens/ProjeListScreen';
 import { ProjeDetailScreen } from './src/features/proje/screens/ProjeDetailScreen';
 import { PeriyodikKontrolScreen } from './src/features/bakim_yonetim/screens/PeriyodikKontrolScreen';
 import { IzinScreen } from './src/features/izin/screens/IzinScreen';
+import { IzinDetailScreen } from './src/features/izin/screens/IzinDetailScreen';
 
 import { ITHelpDeskScreen } from './src/features/helpdesk/screens/ITHelpDeskScreen';
 import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskScreen';
@@ -225,7 +236,7 @@ export default function App() {
   }, [isAuthenticated]);
 
   React.useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !Device.isDevice) return;
 
     let notificationListener: any;
     let responseListener: any;
@@ -323,6 +334,11 @@ export default function App() {
             <Stack.Screen 
               name="IzinScreen" 
               component={IzinScreen} 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="IzinDetail" 
+              component={IzinDetailScreen} 
               options={{ headerShown: false }} 
             />
             <Stack.Screen 

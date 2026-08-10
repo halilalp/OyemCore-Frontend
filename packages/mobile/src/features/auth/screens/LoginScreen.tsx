@@ -42,6 +42,41 @@ export const LoginScreen = () => {
       : `${protocol}://${ip}:5000/api`;
   };
 
+  const getFriendlyErrorMessage = (err: any): string => {
+    if (!err) return 'Bir hata oluştu.';
+    const status = err.response?.status;
+    const serverMsg = err.response?.data?.message || err.response?.data;
+    
+    if (status === 401) {
+      return 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
+    }
+    if (status === 400) {
+      return typeof serverMsg === 'string' ? serverMsg : 'Geçersiz istek. Bilgilerinizi kontrol edin.';
+    }
+    if (status === 403) {
+      return 'Bu sisteme giriş yetkiniz bulunmamaktadır.';
+    }
+    if (status === 404) {
+      return 'İstenen servis bulunamadı. IP adresini kontrol edin.';
+    }
+    if (status === 500) {
+      return 'Sunucuda bir hata oluştu. Lütfen sistem yöneticinizle iletişime geçin.';
+    }
+    
+    const msg = err.message || '';
+    if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
+      return 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
+    }
+    if (msg.includes('400')) {
+      return 'Bilgiler eksik veya hatalı.';
+    }
+    if (msg.toLowerCase().includes('network error') || msg.toLowerCase().includes('timeout')) {
+      return 'Sunucuyla bağlantı kurulamadı. İnternet bağlantınızı veya sunucu IP adresini kontrol edin.';
+    }
+    
+    return typeof serverMsg === 'string' ? serverMsg : (err.message || 'Giriş yapılırken beklenmedik bir hata oluştu.');
+  };
+
   const loadTenants = async (targetIp: string) => {
     if (!targetIp) return;
     const url = buildApiUrl(targetIp);
@@ -72,7 +107,7 @@ export const LoginScreen = () => {
       });
       setTenants([]);
       setSelectedTenant('');
-      setLocalError('Sunucuya bağlanılamadı. IP adresini kontrol edin.');
+      setLocalError(getFriendlyErrorMessage(err));
     } finally {
       setIsTenantsLoading(false);
     }
@@ -101,7 +136,7 @@ export const LoginScreen = () => {
         setSicilNo('');
         setUsername('');
       } catch (err: any) {
-        setLocalError(err.message || 'Şifre sıfırlanırken hata oluştu.');
+        setLocalError(getFriendlyErrorMessage(err));
       }
     } else {
       if (!username || !password) {
@@ -116,7 +151,7 @@ export const LoginScreen = () => {
         const selectedTenantUnvan = tenants.find(t => t.tenantId === selectedTenant)?.unvan || undefined;
         await login(username, password, selectedTenant || undefined, selectedTenantUnvan);
       } catch (err: any) {
-        setLocalError(err.message || 'Giriş yapılamadı. Bilgilerinizi kontrol edin.');
+        setLocalError(getFriendlyErrorMessage(err));
       }
     }
   };

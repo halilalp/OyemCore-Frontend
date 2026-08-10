@@ -46,7 +46,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
       set({ token, user, tenantId: sirketKodu || null, tenantUnvan: sirketUnvan || null, isAuthenticated: true, isLoading: false, error: null });
     } catch (err: any) {
-      const msg = err.message || 'Giriş yapılamadı.';
+      let msg = err.message || 'Giriş yapılamadı.';
+      if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
+        msg = 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
+      } else if (msg.toLowerCase().includes('network error')) {
+        msg = 'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.';
+      }
       set({ isLoading: false, error: msg });
       throw new Error(msg);
     }

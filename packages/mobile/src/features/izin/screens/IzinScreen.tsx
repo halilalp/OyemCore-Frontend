@@ -78,6 +78,41 @@ export const IzinScreen = () => {
     }
   };
 
+  // Otomatik İzin Gün Sayısı Hesaplama (Hafta sonları hariç)
+  useEffect(() => {
+    if (formCikisTar && formIsBasiTar) {
+      const parseLocalDate = (dateStr: string) => {
+        const parts = dateStr.split('.');
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        }
+        return null;
+      };
+
+      const start = parseLocalDate(formCikisTar);
+      const end = parseLocalDate(formIsBasiTar);
+
+      if (start && end) {
+        if (start > end) {
+          setFormIsGunu('0');
+        } else {
+          let count = 0;
+          let curDate = new Date(start.getTime());
+          while (curDate < end) {
+            const dayOfWeek = curDate.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0: Pazar, 6: Cumartesi
+              count++;
+            }
+            curDate.setDate(curDate.getDate() + 1);
+          }
+          setFormIsGunu(count.toString());
+        }
+      }
+    } else {
+      setFormIsGunu('');
+    }
+  }, [formCikisTar, formIsBasiTar]);
+
   // DatePicker modal states
   const [isCikisDatePickerOpen, setIsCikisDatePickerOpen] = useState(false);
   const [isIsBasiDatePickerOpen, setIsIsBasiDatePickerOpen] = useState(false);
@@ -102,17 +137,15 @@ export const IzinScreen = () => {
   useEffect(() => {
     if (isFocused && route.params?.code) {
       const code = route.params.code;
-      if (code && selectedDetailRequest?.belgeNo !== code) {
-        const foundRequest = requests.find(r => r.belgeNo === code);
-        if (foundRequest) {
-          setSelectedDetailRequest(foundRequest);
-          setIsDetailModalOpen(true);
-        } else {
-          const foundApproval = approvals.find(a => a.belgeNo === code);
-          if (foundApproval) {
-            setSelectedDetailRequest(foundApproval);
-            setIsDetailModalOpen(true);
-          }
+      const foundRequest = requests.find(r => r.belgeNo === code);
+      if (foundRequest) {
+        navigation.navigate('IzinDetail', { id: foundRequest.izinOnayID, activeTab: 'my' });
+        navigation.setParams({ code: undefined });
+      } else {
+        const foundApproval = approvals.find(a => a.belgeNo === code);
+        if (foundApproval) {
+          navigation.navigate('IzinDetail', { id: foundApproval.izinOnayID, activeTab: 'approvals' });
+          navigation.setParams({ code: undefined });
         }
       }
     }
@@ -254,8 +287,7 @@ export const IzinScreen = () => {
                   style={styles.requestCard}
                   activeOpacity={0.8}
                   onPress={() => {
-                    setSelectedDetailRequest(item);
-                    setIsDetailModalOpen(true);
+                    navigation.navigate('IzinDetail', { id: item.izinOnayID, activeTab: 'my' });
                   }}
                 >
                   {/* Sol durum çizgisi - Açık tonda pastel renk */}
@@ -314,8 +346,7 @@ export const IzinScreen = () => {
                   <TouchableOpacity 
                     activeOpacity={0.8}
                     onPress={() => {
-                      setSelectedDetailRequest(item);
-                      setIsDetailModalOpen(true);
+                      navigation.navigate('IzinDetail', { id: item.izinOnayID, activeTab: 'approvals' });
                     }}
                   >
                     <View style={styles.cardHeader}>
@@ -441,12 +472,12 @@ export const IzinScreen = () => {
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Toplam İzin Gün Sayısı *</Text>
                 <TextInput
-                  style={styles.textInput}
-                  placeholder="Örn: 5 veya 1.5"
+                  style={[styles.textInput, { backgroundColor: colors.background, color: colors.textSecondary }]}
+                  placeholder="Tarihleri seçtiğinizde otomatik hesaplanır..."
                   placeholderTextColor={colors.placeholder}
                   keyboardType="numeric"
                   value={formIsGunu}
-                  onChangeText={setFormIsGunu}
+                  editable={false}
                 />
               </View>
 
@@ -488,137 +519,6 @@ export const IzinScreen = () => {
           />
         </View>
         <KeyboardDismissBar />
-      </Modal>
-
-      {/* Standartlaşmış Detay Modalı */}
-      <Modal visible={isDetailModalOpen} transparent animationType="fade" onRequestClose={handleCloseDetail}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>İzin Talebi Detayı</Text>
-              <TouchableOpacity onPress={handleCloseDetail}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedDetailRequest && (() => {
-              const statusStyle = getStatusStyle(selectedDetailRequest.durum, selectedDetailRequest.surecDurum);
-              return (
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                  <View style={styles.detailCard}>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Belge No:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.belgeNo || 'Belge Kodu Yok'}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Durum:</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                        <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
-                      </View>
-                    </View>
-                    {selectedDetailRequest.adSoyad ? (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Talep Eden:</Text>
-                        <Text style={styles.detailValue}>{selectedDetailRequest.adSoyad}</Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>İzin Türü:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.izinTuru}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Süre:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.isGunu} Gün</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Çıkış Tarihi:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.cikisTarStr}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>İş Başı Tarihi:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.isBasiTarStr}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Talep Tarihi:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.kayitTarStr || ''}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Süreç Bilgisi:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.sonDurumBilgi || 'Bekliyor'}</Text>
-                    </View>
-                  </View>
-
-                  {selectedDetailRequest.aciklama ? (
-                    <View style={styles.alertBox}>
-                      <Ionicons name="chatbox-ellipses-outline" size={20} color={colors.primary} />
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={styles.alertTitle}>Açıklama / Gerekçe</Text>
-                        <Text style={styles.alertText}>{selectedDetailRequest.aciklama}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {/* Collapsible History Section */}
-                  <View style={styles.historySection}>
-                    <TouchableOpacity 
-                      style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 }}
-                      onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.historySectionTitle}>Talep Geçmişi</Text>
-                      <Ionicons name={isHistoryExpanded ? "chevron-up" : "chevron-down"} size={16} color={colors.textSecondary} />
-                    </TouchableOpacity>
-
-                    {isHistoryExpanded && (
-                      <View style={{ marginTop: 12, gap: 12 }}>
-                        {detailHistory && detailHistory.length > 0 ? (
-                          detailHistory.map((h, i) => (
-                            <View key={i} style={styles.historyCard}>
-                              <Text style={styles.historyTime}>{h.Tarih || h.tarih}</Text>
-                              <Text style={styles.historySubject}>{h.Konu || h.konu}</Text>
-                              <Text style={styles.historyDesc}>{h.Aciklama || h.aciklama}</Text>
-                            </View>
-                          ))
-                        ) : (
-                          <Text style={styles.emptyText}>Tarihçe kaydı bulunmamaktadır.</Text>
-                        )}
-                      </View>
-                    )}
-                  </View>
-                </ScrollView>
-              );
-            })()}
-
-            <View style={styles.modalFooter}>
-              {activeTab === 'approvals' && selectedDetailRequest?.durum === null ? (
-                <>
-                  <TouchableOpacity 
-                    style={styles.detailRejectBtn} 
-                    onPress={() => {
-                      handleReject(selectedDetailRequest.izinOnayID);
-                      handleCloseDetail();
-                    }}
-                  >
-                    <Text style={styles.rejectBtnText}>Reddet</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.detailApproveBtn} 
-                    onPress={() => {
-                      handleApprove(selectedDetailRequest.izinOnayID);
-                      handleCloseDetail();
-                    }}
-                  >
-                    <Text style={styles.approveBtnText}>Onayla</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity style={styles.cancelBtn} onPress={handleCloseDetail}>
-                  <Text style={styles.cancelBtnText}>Kapat</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
       </Modal>
     </View>
   );
