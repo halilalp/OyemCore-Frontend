@@ -284,14 +284,12 @@ export const IzinScreen = () => {
               const statusStyle = getStatusStyle(item.durum, item.surecDurum);
               return (
                 <TouchableOpacity 
-                  style={styles.requestCard}
+                  style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: statusStyle.text }]}
                   activeOpacity={0.8}
                   onPress={() => {
                     navigation.navigate('IzinDetail', { id: item.izinOnayID, activeTab: 'my' });
                   }}
                 >
-                  {/* Sol durum çizgisi - Açık tonda pastel renk */}
-                  <View style={[styles.leftLine, { backgroundColor: statusStyle.text + '55' }]} />
                   <View style={styles.cardInner}>
                     <View style={styles.cardHeader}>
                       <View>
@@ -339,9 +337,7 @@ export const IzinScreen = () => {
             keyExtractor={(item) => item.izinOnayID.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
-              <View style={styles.requestCard}>
-                {/* Sol durum çizgisi - Açık tonda onay bekliyor sarı rengi */}
-                <View style={[styles.leftLine, { backgroundColor: colors.warning + '55' }]} />
+              <View style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: colors.warning }]}>
                 <View style={styles.cardInner}>
                   <TouchableOpacity 
                     activeOpacity={0.8}
@@ -565,10 +561,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  leftLine: {
-    width: 6,
-    height: '100%',
-  },
+
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

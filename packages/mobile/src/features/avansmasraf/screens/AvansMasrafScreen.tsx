@@ -124,9 +124,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     const isCompleted = ['ONAYLANDI', 'REDDEDILDI', 'ODENDI', 'KAPATILDI'].includes((item.surecDurum || '').toUpperCase());
     const hasBekleyen = !!item.bekleyenOnay && item.bekleyenOnay !== '-';
     return (
-      <TouchableOpacity style={styles.requestCard} activeOpacity={0.7} onPress={() => openDetay(item, tip)}>
-        {/* Sol durum çizgisi - Açık tonda pastel renk */}
-        <View style={[styles.leftLine, { backgroundColor: ds.text + '55' }]} />
+      <TouchableOpacity style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: ds.text }]} activeOpacity={0.7} onPress={() => openDetay(item, tip)}>
         <View style={styles.cardInner}>
           <View style={styles.cardHeader}>
             <View>
@@ -151,9 +149,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   };
 
   const renderOnay = (item: any) => (
-    <View style={styles.requestCard}>
-      {/* Sol durum çizgisi - Açık tonda onay bekliyor sarı rengi */}
-      <View style={[styles.leftLine, { backgroundColor: colors.warning + '55' }]} />
+    <View style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: colors.warning }]}>
       <View style={styles.cardInner}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => openDetay(item, item.tip)}>
           <View style={styles.cardHeader}>
@@ -387,10 +383,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  leftLine: {
-    width: 6,
-    height: '100%',
-  },
+
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   leaveType: { fontSize: 15, fontWeight: '800', color: colors.text },
   leaveTypeSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
