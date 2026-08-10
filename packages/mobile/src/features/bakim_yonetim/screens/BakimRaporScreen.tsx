@@ -11,6 +11,48 @@ import { ListHeader } from '../../../components/ListHeader';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { createBakimStyles } from '../shared/bakimStyles';
 
+const getStatsForSelection = (statsArray: any[], year: string, month: string) => {
+  if (!statsArray || statsArray.length === 0) return null;
+  const yearData = statsArray.find(s => s.year.toString() === year);
+  if (!yearData || !yearData.data) return null;
+
+  if (month) {
+    const mStats = yearData.data.find((m: any) => m.month.toString() === parseInt(month).toString());
+    if (!mStats) return null;
+    return {
+      toplamTalepSayisi: mStats.totalCount,
+      tamamlananTalepSayisi: mStats.completedCount,
+      aktifTalepSayisi: mStats.remainingCount,
+      mttr: mStats.mttrAvgHours * 60,
+      mtbf: mStats.mtbfHours,
+      toplamDurusSure: mStats.downtimeHours * 60,
+      elektrikArizaSayisi: mStats.electricCount,
+      mekanikArizaSayisi: mStats.mechanicCount,
+    };
+  } else {
+    const totalCount = yearData.data.reduce((sum: number, m: any) => sum + m.totalCount, 0);
+    const completedCount = yearData.data.reduce((sum: number, m: any) => sum + m.completedCount, 0);
+    const remainingCount = yearData.data.reduce((sum: number, m: any) => sum + m.remainingCount, 0);
+    const downtimeHours = yearData.data.reduce((sum: number, m: any) => sum + m.downtimeHours, 0);
+    const mttrTotalHours = yearData.data.reduce((sum: number, m: any) => sum + m.mttrTotalHours, 0);
+    const mttr = completedCount > 0 ? (mttrTotalHours / completedCount) * 60 : 0;
+    const mtbf = totalCount > 0 ? (365 * 24) / totalCount : 0;
+    const electricCount = yearData.data.reduce((sum: number, m: any) => sum + m.electricCount, 0);
+    const mechanicCount = yearData.data.reduce((sum: number, m: any) => sum + m.mechanicCount, 0);
+
+    return {
+      toplamTalepSayisi: totalCount,
+      tamamlananTalepSayisi: completedCount,
+      aktifTalepSayisi: remainingCount,
+      mttr,
+      mtbf,
+      toplamDurusSure: downtimeHours * 60,
+      elektrikArizaSayisi: electricCount,
+      mekanikArizaSayisi: mechanicCount,
+    };
+  }
+};
+
 // Bakım Raporları — eskiden BakimScreen'in üçüncü sekmesiydi. Tek ekranda üst
 // üste iki anahtar (bölüm + mod) olması karmaşıklığın kaynağıydı; hub'daki her
 // öğe artık kendi ekranına gidiyor.
@@ -56,8 +98,9 @@ export const BakimRaporScreen = () => {
     setIsLoading(true);
     try {
       const stats = await api.getBakimDashboardStats(raporYil, raporSirket);
-      setRaporStats(stats || {});
-      const personel = await api.getPersonelPerformansRaporu(raporYil, raporAy, raporSirket);
+      const formattedStats = getStatsForSelection(stats, raporYil, raporAy);
+      setRaporStats(formattedStats);
+      const personel = await api.getPersonelPerformansRaporu(raporYil, raporAy || 'Tümü', raporSirket);
       setRaporPersonel(personel || []);
     } catch (err) {
       console.error(err);
@@ -188,22 +231,25 @@ export const BakimRaporScreen = () => {
                     <Text style={styles.emptyText}>Veri bulunamadı.</Text>
                   </View>
                 ) : (
-                  raporPersonel.map((p, idx) => (
-                    <View key={p.sicilNo} style={styles.leaderboardRow}>
-                      <View style={styles.rankBadge}>
-                        <Text style={styles.rankText}>{idx + 1}</Text>
+                  raporPersonel.map((p, idx) => {
+                    const totalTickets = (p.openTasks || 0) + (p.tamamlanan || 0);
+                    return (
+                      <View key={p.sicil || idx} style={styles.leaderboardRow}>
+                        <View style={styles.rankBadge}>
+                          <Text style={styles.rankText}>{idx + 1}</Text>
+                        </View>
+                        <View style={styles.leaderboardInfo}>
+                          <Text style={styles.leaderboardName}>{p.name || 'Bilinmeyen'}</Text>
+                          <Text style={styles.leaderboardSub}>
+                            Bilet: {totalTickets} adet | Kapatılan: {p.tamamlanan || 0} | Ort. Hız: {p.avgResolve || '0 Saat'}
+                          </Text>
+                        </View>
+                        <View style={[styles.scoreBadge, { backgroundColor: colors.primaryLight }]}>
+                          <Text style={[styles.scoreText, { color: colors.primary }]}>⭐ {p.rating ? p.rating.toFixed(1) : '0.0'}</Text>
+                        </View>
                       </View>
-                      <View style={styles.leaderboardInfo}>
-                        <Text style={styles.leaderboardName}>{p.adSoyad}</Text>
-                        <Text style={styles.leaderboardSub}>
-                          Bilet: {p.toplamBiletSayisi} adet | Kapatılan: {p.tamamlananBiletSayisi} | Çözüm Ortalama: {p.ortalamaKapatmaSuresi ? `${p.ortalamaKapatmaSuresi.toFixed(1)} Dk` : 'N/A'}
-                        </Text>
-                      </View>
-                      <View style={[styles.scoreBadge, { backgroundColor: p.puanColor || colors.primaryLight }]}>
-                        <Text style={[styles.scoreText, { color: p.puanTextColor || colors.primary }]}>{p.performansPuani?.toFixed(1) || '0.0'}</Text>
-                      </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
               </View>
             </>
