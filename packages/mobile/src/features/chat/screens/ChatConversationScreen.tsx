@@ -107,7 +107,16 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
     chatSignalR.connect(user.sicilNo);
     const off = chatSignalR.onMessage((m) => {
       if (!belongsHere(m)) return;
-      setMessages(prev => (prev.some(x => x.id === m.id && m.id !== 0) ? prev : [...prev, m]));
+      setMessages(prev => {
+        if (prev.some(x => x.id === m.id && m.id !== 0)) return prev;
+        const tempIndex = prev.findIndex(x => x.id === 0 && x.mesajMetni === m.mesajMetni && (x.gonderenSicilNo || '').trim() === (m.gonderenSicilNo || '').trim());
+        if (tempIndex !== -1) {
+          const next = [...prev];
+          next[tempIndex] = m;
+          return next;
+        }
+        return [...prev, m];
+      });
       if ((m.gonderenSicilNo || '').trim() !== mySicil) api.markChatConversationRead(targetSicilNo).catch(() => {});
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
     });
@@ -136,12 +145,22 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
           const known = new Set(prev.filter(x => x.id).map(x => x.id));
           const yeni = latest.filter(m => m.id && !known.has(m.id));
           if (yeni.length === 0) return prev;
+          let next = [...prev];
+          const added: ChatMessage[] = [];
+          yeni.forEach(m => {
+            const tempIndex = next.findIndex(x => x.id === 0 && x.mesajMetni === m.mesajMetni && (x.gonderenSicilNo || '').trim() === (m.gonderenSicilNo || '').trim());
+            if (tempIndex !== -1) {
+              next[tempIndex] = m;
+            } else {
+              added.push(m);
+            }
+          });
           // Gelenler arasında karşı taraftan olan varsa okundu işaretle.
           if (yeni.some(m => (m.gonderenSicilNo || '').trim() !== mySicil)) {
             api.markChatConversationRead(targetSicilNo).catch(() => {});
           }
           setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-          return [...prev, ...yeni];
+          return [...next, ...added];
         });
       } catch (_) {}
     }, 3500);
