@@ -169,11 +169,11 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
         
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.rejectBtn} onPress={() => onOnayReddet(item, false)}>
-            <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+            <Ionicons name="close-circle-outline" size={16} color={colors.danger} style={{ marginRight: 4 }} />
             <Text style={styles.rejectBtnText}>Reddet</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.approveBtn} onPress={() => onOnayReddet(item, true)}>
-            <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+            <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} style={{ marginRight: 4 }} />
             <Text style={styles.approveBtnText}>Onayla</Text>
           </TouchableOpacity>
         </View>
@@ -271,14 +271,20 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
                       <Text style={styles.detailLabel}>Belge No:</Text>
                       <Text style={styles.detailValue}>{detayItem.belgeNo}</Text>
                     </View>
+                    <View style={styles.divider} />
+                    
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Durum:</Text>
                       <View style={[styles.statusBadge, { backgroundColor: ds.bg }]}><Text style={[styles.statusText, { color: ds.text }]}>{ds.label}</Text></View>
                     </View>
+                    <View style={styles.divider} />
+                    
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Tutar:</Text>
                       <Text style={styles.detailValue}>{fmtTL(tutar)}</Text>
                     </View>
+                    <View style={styles.divider} />
+                    
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Talep Tarihi:</Text>
                       <Text style={styles.detailValue}>{fmtTarih(detayItem.talepTarihi)}</Text>
@@ -288,10 +294,13 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
                       !detayItem.bekleyenOnay ||
                       detayItem.bekleyenOnay === '-'
                     ) && (
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Bekleyen Onay:</Text>
-                        <Text style={styles.detailValue}>{detayItem.bekleyenOnayAdSoyad || '-'}</Text>
-                      </View>
+                      <>
+                        <View style={styles.divider} />
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Bekleyen Onay:</Text>
+                          <Text style={styles.detailValue}>{detayItem.bekleyenOnayAdSoyad || '-'}</Text>
+                        </View>
+                      </>
                     )}
                   </View>
 
@@ -358,7 +367,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
                       onOnayReddet(itemToProcess, false);
                     }}
                   >
-                    <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                    <Ionicons name="close-circle-outline" size={16} color={colors.danger} style={{ marginRight: 4 }} />
                     <Text style={styles.rejectBtnText}>Reddet</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
@@ -369,7 +378,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
                       onOnayReddet(itemToProcess, true);
                     }}
                   >
-                    <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                    <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} style={{ marginRight: 4 }} />
                     <Text style={styles.approveBtnText}>Onayla</Text>
                   </TouchableOpacity>
                 </>
@@ -425,10 +434,30 @@ const createStyles = (colors: any) => StyleSheet.create({
   infoValue: { fontSize: 12, fontWeight: '700', color: colors.text },
   descriptionText: { fontSize: 11, color: colors.textSecondary, marginTop: 10, backgroundColor: colors.background, padding: 8, borderRadius: 6 },
   actionsRow: { flexDirection: 'row', gap: 12, marginTop: 14, borderTopWidth: 1, borderColor: colors.border, paddingTop: 12 },
-  approveBtn: { flex: 1, backgroundColor: colors.success || '#28a745', borderRadius: 12, height: 42, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  approveBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
-  rejectBtn: { flex: 1, backgroundColor: colors.danger || '#dc3545', borderRadius: 12, height: 42, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  rejectBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
+  approveBtn: {
+    flex: 1,
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success + '40',
+    borderRadius: 12,
+    height: 42,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  approveBtnText: { color: colors.success, fontWeight: '800', fontSize: 13 },
+  rejectBtn: {
+    flex: 1,
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: colors.danger + '40',
+    borderRadius: 12,
+    height: 42,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectBtnText: { color: colors.danger, fontWeight: '800', fontSize: 13 },
 
   // Standartlaşmış Detay/Modal Stilleri
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -436,8 +465,29 @@ const createStyles = (colors: any) => StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
   modalTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
   modalBody: { padding: 20 },
-  detailCard: { backgroundColor: colors.background || '#F8FAFC', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16, gap: 12 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+    shadowColor: colors.shadowColor || '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
   detailLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   detailValue: { fontSize: 13, fontWeight: '700', color: colors.text },
   amirBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, padding: 12, borderRadius: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border },

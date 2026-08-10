@@ -374,11 +374,11 @@ export const IzinScreen = () => {
                   
                   <View style={styles.actionsRow}>
                     <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item.izinOnayID)}>
-                      <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                      <Ionicons name="close-circle-outline" size={16} color={colors.danger} style={{ marginRight: 4 }} />
                       <Text style={styles.rejectBtnText}>Reddet</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item.izinOnayID)}>
-                      <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                      <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} style={{ marginRight: 4 }} />
                       <Text style={styles.approveBtnText}>Onayla</Text>
                     </TouchableOpacity>
                   </View>
@@ -648,7 +648,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   approveBtn: {
     flex: 1,
-    backgroundColor: colors.success || '#28a745',
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success + '40',
     borderRadius: 12,
     height: 42,
     flexDirection: 'row',
@@ -656,13 +658,15 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignItems: 'center',
   },
   approveBtnText: {
-    color: '#FFF',
+    color: colors.success,
     fontWeight: '800',
     fontSize: 13,
   },
   rejectBtn: {
     flex: 1,
-    backgroundColor: colors.danger || '#dc3545',
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: colors.danger + '40',
     borderRadius: 12,
     height: 42,
     flexDirection: 'row',
@@ -670,7 +674,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignItems: 'center',
   },
   rejectBtnText: {
-    color: '#FFF',
+    color: colors.danger,
     fontWeight: '800',
     fontSize: 13,
   },

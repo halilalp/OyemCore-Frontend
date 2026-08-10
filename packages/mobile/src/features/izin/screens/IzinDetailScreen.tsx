@@ -219,11 +219,11 @@ export const IzinDetailScreen = () => {
       {activeTab === 'approvals' && detail.durum === null && (
         <View style={[styles.bottomActionBar, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 20) : 16 }]}>
           <TouchableOpacity style={styles.rejectBtn} onPress={handleReject}>
-            <Ionicons name="close-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+            <Ionicons name="close-circle-outline" size={18} color={colors.danger} style={{ marginRight: 6 }} />
             <Text style={styles.rejectBtnText}>Reddet</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.approveBtn} onPress={handleApprove}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+            <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} style={{ marginRight: 6 }} />
             <Text style={styles.approveBtnText}>Onayla</Text>
           </TouchableOpacity>
         </View>
@@ -460,13 +460,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: colors.danger || '#dc3545',
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: colors.danger + '40',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   rejectBtnText: {
-    color: '#FFF',
+    color: colors.danger,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -474,13 +476,15 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: colors.success || '#28a745',
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success + '40',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   approveBtnText: {
-    color: '#FFF',
+    color: colors.success,
     fontSize: 14,
     fontWeight: '700',
   },
