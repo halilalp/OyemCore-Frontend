@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, StatusBar, Platform, KeyboardAvoidingView, Alert, Modal, ScrollView, Image, Vibration } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, StatusBar, Platform, KeyboardAvoidingView, Alert, Modal, ScrollView, Image, Vibration, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -72,6 +72,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
   const [msgInfo, setMsgInfo] = useState<any | null>(null);
   const [actionMsg, setActionMsg] = useState<ChatMessage | null>(null);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   const belongsHere = useCallback((m: ChatMessage): boolean => {
@@ -100,6 +101,14 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
     loadHistory(0, 'replace');
     api.markChatConversationRead(targetSicilNo).catch(() => {});
   }, [targetSicilNo, loadHistory]);
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   // SignalR: bu konuşmaya ait gelen mesajları ekle.
   useEffect(() => {
@@ -381,7 +390,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         )}
       </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}>
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
         ) : (
@@ -410,7 +419,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
           </View>
         )}
 
-        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 10) }]}>
           <TouchableOpacity style={styles.attachBtn} onPress={onAttach} disabled={uploading}>
             {uploading ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="add" size={26} color={colors.primary} />}
           </TouchableOpacity>
