@@ -168,13 +168,13 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
         </TouchableOpacity>
         
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.approveBtn} onPress={() => onOnayReddet(item, true)}>
-            <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
-            <Text style={styles.approveBtnText}>Onayla</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.rejectBtn} onPress={() => onOnayReddet(item, false)}>
             <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
             <Text style={styles.rejectBtnText}>Reddet</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.approveBtn} onPress={() => onOnayReddet(item, true)}>
+            <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={styles.approveBtnText}>Onayla</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -348,9 +348,36 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
             })()}
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDetayItem(null)}>
-                <Text style={styles.cancelBtnText}>Kapat</Text>
-              </TouchableOpacity>
+              {activeTab === 'onay' ? (
+                <>
+                  <TouchableOpacity 
+                    style={[styles.rejectBtn, { flex: 1, height: 42 }]} 
+                    onPress={() => {
+                      const itemToProcess = detayItem;
+                      setDetayItem(null);
+                      onOnayReddet(itemToProcess, false);
+                    }}
+                  >
+                    <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                    <Text style={styles.rejectBtnText}>Reddet</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.approveBtn, { flex: 1, height: 42 }]} 
+                    onPress={() => {
+                      const itemToProcess = detayItem;
+                      setDetayItem(null);
+                      onOnayReddet(itemToProcess, true);
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                    <Text style={styles.approveBtnText}>Onayla</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setDetayItem(null)}>
+                  <Text style={styles.cancelBtnText}>Kapat</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

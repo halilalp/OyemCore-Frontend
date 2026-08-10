@@ -373,13 +373,13 @@ export const IzinScreen = () => {
                   </TouchableOpacity>
                   
                   <View style={styles.actionsRow}>
-                    <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item.izinOnayID)}>
-                      <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
-                      <Text style={styles.approveBtnText}>Onayla</Text>
-                    </TouchableOpacity>
                     <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item.izinOnayID)}>
                       <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
                       <Text style={styles.rejectBtnText}>Reddet</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item.izinOnayID)}>
+                      <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.approveBtnText}>Onayla</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
