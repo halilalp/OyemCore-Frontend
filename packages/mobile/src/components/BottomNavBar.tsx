@@ -30,7 +30,7 @@ import { slateTokens, api } from '@oyemcore/shared';
 type ScreenName =
   | 'Home' | 'Talepler' | 'Izin' | 'Bakim' | 'Ticket'
   | 'Performans' | 'Profil' | 'Zimmet' | 'Tedarikci'
-  | 'Calendar' | 'Admin' | 'SatSas' | 'ITHelpDesk' | 'ERPHelpDesk' | 'BakimHelpDesk';
+  | 'Calendar' | 'Admin' | 'SatSas' | 'ITHelpDesk' | 'ERPHelpDesk' | 'BakimHelpDesk' | 'Bordro';
 
 interface BottomNavBarProps {
   currentScreen?: ScreenName;
@@ -56,7 +56,7 @@ const REGISTERED_SCREENS = new Set<string>([
   'IzinDashboard', 'HelpDeskDashboard', 'ZimmetDashboard', 'TedarikciDashboard', 'Performans',
   'Profil', 'Zimmetlerim', 'DemirbasYonetim', 'DemirbasSayim', 'Tedarikci', 'AdminAyarlar',
   'AdminKullanici', 'AdminHelpDesk', 'AdminHiyerarsi', 'AdminLogs', 'AdminTarihce', 'Calendar',
-  'Training', 'Announcement', 'SatSas', 'SatDetail', 'SasDetail',
+  'Training', 'Announcement', 'SatSas', 'SatDetail', 'SasDetail', 'Bordro',
 ]);
 
 // DB'deki eski/farklı MobilUrl değerlerini geçerli rotaya çevir (#60'ta 'Bakim'
@@ -102,6 +102,7 @@ const NAV_SLOT_OPTIONS: { key: string; label: string; icon: any; action?: 'proje
   { key: 'Ticket', label: 'Ticket', icon: 'ticket-outline' },
   { key: 'Izin', label: 'İzin', icon: 'airplane-outline' },
   { key: 'AvansMasraf', label: 'Avans/Masraf', icon: 'wallet-outline' },
+  { key: 'Bordro', label: 'Bordro', icon: 'document-text-outline' },
 ];
 const NAV_SLOT_LEFT_KEY = 'navSlotLeft';
 const NAV_SLOT_RIGHT_KEY = 'navSlotRight';
@@ -214,6 +215,13 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const rawMobilePages = menuItems.filter(m => m.mobilGoster === true);
   const mobilePages: typeof rawMobilePages = [];
   rawMobilePages.forEach(m => {
+    // Malzeme Yönetimi projesini ve Malzeme & Tedarikçi sayfasını mobilde göstermiyoruz.
+    const pName = (m.projeAdi || '').toLowerCase();
+    const sName = (m.sayfaAdi || '').toLowerCase();
+    if (pName.includes('malzeme') || sName.includes('malzeme&tedarik') || sName.includes('malzeme & tedarik')) {
+      return;
+    }
+
     if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
       // Yetki listesinde IT-HelpDesk ve ERP-HelpDesk ayrı projeler (anasayfa ile aynı).
       mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'IT-HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
@@ -230,6 +238,15 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     mobilePages.push({
       sayfaAdi: 'Avans & Masraf', mobilUrl: 'AvansMasraf', sayfaUrl: 'AvansMasraf',
       projeAdi: 'Avans & Masraf', ikon: 'wallet-outline', mobilIcon: 'wallet-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  // Bordro Görüntüleme — mobile özel modül; DB menüsünde yoksa statik eklenir (İnsan Kaynakları projesi altına)
+  if (!mobilePages.some(m => m.mobilUrl === 'Bordro')) {
+    mobilePages.push({
+      sayfaAdi: 'Bordrolarım', mobilUrl: 'Bordro', sayfaUrl: 'Bordro',
+      projeAdi: 'İnsan Kaynakları', ikon: 'document-text-outline', mobilIcon: 'document-text-outline',
       mobilGoster: true,
     } as any);
   }

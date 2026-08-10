@@ -83,6 +83,22 @@ export const PeriyodikKontrolScreen = () => {
   const [selectedMachineKodu, setSelectedMachineKodu] = useState('');
   const [isSarfMachineOpen, setIsSarfMachineOpen] = useState(false);
 
+  // Tarihçe ve collapsible panel state'leri
+  const [detailHistory, setDetailHistory] = useState<any[]>([]);
+  const [isNotlarExpanded, setIsNotlarExpanded] = useState(false);
+  const [isSarfiyatsExpanded, setIsSarfiyatsExpanded] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+
+  const loadHistory = async (code: string) => {
+    try {
+      const res = await api.adminGetBelgeTarihcePaged({ documentCode: code, pageSize: 100 });
+      setDetailHistory(res?.items || []);
+    } catch (e) {
+      console.error('Tarihçe yüklenemedi:', e);
+      setDetailHistory([]);
+    }
+  };
+
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
@@ -109,7 +125,7 @@ export const PeriyodikKontrolScreen = () => {
 
   const getStatusBadgeColor = (durum: string) => {
     switch (durum) {
-      case 'TAMAMLANDI': return colors.primaryLight;
+      case 'TAMAMLANDI': return colors.successLight;
       case 'DEVAM': return colors.infoLight;
       case 'IPTAL': return colors.dangerLight;
       default: return colors.warningLight;
@@ -118,7 +134,7 @@ export const PeriyodikKontrolScreen = () => {
 
   const getStatusTextColor = (durum: string) => {
     switch (durum) {
-      case 'TAMAMLANDI': return colors.primary;
+      case 'TAMAMLANDI': return colors.success;
       case 'DEVAM': return colors.info;
       case 'IPTAL': return colors.danger;
       default: return colors.warning;
@@ -151,7 +167,12 @@ export const PeriyodikKontrolScreen = () => {
   const handleOpenCtrl = async (ctrl: PeriyodikKontrol) => {
     setSelectedCtrl(ctrl);
     setCtrlSubTab('gelisme');
+    setDetailHistory([]);
+    setIsNotlarExpanded(false);
+    setIsSarfiyatsExpanded(false);
+    setIsHistoryExpanded(false);
     try {
+      loadHistory(ctrl.kontrolKodu);
       const gelismeler = await api.getPeriyodikGelismeler(ctrl.kontrolKodu);
       setCtrlGelismeler(gelismeler || []);
       const sarfiyatlar = await api.getPeriyodikSarfiyats(ctrl.kontrolKodu);
@@ -198,6 +219,15 @@ export const PeriyodikKontrolScreen = () => {
       });
       setSelectedCtrl(prev => prev ? { ...prev, durum: status } : null);
       loadControls();
+      loadHistory(selectedCtrl.kontrolKodu);
+      try {
+        const gelismeler = await api.getPeriyodikGelismeler(selectedCtrl.kontrolKodu);
+        setCtrlGelismeler(gelismeler || []);
+        const sarfiyatlar = await api.getPeriyodikSarfiyats(selectedCtrl.kontrolKodu);
+        setCtrlSarfiyats(sarfiyatlar || []);
+      } catch (e) {
+        console.error('Notlar/Sarfiyat tazelenemedi:', e);
+      }
       Alert.alert('Başarılı', 'Kontrol durumu güncellendi.');
     } catch (err: any) {
       Alert.alert('Hata', apiHataMesaji(err, 'Durum güncellenemedi.'));
@@ -250,7 +280,7 @@ export const PeriyodikKontrolScreen = () => {
       return;
     }
     try {
-      const res = await api.searchMalzemes(val, 1, 10, true);
+      const res = await api.searchMalzemes(val, 1, 10, false);
       setMaterialsList(res.results || []);
     } catch (err) {
       console.error(err);
@@ -329,19 +359,19 @@ export const PeriyodikKontrolScreen = () => {
             {/* Şirket standart filtre çipi (admin seçebilir; değilse kilitli) */}
             <TouchableOpacity style={styles.filterChip} disabled={!isBakimAdmin} onPress={() => setIsGateSirketOpen(true)}>
               <Text style={styles.filterChipText}>
-                🏢 Şirket: {gateSirket
+                Şirket: {gateSirket
                   ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket)
-                  : (isBakimAdmin ? 'Hepsi' : 'Şirket')}{!isBakimAdmin ? ' 🔒' : ''}
+                  : (isBakimAdmin ? 'Hepsi' : 'Şirket')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlBolumFltOpen(true)}>
               <Text style={styles.filterChipText}>
-                ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === ctrlBolumFilter)?.bolumAdi || 'Hepsi'}
+                Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === ctrlBolumFilter)?.bolumAdi || 'Hepsi'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsCtrlDurumFltOpen(true)}>
               <Text style={styles.filterChipText}>
-                📊 Durum: {ctrlDurumFilter || 'Hepsi'}
+                Durum: {ctrlDurumFilter || 'Hepsi'}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -373,21 +403,28 @@ export const PeriyodikKontrolScreen = () => {
               data={controls}
               keyExtractor={(item) => item.kontrolKodu}
               contentContainerStyle={styles.listContainer}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.card} onPress={() => handleOpenCtrl(item)}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardCode}>{item.kontrolKodu}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeColor(item.durum) }]}>
-                      <Text style={[styles.statusText, { color: getStatusTextColor(item.durum) }]}>{item.durum}</Text>
+              renderItem={({ item }) => {
+                const durumColor = getStatusTextColor(item.durum);
+                return (
+                  <TouchableOpacity style={styles.card} onPress={() => handleOpenCtrl(item)}>
+                    {/* Sol durum çizgisi - Açık tonda pastel renk */}
+                    <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
+                    <View style={styles.cardInner}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardCode}>{item.kontrolKodu}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeColor(item.durum) }]}>
+                          <Text style={[styles.statusText, { color: getStatusTextColor(item.durum) }]}>{item.durum}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.cardTitle}>{item.bolumAdi || item.bolumKodu} - {item.kontrolTuru}</Text>
+                      <Text style={styles.cardDesc} numberOfLines={2}>{item.aciklama}</Text>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardFooterText}>📅 {item.hedefBaslangicStr} - {item.hedefBitisStr}</Text>
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.cardTitle}>{item.bolumAdi || item.bolumKodu} - {item.kontrolTuru}</Text>
-                  <Text style={styles.cardDesc} numberOfLines={2}>{item.aciklama}</Text>
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.cardFooterText}>📅 {item.hedefBaslangicStr} - {item.hedefBitisStr}</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>Periyodik kontrol kaydı bulunmamaktadır.</Text>
@@ -438,53 +475,143 @@ export const PeriyodikKontrolScreen = () => {
 
                 {/* Kontrol işlemleri artık sabit alt barda (aşağıda) */}
 
-                {/* Gelişme Notları */}
-                <View style={styles.logsSection}>
-                  <Text style={styles.sectionHeader}>Gelişme Notları ({ctrlGelismeler.length})</Text>
-                    {ctrlGelismeler.length === 0 ? (
-                      <Text style={styles.noDataText}>Henüz gelişme eklenmemiş.</Text>
-                    ) : (
-                      ctrlGelismeler.map(n => (
-                        <View key={n.id} style={styles.logCard}>
-                          <View style={styles.logHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                              <UserAvatar sicilNo={(n as any).kayitSicil} name={n.personel} size={26} />
-                              <Text style={styles.logUser} numberOfLines={1}>{n.personel}</Text>
-                            </View>
-                            <Text style={styles.logTime}>{n.tarihStr}</Text>
-                          </View>
-                          <Text style={styles.logBody}>{n.aciklama}</Text>
-                          {n.dosyaUrl && (
-                            <AttachmentPreview dosyaUrl={n.dosyaUrl} module="BAKIM" />
-                          )}
+                {/* Gelişme Notları Akordeon Paneli */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsNotlarExpanded(!isNotlarExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.historyTitle}>Gelişme Notları</Text>
+                      {ctrlGelismeler.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Ionicons name="chatbubble-outline" size={11} color={colors.primary} />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{ctrlGelismeler.length}</Text>
                         </View>
-                      ))
-                    )}
+                      )}
+                    </View>
+                    <Ionicons name={isNotlarExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
 
-                  {/* Gelişme ekleme artık orta FAB → modalından yapılıyor */}
+                  {isNotlarExpanded && (
+                    <View style={styles.historyContainer}>
+                      {ctrlGelismeler.length === 0 ? (
+                        <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                          <Text style={styles.noDataText}>Henüz gelişme eklenmemiş.</Text>
+                        </View>
+                      ) : (
+                        ctrlGelismeler.map(n => (
+                          <View key={n.id} style={styles.logCard}>
+                            <View style={styles.logHeader}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                <UserAvatar sicilNo={(n as any).kayitSicil} name={n.personel} size={26} />
+                                <Text style={styles.logUser} numberOfLines={1}>{n.personel}</Text>
+                              </View>
+                              <Text style={styles.logTime}>{n.tarihStr}</Text>
+                            </View>
+                            <Text style={styles.logBody}>{n.aciklama}</Text>
+                            {n.dosyaUrl && (
+                              <AttachmentPreview dosyaUrl={n.dosyaUrl} module="BAKIM" />
+                            )}
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  )}
                 </View>
 
-                {/* Malzeme Sarfiyatı */}
-                <View style={styles.sarfiyatSection}>
-                  <Text style={styles.sectionHeader}>Malzeme Sarfiyatı ({ctrlSarfiyats.length})</Text>
-                    {ctrlSarfiyats.length === 0 ? (
-                      <Text style={styles.noDataText}>Henüz sarfiyat kaydı yok.</Text>
-                    ) : (
-                      ctrlSarfiyats.map(s => (
-                        <View key={s.id} style={styles.sarfiyatCard}>
-                          <View style={styles.sarfiyatInfo}>
-                            <Text style={styles.sarfName}>{s.malzemeAdi} ({s.malzemeKodu})</Text>
-                            <Text style={styles.sarfDesc}>Miktar: {s.miktar} adet | Makine: {s.makineAdi || s.makineKodu}</Text>
-                            <Text style={styles.sarfUser}>👤 {s.kayitSicil}</Text>
-                          </View>
-                          <TouchableOpacity onPress={() => handleDeleteSarfiyat(s.id)} style={styles.deleteSarfBtn}>
-                            <Text style={styles.deleteSarfText}>✕</Text>
-                          </TouchableOpacity>
+                {/* Malzeme Sarfiyatı Akordeon Paneli */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsSarfiyatsExpanded(!isSarfiyatsExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.historyTitle}>Malzeme Sarfiyatı</Text>
+                      {ctrlSarfiyats.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Ionicons name="cube-outline" size={11} color={colors.primary} />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{ctrlSarfiyats.length}</Text>
                         </View>
-                      ))
-                    )}
+                      )}
+                    </View>
+                    <Ionicons name={isSarfiyatsExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
 
-                  {/* Sarfiyat ekleme artık orta FAB → modalından yapılıyor */}
+                  {isSarfiyatsExpanded && (
+                    <View style={styles.historyContainer}>
+                      {ctrlSarfiyats.length === 0 ? (
+                        <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                          <Text style={styles.noDataText}>Henüz sarfiyat kaydı yok.</Text>
+                        </View>
+                      ) : (
+                        ctrlSarfiyats.map(s => (
+                          <View key={s.id} style={styles.sarfiyatCard}>
+                            <View style={styles.sarfiyatInfo}>
+                              <Text style={styles.sarfName}>{s.malzemeAdi} ({s.malzemeKodu})</Text>
+                              <Text style={styles.sarfDesc}>Miktar: {s.miktar} adet | Makine: {s.makineAdi || s.makineKodu}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                                <UserAvatar sicilNo={s.kayitSicil} name={s.kayitYapan || s.kayitSicil} size={20} />
+                                <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500' }}>{s.kayitYapan || s.kayitSicil}</Text>
+                              </View>
+                            </View>
+                            <TouchableOpacity onPress={() => handleDeleteSarfiyat(s.id)} style={styles.deleteSarfBtn}>
+                              <Text style={styles.deleteSarfText}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Tarihçe / Geçmiş Akordeon Paneli */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.historyTitle}>Tarihçe</Text>
+                    </View>
+                    <Ionicons name={isHistoryExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+
+                  {isHistoryExpanded && (
+                    <View style={styles.historyContainer}>
+                      {detailHistory && detailHistory.length > 0 ? (
+                        detailHistory.map((h, i) => {
+                          let displayDate = '';
+                          if (h.kayitTar) {
+                            try {
+                              const d = new Date(h.kayitTar);
+                              if (!isNaN(d.getTime())) {
+                                displayDate = d.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                              } else {
+                                displayDate = h.kayitTar;
+                              }
+                            } catch {
+                              displayDate = h.kayitTar;
+                            }
+                          }
+                          return (
+                            <View key={i} style={styles.historyCard}>
+                              <Text style={styles.historyTime}>{displayDate}</Text>
+                              <Text style={styles.historySubject}>{h.konu || ''}</Text>
+                              <Text style={styles.historyDesc}>{h.aciklama || ''}</Text>
+                            </View>
+                          );
+                        })
+                      ) : (
+                        <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                          <Text style={styles.noDataText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
               </ScrollView>
             </View>
@@ -512,8 +639,33 @@ export const PeriyodikKontrolScreen = () => {
               }}
             />
 
-            {/* Standart alt bar (HelpDesk formatı): Gelişme | ⋯ menü | Tamamla */}
-            {selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
+            {/* Planlama Modu Alt Butonları (Yalnızca Planlama sayfasında ve durum Beklemede iken görünür) */}
+            {mode === 'plan' && selectedCtrl.durum === 'BEKLEMEDE' && (
+              <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14 }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: colors.primary, height: 48, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }} 
+                  onPress={openEditCtrl}
+                >
+                  <Ionicons name="create-outline" size={18} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Kontrolü Düzenle</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.danger, height: 48, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }} 
+                  onPress={() => {
+                    Alert.alert('Kontrolü İptal Et', 'Bu periyodik kontrolü iptal etmek istediğinize emin misiniz?', [
+                      { text: 'Vazgeç', style: 'cancel' },
+                      { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdateCtrlStatus('IPTAL') }
+                    ]);
+                  }}
+                >
+                  <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
+                  <Text style={{ color: colors.danger, fontWeight: '800', fontSize: 13 }}>İptal Et</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Standart İşlem Alt Barı (Sadece Uygulama/İşlem sayfasında görünür) */}
+            {mode === 'uygula' && selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#FFFFFF', borderRadius: 30, height: 66, marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16, elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, overflow: 'visible' }}>
                 <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} onPress={() => setCtrlNotModalOpen(true)}>
                   <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.primary} />
@@ -531,17 +683,11 @@ export const PeriyodikKontrolScreen = () => {
               </View>
             )}
 
-            {/* Aksiyon menüsü — Düzenle/Başlat/Gelişme/Sarfiyat/Tamamla/İptal */}
+            {/* Aksiyon menüsü — Sadece İşlem Modu İçin (Başlat/Sarfiyat/İptal) */}
             <Modal visible={ctrlActionsOpen} transparent animationType="fade" onRequestClose={() => setCtrlActionsOpen(false)}>
               <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setCtrlActionsOpen(false)}>
                 <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 32 }}>
                   <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 8 }} />
-                  {mode === 'plan' && selectedCtrl.durum === 'BEKLEMEDE' && (
-                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setCtrlActionsOpen(false); openEditCtrl(); }}>
-                      <Ionicons name="create-outline" size={22} color={colors.primary} />
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Kontrolü Düzenle</Text>
-                    </TouchableOpacity>
-                  )}
                   {selectedCtrl.durum === 'BEKLEMEDE' && (
                     <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setCtrlActionsOpen(false); handleUpdateCtrlStatus('DEVAM'); }}>
                       <Ionicons name="play" size={22} color={colors.info} />

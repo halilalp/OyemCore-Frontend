@@ -56,9 +56,9 @@ export const TicketCard: React.FC<TicketCardProps> = ({
 }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      {/* Sol durum çizgisi - Açık tonda durum rengi */}
+      <View style={[styles.leftLine, { backgroundColor: lineColor + '55' }]} />
       <View style={styles.cardInner}>
-        {/* Content */}
-
         {/* Content */}
         <View style={styles.contentContainer}>
           <View style={styles.headerRow}>
@@ -148,9 +148,6 @@ export const TicketCard: React.FC<TicketCardProps> = ({
           </View>
         </View>
       </View>
-
-      {/* Colored Bottom Line */}
-      <View style={[styles.bottomLine, { backgroundColor: lineColor }]} />
     </TouchableOpacity>
   );
 };
@@ -168,8 +165,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
+    flexDirection: 'row',
   },
   cardInner: {
+    flex: 1,
     flexDirection: 'row',
     padding: 16,
   },
@@ -308,8 +307,8 @@ const styles = StyleSheet.create({
     backgroundColor: slateTokens.border,
     flexShrink: 0,        // sikisip kaybolmasin
   },
-  bottomLine: {
-    height: 3,
-    width: '100%', // Durum çizgisi kartın tamamını kaplar (yarıda kalmaz)
+  leftLine: {
+    width: 6,
+    height: '100%',
   },
 });

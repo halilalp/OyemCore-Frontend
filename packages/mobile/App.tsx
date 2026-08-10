@@ -98,6 +98,7 @@ import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScre
 import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
 import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
 import { SasDetailScreen } from './src/features/satsas/screens/SasDetailScreen';
+import { BordroScreen } from './src/features/bordro/screens/BordroScreen';
 import { InAppNotification } from './src/components/InAppNotification';
 import { useNotificationStore } from './src/store/useNotificationStore';
 import { navigationRef, navigateFromNotificationData } from './src/navigation/navigationRef';
@@ -358,6 +359,11 @@ export default function App() {
             <Stack.Screen
               name="AvansMasraf"
               component={AvansMasrafScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Bordro"
+              component={BordroScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen name="TicketDashboard" component={TicketDashboardScreen} options={{ headerShown: false }} />

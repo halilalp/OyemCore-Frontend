@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
@@ -20,14 +20,13 @@ const fmtTarih = (s?: string) => {
   return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-// İzin ekranıyla aynı statü stili yaklaşımı
 const durumStyle = (durum: string, colors: any) => {
   const d = (durum || '').toUpperCase();
-  if (d === 'ONAYLANDI') return { bg: colors.successLight, text: colors.success, label: 'Onaylandı' };
-  if (d === 'REDDEDILDI') return { bg: colors.dangerLight, text: colors.danger, label: 'Reddedildi' };
-  if (d === 'ODENDI') return { bg: colors.infoLight, text: colors.info, label: 'Ödendi' };
-  if (d === 'KAPATILDI') return { bg: colors.border, text: colors.textSecondary, label: 'Kapatıldı' };
-  return { bg: colors.warningLight, text: colors.warning, label: 'Onayda' };
+  if (d === 'ONAYLANDI') return { bg: colors.successLight || 'rgba(40, 167, 69, 0.12)', text: colors.success || '#28a745', label: 'Onaylandı' };
+  if (d === 'REDDEDILDI') return { bg: colors.dangerLight || 'rgba(220, 53, 69, 0.12)', text: colors.danger || '#dc3545', label: 'Reddedildi' };
+  if (d === 'ODENDI') return { bg: colors.infoLight || 'rgba(23, 162, 184, 0.12)', text: colors.info || '#17a2b8', label: 'Ödendi' };
+  if (d === 'KAPATILDI') return { bg: colors.border || '#e2e8f0', text: colors.textSecondary || '#64748B', label: 'Kapatıldı' };
+  return { bg: colors.warningLight || 'rgba(255, 193, 7, 0.12)', text: colors.warning || '#ffc107', label: 'Onayda' };
 };
 
 export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
@@ -43,6 +42,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   const [avansFormOpen, setAvansFormOpen] = useState(false);
   const [masrafFormOpen, setMasrafFormOpen] = useState(false);
   const route = useRoute<any>();
+
   // Detay modalı
   const [detayItem, setDetayItem] = useState<any | null>(null);
   const [detayTip, setDetayTip] = useState<'AVANS' | 'MASRAF'>('AVANS');
@@ -91,7 +91,6 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     }
   };
 
-  // Ana ekran FAB'ından "Yeni Avans/Masraf" ile gelince ilgili formu aç.
   useEffect(() => {
     const oc = route.params?.openCreate;
     if (!oc) return;
@@ -100,7 +99,6 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     navigation.setParams?.({ openCreate: undefined });
   }, [route.params?.openCreate]);
 
-  // Talep detayını aç (masrafta kalemleri de yükler).
   const openDetay = async (item: any, tip: 'AVANS' | 'MASRAF') => {
     setDetayItem(item);
     setDetayTip(tip);
@@ -120,50 +118,69 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     }
   };
 
-  // Kendi talep kartı (İzin requestCard formatı)
   const renderTalep = (item: any, tip: 'AVANS' | 'MASRAF') => {
     const ds = durumStyle(item.surecDurum, colors);
     const tutar = tip === 'AVANS' ? item.tutar : item.toplamTutar;
+    const isCompleted = ['ONAYLANDI', 'REDDEDILDI', 'ODENDI', 'KAPATILDI'].includes((item.surecDurum || '').toUpperCase());
+    const hasBekleyen = !!item.bekleyenOnay && item.bekleyenOnay !== '-';
     return (
       <TouchableOpacity style={styles.requestCard} activeOpacity={0.7} onPress={() => openDetay(item, tip)}>
-        <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.leaveType}>{tip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
-            <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+        {/* Sol durum çizgisi - Açık tonda pastel renk */}
+        <View style={[styles.leftLine, { backgroundColor: ds.text + '55' }]} />
+        <View style={styles.cardInner}>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.leaveType}>{tip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
+              <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: ds.bg }]}>
+              <Text style={[styles.statusText, { color: ds.text }]}>{ds.label}</Text>
+            </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: ds.bg }]}>
-            <Text style={[styles.statusText, { color: ds.text }]}>{ds.label}</Text>
+          <View style={styles.cardInfoGrid}>
+            <View style={styles.infoCol}><Text style={styles.infoLabel}>Tutar</Text><Text style={styles.infoValue}>{fmtTL(tutar)}</Text></View>
+            <View style={styles.infoCol}><Text style={styles.infoLabel}>Talep Tarihi</Text><Text style={styles.infoValue}>{fmtTarih(item.talepTarihi)}</Text></View>
+            {!isCompleted && hasBekleyen && (
+              <View style={styles.infoCol}><Text style={styles.infoLabel}>Bekleyen Onay</Text><Text style={styles.infoValue}>{item.bekleyenOnayAdSoyad || '-'}</Text></View>
+            )}
           </View>
+          {!!item.aciklama && <Text style={styles.descriptionText} numberOfLines={2}>Açıklama: {item.aciklama}</Text>}
         </View>
-        <View style={styles.cardInfoGrid}>
-          <View style={styles.infoCol}><Text style={styles.infoLabel}>Tutar</Text><Text style={styles.infoValue}>{fmtTL(tutar)}</Text></View>
-          <View style={styles.infoCol}><Text style={styles.infoLabel}>Talep Tarihi</Text><Text style={styles.infoValue}>{fmtTarih(item.talepTarihi)}</Text></View>
-          <View style={styles.infoCol}><Text style={styles.infoLabel}>Bekleyen Onay</Text><Text style={styles.infoValue}>{item.bekleyenOnayAdSoyad || '-'}</Text></View>
-        </View>
-        {!!item.aciklama && <Text style={styles.descriptionText} numberOfLines={2}>Açıklama: {item.aciklama}</Text>}
       </TouchableOpacity>
     );
   };
 
-  // Onay kutusu kartı (İzin onay formatı — actionsRow)
   const renderOnay = (item: any) => (
     <View style={styles.requestCard}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.employeeName}>{item.talepEdenAdSoyad}</Text>
-          <Text style={styles.leaveTypeSub}>{item.tip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
-          <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+      {/* Sol durum çizgisi - Açık tonda onay bekliyor sarı rengi */}
+      <View style={[styles.leftLine, { backgroundColor: colors.warning + '55' }]} />
+      <View style={styles.cardInner}>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => openDetay(item, item.tip)}>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.employeeName}>{item.talepEdenAdSoyad}</Text>
+              <Text style={styles.leaveTypeSub}>{item.tip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
+              <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+            </View>
+            <Text style={styles.durationBadge}>{fmtTL(item.tutar)}</Text>
+          </View>
+          <View style={styles.cardInfoGrid}>
+            <View style={styles.infoCol}><Text style={styles.infoLabel}>Tutar</Text><Text style={styles.infoValue}>{fmtTL(item.tutar)}</Text></View>
+            <View style={styles.infoCol}><Text style={styles.infoLabel}>Talep Tarihi</Text><Text style={styles.infoValue}>{fmtTarih(item.talepTarihi)}</Text></View>
+          </View>
+          {!!item.aciklama && <Text style={styles.descriptionText} numberOfLines={2}>Gerekçe: {item.aciklama}</Text>}
+        </TouchableOpacity>
+        
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.approveBtn} onPress={() => onOnayReddet(item, true)}>
+            <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={styles.approveBtnText}>Onayla</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.rejectBtn} onPress={() => onOnayReddet(item, false)}>
+            <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={styles.rejectBtnText}>Reddet</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.durationBadge}>{fmtTL(item.tutar)}</Text>
-      </View>
-      <View style={styles.cardInfoGrid}>
-        <View style={styles.infoCol}><Text style={styles.infoLabel}>Tutar</Text><Text style={styles.infoValue}>{fmtTL(item.tutar)}</Text></View>
-        <View style={styles.infoCol}><Text style={styles.infoLabel}>Talep Tarihi</Text><Text style={styles.infoValue}>{fmtTarih(item.talepTarihi)}</Text></View>
-      </View>
-      {!!item.aciklama && <Text style={styles.descriptionText} numberOfLines={2}>Gerekçe: {item.aciklama}</Text>}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.approveBtn} onPress={() => onOnayReddet(item, true)}><Text style={styles.approveBtnText}>Onayla</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.rejectBtn} onPress={() => onOnayReddet(item, false)}><Text style={styles.rejectBtnText}>Reddet</Text></TouchableOpacity>
       </View>
     </View>
   );
@@ -175,15 +192,37 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     <View style={styles.container}>
       <ListHeader
         title="Avans & Masraf"
-        subtitle={activeTab === 'onay' ? `${onaylar.length} onay` : ''}
-        activeFilter={activeTab}
-        onFilterChange={(id: any) => setActiveTab(id)}
-        filters={[
-          { id: 'avans', label: 'Avanslarım' },
-          { id: 'masraf', label: 'Masraflarım' },
-          { id: 'onay', label: `Onay Kutusu (${onaylar.length})` },
-        ]}
-      />
+        subtitle={activeTab === 'onay' ? `${onaylar.length} Onay` : ''}
+        onBack={() => navigation.goBack()}
+      >
+        {/* HelpDesk stilinde Yatay Filtreleme Butonları */}
+        <View style={styles.headerFiltersRow}>
+          <TouchableOpacity 
+            style={[styles.headerFilterBtn, activeTab === 'avans' && styles.headerFilterBtnActive]} 
+            onPress={() => setActiveTab('avans')}
+          >
+            <Text style={[styles.headerFilterBtnText, activeTab === 'avans' && styles.headerFilterBtnTextActive]}>
+              Avanslarım
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.headerFilterBtn, activeTab === 'masraf' && styles.headerFilterBtnActive]} 
+            onPress={() => setActiveTab('masraf')}
+          >
+            <Text style={[styles.headerFilterBtnText, activeTab === 'masraf' && styles.headerFilterBtnTextActive]}>
+              Masraflarım
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.headerFilterBtn, activeTab === 'onay' && styles.headerFilterBtnActive]} 
+            onPress={() => setActiveTab('onay')}
+          >
+            <Text style={[styles.headerFilterBtnText, activeTab === 'onay' && styles.headerFilterBtnTextActive]}>
+              Onay Kutusu ({onaylar.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ListHeader>
 
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
         {isLoading ? (
@@ -215,66 +254,82 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
       <AvansFormModal visible={avansFormOpen} onClose={() => setAvansFormOpen(false)} onSaved={() => { setAvansFormOpen(false); load(true); }} />
       <MasrafFormModal visible={masrafFormOpen} onClose={() => setMasrafFormOpen(false)} onSaved={() => { setMasrafFormOpen(false); load(true); }} />
 
-      {/* Talep Detayı */}
-      <Modal visible={!!detayItem} transparent animationType="slide" onRequestClose={() => setDetayItem(null)}>
-        <View style={styles.detayOverlay}>
-          <View style={styles.detaySheet}>
-            <View style={styles.detayHeader}>
-              <Text style={styles.detayTitle}>{detayTip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
-              <TouchableOpacity onPress={() => setDetayItem(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      {/* Standartlaştırılmış Detay Modalı */}
+      <Modal visible={!!detayItem} transparent animationType="fade" onRequestClose={() => setDetayItem(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{detayTip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
+              <TouchableOpacity onPress={() => setDetayItem(null)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
+
             {detayItem && (() => {
               const ds = durumStyle(detayItem.surecDurum, colors);
               const tutar = detayTip === 'AVANS' ? detayItem.tutar : detayItem.toplamTutar;
               return (
-                <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-                  <View style={styles.detayRow}><Text style={styles.detayLabel}>Belge No</Text><Text style={styles.detayValue}>{detayItem.belgeNo}</Text></View>
-                  <View style={styles.detayRow}><Text style={styles.detayLabel}>Durum</Text><View style={[styles.statusBadge, { backgroundColor: ds.bg }]}><Text style={[styles.statusText, { color: ds.text }]}>{ds.label}</Text></View></View>
-                  <View style={styles.detayRow}><Text style={styles.detayLabel}>Tutar</Text><Text style={styles.detayValue}>{fmtTL(tutar)}</Text></View>
-                  <View style={styles.detayRow}><Text style={styles.detayLabel}>Talep Tarihi</Text><Text style={styles.detayValue}>{fmtTarih(detayItem.talepTarihi)}</Text></View>
-                  <View style={styles.detayRow}><Text style={styles.detayLabel}>Bekleyen Onay</Text><Text style={styles.detayValue}>{detayItem.bekleyenOnayAdSoyad || '-'}</Text></View>
-                  {/* İşlem Yapan Amir Bilgisi (Onaylayan veya Reddeden) */}
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                  <View style={styles.detailCard}>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Belge No:</Text>
+                      <Text style={styles.detailValue}>{detayItem.belgeNo}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Durum:</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: ds.bg }]}><Text style={[styles.statusText, { color: ds.text }]}>{ds.label}</Text></View>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Tutar:</Text>
+                      <Text style={styles.detailValue}>{fmtTL(tutar)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Talep Tarihi:</Text>
+                      <Text style={styles.detailValue}>{fmtTarih(detayItem.talepTarihi)}</Text>
+                    </View>
+                    {!(
+                      ['ONAYLANDI', 'REDDEDILDI', 'ODENDI', 'KAPATILDI'].includes((detayItem.surecDurum || '').toUpperCase()) ||
+                      !detayItem.bekleyenOnay ||
+                      detayItem.bekleyenOnay === '-'
+                    ) && (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Bekleyen Onay:</Text>
+                        <Text style={styles.detailValue}>{detayItem.bekleyenOnayAdSoyad || '-'}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Onaylayan/Reddeden Amir Bilgisi */}
                   {(() => {
                     const islemYapanAd = (detayTip === 'AVANS' ? detayItem.islemYapanAdSoyad : detayItem.IslemYapanAdSoyad) || detayItem.islemYapanAdSoyad || detayItem.IslemYapanAdSoyad;
                     const islemYapanSicil = (detayTip === 'AVANS' ? detayItem.islemYapanSicil : detayItem.IslemYapanSicil) || detayItem.islemYapanSicil || detayItem.IslemYapanSicil;
                     if (!islemYapanAd) return null;
                     return (
-                      <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.card,
-                        padding: 12,
-                        borderRadius: 10,
-                        marginTop: 14,
-                        borderWidth: 1,
-                        borderColor: colors.border
-                      }}>
-                        <UserAvatar 
-                          sicilNo={islemYapanSicil} 
-                          name={islemYapanAd} 
-                          size={36} 
-                        />
+                      <View style={styles.amirBox}>
+                        <UserAvatar sicilNo={islemYapanSicil} name={islemYapanAd} size={36} />
                         <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={{ fontSize: 9, color: colors.placeholder, fontWeight: '700', letterSpacing: 0.5 }}>
+                          <Text style={styles.amirSubtitle}>
                             {detayItem.surecDurum === 'REDDEDILDI' ? 'REDDEDEN AMİR' : 'ONAYLAYAN AMİR'}
                           </Text>
-                          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, marginTop: 2 }}>
-                            {islemYapanAd}
-                          </Text>
+                          <Text style={styles.amirTitle}>{islemYapanAd}</Text>
                         </View>
                       </View>
                     );
                   })()}
+
+                  {/* Detay açıklaması */}
                   {!!detayItem.aciklama && (
-                    <View style={{ marginTop: 10 }}>
-                      <Text style={styles.detayLabel}>Açıklama</Text>
-                      <Text style={styles.detayDesc}>{detayItem.aciklama}</Text>
+                    <View style={styles.alertBox}>
+                      <Ionicons name="chatbox-ellipses-outline" size={20} color={colors.primary} />
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.alertTitle}>Açıklama</Text>
+                        <Text style={styles.alertText}>{detayItem.aciklama}</Text>
+                      </View>
                     </View>
                   )}
+
                   {detayTip === 'MASRAF' && (
-                    <View style={{ marginTop: 16 }}>
+                    <View style={{ marginTop: 12 }}>
                       <Text style={styles.detaySectionTitle}>Masraf Kalemleri ({detayKalemler.length})</Text>
                       {detayLoading ? (
                         <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
@@ -295,6 +350,12 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
                 </ScrollView>
               );
             })()}
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDetayItem(null)}>
+                <Text style={styles.cancelBtnText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -302,7 +363,6 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   );
 };
 
-// Not: kart/grid stilleri İzin ekranıyla birebir aynı isim ve değerlerde.
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   contentWrapper: { flex: 1 },
@@ -310,14 +370,34 @@ const createStyles = (colors: any) => StyleSheet.create({
   listContainer: { padding: 16, gap: 12, paddingBottom: 100 },
   emptyContainer: { alignItems: 'center', paddingVertical: 60 },
   emptyText: { color: colors.textSecondary, fontSize: 14 },
-  requestCard: { backgroundColor: colors.card, borderRadius: 14, padding: 16, shadowColor: colors.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: colors.border },
+  requestCard: { 
+    backgroundColor: colors.card, 
+    borderRadius: 16, 
+    shadowColor: colors.shadowColor, 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.03, 
+    shadowRadius: 8, 
+    elevation: 2, 
+    borderWidth: 1, 
+    borderColor: colors.border,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  cardInner: { 
+    flex: 1,
+    padding: 16,
+  },
+  leftLine: {
+    width: 6,
+    height: '100%',
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  leaveType: { fontSize: 15, fontWeight: '700', color: colors.text },
+  leaveType: { fontSize: 15, fontWeight: '800', color: colors.text },
   leaveTypeSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   belgeNoText: { fontSize: 12, color: colors.textSecondary, marginTop: 2, fontWeight: '600' },
-  employeeName: { fontSize: 15, fontWeight: '700', color: colors.text },
+  employeeName: { fontSize: 15, fontWeight: '800', color: colors.text },
   durationBadge: { backgroundColor: colors.infoLight, color: colors.info, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, fontSize: 12, fontWeight: '800', overflow: 'hidden' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 11, fontWeight: '800' },
   cardInfoGrid: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderColor: colors.border, paddingTop: 10, marginTop: 4 },
   infoCol: { flex: 1 },
@@ -325,18 +405,39 @@ const createStyles = (colors: any) => StyleSheet.create({
   infoValue: { fontSize: 12, fontWeight: '700', color: colors.text },
   descriptionText: { fontSize: 11, color: colors.textSecondary, marginTop: 10, backgroundColor: colors.background, padding: 8, borderRadius: 6 },
   actionsRow: { flexDirection: 'row', gap: 12, marginTop: 14, borderTopWidth: 1, borderColor: colors.border, paddingTop: 12 },
-  approveBtn: { flex: 1, backgroundColor: colors.primaryLight, borderRadius: 8, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.primary },
-  approveBtnText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
-  rejectBtn: { flex: 1, backgroundColor: colors.dangerLight, borderRadius: 8, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.danger },
-  rejectBtnText: { color: colors.danger, fontWeight: '700', fontSize: 13 },
-  detayOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  detaySheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18, maxHeight: '85%' },
-  detayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  detayTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
-  detayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
-  detayLabel: { fontSize: 12, fontWeight: '700', color: colors.placeholder },
-  detayValue: { fontSize: 13.5, fontWeight: '700', color: colors.text },
-  detayDesc: { fontSize: 13, color: colors.text, backgroundColor: colors.card, borderRadius: 8, padding: 10, marginTop: 6 },
+  approveBtn: { flex: 1, backgroundColor: colors.success || '#28a745', borderRadius: 12, height: 42, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  approveBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
+  rejectBtn: { flex: 1, backgroundColor: colors.danger || '#dc3545', borderRadius: 12, height: 42, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  rejectBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
+
+  // Standartlaşmış Detay/Modal Stilleri
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', maxHeight: '85%', backgroundColor: colors.card, borderRadius: 24, overflow: 'hidden', elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  modalBody: { padding: 20 },
+  detailCard: { backgroundColor: colors.background || '#F8FAFC', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16, gap: 12 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  detailValue: { fontSize: 13, fontWeight: '700', color: colors.text },
+  amirBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, padding: 12, borderRadius: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+  amirTitle: { fontSize: 13, fontWeight: '700', color: colors.text, marginTop: 2 },
+  amirSubtitle: { fontSize: 9, color: colors.placeholder || '#94A3B8', fontWeight: '800', letterSpacing: 0.5 },
+  alertBox: { flexDirection: 'row', backgroundColor: (colors.primary || '#3445C5') + '10', borderWidth: 1, borderColor: (colors.primary || '#3445C5') + '30', borderRadius: 14, padding: 14, marginBottom: 16 },
+  alertTitle: { fontSize: 14, fontWeight: '800', color: colors.primary, marginBottom: 4 },
+  alertText: { fontSize: 12.5, color: colors.textSecondary, lineHeight: 18 },
+  modalFooter: { flexDirection: 'row', padding: 16, borderTopWidth: 1, borderTopColor: colors.border, gap: 12 },
+  cancelBtn: { flex: 1, backgroundColor: colors.border || '#E2E8F0', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+
+  // HelpDesk Stili Yatay Filtre Barı Stilleri
+  headerFiltersRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: 0, marginBottom: 6 },
+  headerFilterBtn: { flex: 1, backgroundColor: '#FFF', borderRadius: 20, paddingVertical: 10, paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center' },
+  headerFilterBtnActive: { backgroundColor: colors.primary || '#3b82f6' },
+  headerFilterBtnText: { fontSize: 11, fontWeight: '600', color: slateTokens.textSecondary },
+  headerFilterBtnTextActive: { color: '#FFF', fontWeight: '800' },
+
+  // Masraf kalem stilleri
   detaySectionTitle: { fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 8 },
   detayEmpty: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginVertical: 14 },
   kalemCard: { backgroundColor: colors.card, borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border },

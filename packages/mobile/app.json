@@ -32,7 +32,9 @@
       "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": false,
-      "permissions": ["VIBRATE"],
+      "permissions": [
+        "VIBRATE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -45,6 +47,9 @@
       "eas": {
         "projectId": "34b84bb1-9215-4902-8c3d-137be6ef5766"
       }
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

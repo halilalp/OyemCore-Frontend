@@ -1786,7 +1786,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         </TouchableOpacity>
 
                         {isIsEmriExpanded && (!detailData?.isEmriList || detailData.isEmriList.length === 0) && (
-                          <Text style={styles.emptyChatText}>Bu talebe bağlı iş emri bulunmuyor.</Text>
+                          <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                            <Text style={styles.emptyChatText}>Bu talebe bağlı iş emri bulunmuyor.</Text>
+                          </View>
                         )}
                         {isIsEmriExpanded && (detailData?.isEmriList || []).map((wo, i) => (
                             <View key={i} style={[styles.historyCard, { marginBottom: 12 }]}>

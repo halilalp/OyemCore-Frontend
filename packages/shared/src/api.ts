@@ -527,6 +527,11 @@ export const api = {
     return response.data;
   },
 
+  saveBakimPlanGelisme: async (code: string, gelisme: { aciklama: string; dosyaUrl?: string }): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>(`/bakim/plan/${code}/gelisme`, gelisme);
+    return response.data;
+  },
+
   // Periyodik Kontrol Endpoints
   getPeriyodikKontrols: async (params: {
     sirket?: string;
@@ -1244,5 +1249,13 @@ export const api = {
   },
   rejectSasOrder: async (belgeNo: string, comment: string): Promise<any> => {
     return { success: true, message: 'Sipariş reddedildi.' };
+  },
+  getBordroList: async (pageIndex = 0, pageSize = 20): Promise<any> => {
+    const response = await apiClient.get('/bordro/list', { params: { pageIndex, pageSize } });
+    return response.data;
+  },
+  saveBordroAction: async (bordroID: number, aksiyon: 'OKUDU' | 'ONAYLADI'): Promise<any> => {
+    const response = await apiClient.post(`/bordro/action?bordroID=${bordroID}&aksiyon=${aksiyon}`);
+    return response.data;
   }
 };

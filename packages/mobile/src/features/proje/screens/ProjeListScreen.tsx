@@ -144,44 +144,49 @@ export const ProjeListScreen = () => {
           renderItem={({ item }) => {
             const proje = item.tur === 'P';
             const tamamlandi = item.durum === 'TAMAMLANDI';
+            const durumColor = tamamlandi ? colors.success : colors.warning;
             return (
               <TouchableOpacity
                 style={styles.card}
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('ProjeDetail', { id: item.id })}
               >
-                <View style={styles.cardHeader}>
-                  <View style={styles.turBadge}>
-                    <Ionicons
-                      name={proje ? 'briefcase-outline' : 'people-outline'}
-                      size={13}
-                      color={slateTokens.primary}
-                    />
-                    <Text style={styles.turBadgeText}>{item.turAdi}{item.projeTur ? ` · ${item.projeTur}` : ''}</Text>
+                {/* Sol durum çizgisi - Açık tonda pastel renk */}
+                <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
+                <View style={styles.cardInner}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.turBadge}>
+                      <Ionicons
+                        name={proje ? 'briefcase-outline' : 'people-outline'}
+                        size={13}
+                        color={slateTokens.primary}
+                      />
+                      <Text style={styles.turBadgeText}>{item.turAdi}{item.projeTur ? ` · ${item.projeTur}` : ''}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? colors.successLight : colors.warningLight }]}>
+                      <Text style={[styles.statusText, { color: tamamlandi ? colors.success : colors.warning }]}>{item.durum}</Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? colors.successLight : colors.warningLight }]}>
-                    <Text style={[styles.statusText, { color: tamamlandi ? colors.success : colors.warning }]}>{item.durum}</Text>
-                  </View>
-                </View>
 
-                <Text style={styles.cardTitle} numberOfLines={2}>{item.konu || '(Konu yok)'}</Text>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{item.konu || '(Konu yok)'}</Text>
 
-                <View style={styles.cardFooter}>
-                  <View style={styles.footerLeft}>
-                    {item.sicilNo
-                      ? <UserAvatar sicilNo={item.sicilNo} name={item.ad} size={22} style={{ marginRight: 5 }} />
-                      : <Ionicons name="person-outline" size={16} color={colors.textSecondary} style={{ marginRight: 5 }} />}
-                    <Text style={styles.footerText} numberOfLines={1}>{(item.ad || '-').split(' ')[0]}</Text>
-                  </View>
-                  <View style={styles.footerRight}>
-                    {!!item.ozet && (
-                      <View style={styles.gorevChip}>
-                        <Ionicons name="checkbox-outline" size={12} color={slateTokens.primary} />
-                        <Text style={styles.gorevChipText}>{item.ozet}</Text>
-                      </View>
-                    )}
-                    <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-                    <Text style={styles.footerDate}>{item.basTarih}</Text>
+                  <View style={styles.cardFooter}>
+                    <View style={styles.footerLeft}>
+                      {item.sicilNo
+                        ? <UserAvatar sicilNo={item.sicilNo} name={item.ad} size={22} style={{ marginRight: 5 }} />
+                        : <Ionicons name="person-outline" size={16} color={colors.textSecondary} style={{ marginRight: 5 }} />}
+                      <Text style={styles.footerText} numberOfLines={1}>{(item.ad || '-').split(' ')[0]}</Text>
+                    </View>
+                    <View style={styles.footerRight}>
+                      {!!item.ozet && (
+                        <View style={styles.gorevChip}>
+                          <Ionicons name="checkbox-outline" size={12} color={slateTokens.primary} />
+                          <Text style={styles.gorevChipText}>{item.ozet}</Text>
+                        </View>
+                      )}
+                      <Ionicons name="time-outline" size={13} color={colors.textMuted} />
+                      <Text style={styles.footerDate}>{item.basTarih}</Text>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -307,8 +312,18 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabText: { color: 'rgba(255,255,255,0.9)', fontWeight: '600', fontSize: 13 },
   tabTextActive: { color: slateTokens.primary },
   card: {
-    backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 10,
+    backgroundColor: colors.card, borderRadius: 16, marginBottom: 10,
     borderWidth: 1, borderColor: colors.border,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  cardInner: {
+    flex: 1,
+    padding: 16,
+  },
+  leftLine: {
+    width: 6,
+    height: '100%',
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   turBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },

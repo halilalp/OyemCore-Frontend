@@ -134,6 +134,7 @@ export interface PeriyodikSarfiyat {
   makineKodu: string;
   makineAdi: string;
   kayitSicil: string;
+  kayitYapan?: string;
   kayitTar?: string;
 }
 

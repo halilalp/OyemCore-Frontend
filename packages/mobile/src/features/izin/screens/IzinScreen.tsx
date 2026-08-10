@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, FlatList, Platform } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useIzinStore } from '../store/useIzinStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
-import { IzinOnay, api } from '@oyemcore/shared';
+import { api, slateTokens } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { ListHeader } from '../../../components/ListHeader';
@@ -24,7 +24,6 @@ const showAlert = (title: string, message: string) => {
   Alert.alert(title, message);
 };
 
-
 export const IzinScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -39,7 +38,6 @@ export const IzinScreen = () => {
     balance,
     isLoading,
     isSubmitting,
-    error,
     loadInitialData,
     submitLeaveRequest,
     approveRequest,
@@ -84,7 +82,6 @@ export const IzinScreen = () => {
   const [isCikisDatePickerOpen, setIsCikisDatePickerOpen] = useState(false);
   const [isIsBasiDatePickerOpen, setIsIsBasiDatePickerOpen] = useState(false);
 
-
   const leaveTypes = ['Yıllık İzin', 'Mazeret İzni', 'Ücretsiz İzin', 'Hastalık İzni', 'Doğum İzni', 'Ölüm İzni'];
 
   useEffect(() => {
@@ -106,13 +103,11 @@ export const IzinScreen = () => {
     if (isFocused && route.params?.code) {
       const code = route.params.code;
       if (code && selectedDetailRequest?.belgeNo !== code) {
-        // Search in requests
         const foundRequest = requests.find(r => r.belgeNo === code);
         if (foundRequest) {
           setSelectedDetailRequest(foundRequest);
           setIsDetailModalOpen(true);
         } else {
-          // Search in approvals
           const foundApproval = approvals.find(a => a.belgeNo === code);
           if (foundApproval) {
             setSelectedDetailRequest(foundApproval);
@@ -148,7 +143,7 @@ export const IzinScreen = () => {
       if (parts.length === 3) {
         return `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
-      return str; // Fallback
+      return str;
     };
 
     const requestPayload = {
@@ -208,12 +203,12 @@ export const IzinScreen = () => {
 
   const getStatusStyle = (status: boolean | null, surecDurum?: string) => {
     if (status === true) {
-      return { bg: colors.primaryLight, text: colors.primary, label: 'ONAYLANDI' };
+      return { bg: colors.successLight || 'rgba(40, 167, 69, 0.12)', text: colors.success || '#28a745', label: 'ONAYLANDI' };
     }
     if (status === false) {
-      return { bg: colors.dangerLight, text: colors.danger, label: 'REDDEDİLDİ' };
+      return { bg: colors.dangerLight || 'rgba(220, 53, 69, 0.12)', text: colors.danger || '#dc3545', label: 'REDDEDİLDİ' };
     }
-    return { bg: colors.infoLight, text: colors.info, label: surecDurum || 'AMİR ONAYINDA' };
+    return { bg: colors.warningLight || 'rgba(255, 193, 7, 0.12)', text: colors.warning || '#ffc107', label: surecDurum || 'AMİR ONAYINDA' };
   };
 
   return (
@@ -221,16 +216,30 @@ export const IzinScreen = () => {
       <ListHeader
         title="İzin Yönetimi"
         subtitle={`Kalan Yıllık İzin: ${balance} Gün`}
-        activeFilter={activeTab}
-        onFilterChange={(id: any) => setActiveTab(id)}
-        filters={[
-          { id: 'my', label: 'Taleplerim' },
-          { id: 'approvals', label: `Onay Bekleyenler (${approvals.length})` }
-        ]}
-      />
+        onBack={() => navigation.goBack()}
+      >
+        {/* Yatay Filtreleme Butonları */}
+        <View style={styles.headerFiltersRow}>
+          <TouchableOpacity 
+            style={[styles.headerFilterBtn, activeTab === 'my' && styles.headerFilterBtnActive]} 
+            onPress={() => setActiveTab('my')}
+          >
+            <Text style={[styles.headerFilterBtnText, activeTab === 'my' && styles.headerFilterBtnTextActive]}>
+              Taleplerim
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.headerFilterBtn, activeTab === 'approvals' && styles.headerFilterBtnActive]} 
+            onPress={() => setActiveTab('approvals')}
+          >
+            <Text style={[styles.headerFilterBtnText, activeTab === 'approvals' && styles.headerFilterBtnTextActive]}>
+              Onay Bekleyenler ({approvals.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ListHeader>
       
       <View style={[styles.contentWrapper, { paddingTop: 0 }]}>
-        {/* List content */}
         {isLoading ? (
           <LogoLoader style={styles.loader} />
         ) : activeTab === 'my' ? (
@@ -249,36 +258,40 @@ export const IzinScreen = () => {
                     setIsDetailModalOpen(true);
                   }}
                 >
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.leaveType}>{item.izinTuru}</Text>
-                      <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+                  {/* Sol durum çizgisi - Açık tonda pastel renk */}
+                  <View style={[styles.leftLine, { backgroundColor: statusStyle.text + '55' }]} />
+                  <View style={styles.cardInner}>
+                    <View style={styles.cardHeader}>
+                      <View>
+                        <Text style={styles.leaveType}>{item.izinTuru}</Text>
+                        <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                        <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+                      </View>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                      <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+                    <View style={styles.cardInfoGrid}>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>Kayıt Tarihi</Text>
+                        <Text style={styles.infoValue}>{item.kayitTarStr}</Text>
+                      </View>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>Çıkış Tarihi</Text>
+                        <Text style={styles.infoValue}>{item.cikisTarStr}</Text>
+                      </View>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>İş Başı Tarihi</Text>
+                        <Text style={styles.infoValue}>{item.isBasiTarStr}</Text>
+                      </View>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>Süre</Text>
+                        <Text style={styles.infoValue}>{item.isGunu} Gün</Text>
+                      </View>
                     </View>
+                    {item.aciklama && (
+                      <Text style={styles.descriptionText} numberOfLines={2}>Açıklama: {item.aciklama}</Text>
+                    )}
                   </View>
-                  <View style={styles.cardInfoGrid}>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>Kayıt Tarihi</Text>
-                      <Text style={styles.infoValue}>{item.kayitTarStr}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>Çıkış Tarihi</Text>
-                      <Text style={styles.infoValue}>{item.cikisTarStr}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>İş Başı Tarihi</Text>
-                      <Text style={styles.infoValue}>{item.isBasiTarStr}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>Süre</Text>
-                      <Text style={styles.infoValue}>{item.isGunu} Gün</Text>
-                    </View>
-                  </View>
-                  {item.aciklama && (
-                    <Text style={styles.descriptionText} numberOfLines={2}>Açıklama: {item.aciklama}</Text>
-                  )}
                 </TouchableOpacity>
               );
             }}
@@ -295,47 +308,53 @@ export const IzinScreen = () => {
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
               <View style={styles.requestCard}>
-                <TouchableOpacity 
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setSelectedDetailRequest(item);
-                    setIsDetailModalOpen(true);
-                  }}
-                >
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.employeeName}>{item.adSoyad}</Text>
-                      <Text style={styles.leaveTypeSub}>{item.izinTuru}</Text>
-                      <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+                {/* Sol durum çizgisi - Açık tonda onay bekliyor sarı rengi */}
+                <View style={[styles.leftLine, { backgroundColor: colors.warning + '55' }]} />
+                <View style={styles.cardInner}>
+                  <TouchableOpacity 
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setSelectedDetailRequest(item);
+                      setIsDetailModalOpen(true);
+                    }}
+                  >
+                    <View style={styles.cardHeader}>
+                      <View>
+                        <Text style={styles.employeeName}>{item.adSoyad}</Text>
+                        <Text style={styles.leaveTypeSub}>{item.izinTuru}</Text>
+                        <Text style={styles.belgeNoText}>{item.belgeNo}</Text>
+                      </View>
+                      <Text style={styles.durationBadge}>{item.isGunu} Gün</Text>
                     </View>
-                    <Text style={styles.durationBadge}>{item.isGunu} Gün</Text>
-                  </View>
-                  <View style={styles.cardInfoGrid}>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>Kayıt Tarihi</Text>
-                      <Text style={styles.infoValue}>{item.kayitTarStr}</Text>
+                    <View style={styles.cardInfoGrid}>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>Kayıt Tarihi</Text>
+                        <Text style={styles.infoValue}>{item.kayitTarStr}</Text>
+                      </View>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>Çıkış Tarihi</Text>
+                        <Text style={styles.infoValue}>{item.cikisTarStr}</Text>
+                      </View>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>İş Başı Tarihi</Text>
+                        <Text style={styles.infoValue}>{item.isBasiTarStr}</Text>
+                      </View>
                     </View>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>Çıkış Tarihi</Text>
-                      <Text style={styles.infoValue}>{item.cikisTarStr}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                      <Text style={styles.infoLabel}>İş Başı Tarihi</Text>
-                      <Text style={styles.infoValue}>{item.isBasiTarStr}</Text>
-                    </View>
-                  </View>
-                  {item.aciklama && (
-                    <Text style={styles.descriptionText} numberOfLines={2}>Gerekçe: {item.aciklama}</Text>
-                  )}
-                </TouchableOpacity>
-                
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item.izinOnayID)}>
-                    <Text style={styles.approveBtnText}>Onayla</Text>
+                    {item.aciklama && (
+                      <Text style={styles.descriptionText} numberOfLines={2}>Gerekçe: {item.aciklama}</Text>
+                    )}
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item.izinOnayID)}>
-                    <Text style={styles.rejectBtnText}>Reddet</Text>
-                  </TouchableOpacity>
+                  
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item.izinOnayID)}>
+                      <Ionicons name="checkmark-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.approveBtnText}>Onayla</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item.izinOnayID)}>
+                      <Ionicons name="close-circle-outline" size={16} color="#FFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.rejectBtnText}>Reddet</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
@@ -357,7 +376,7 @@ export const IzinScreen = () => {
         }} 
       />
 
-      {/* New Leave Modal — Ticket kayıt formu ile aynı tasarım dili */}
+      {/* New Leave Modal */}
       <Modal
         visible={isModalOpen}
         animationType="slide"
@@ -369,14 +388,11 @@ export const IzinScreen = () => {
           <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
             <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-
-              {/* Bilgi kutusu */}
               <View style={styles.formInfoBox}>
                 <Text style={styles.formInfoBoxTitle}>İzin Talep Formu</Text>
                 <Text style={styles.formInfoBoxText}>Lütfen yıldızlı alanları doldurarak izin talebinizi oluşturunuz. Talebiniz amir onayına gönderilecektir.</Text>
               </View>
 
-              {/* İzin Türü — chip seçici */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İzin Türü *</Text>
                 <View style={styles.selectorGrid}>
@@ -394,7 +410,6 @@ export const IzinScreen = () => {
                 </View>
               </View>
 
-              {/* Çıkış Tarihi */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İzin Çıkış Tarihi *</Text>
                 <TouchableOpacity
@@ -403,13 +418,12 @@ export const IzinScreen = () => {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
-                  <Text style={{ color: formCikisTar ? colors.text : colors.placeholder, fontSize: 13 }}>
+                  <Text style={{ color: formCikisTar ? colors.text : colors.placeholder, fontSize: 13, marginLeft: 8 }}>
                     {formCikisTar || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* İşe Başlama Tarihi */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İşe Başlama Tarihi *</Text>
                 <TouchableOpacity
@@ -418,13 +432,12 @@ export const IzinScreen = () => {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
-                  <Text style={{ color: formIsBasiTar ? colors.text : colors.placeholder, fontSize: 13 }}>
+                  <Text style={{ color: formIsBasiTar ? colors.text : colors.placeholder, fontSize: 13, marginLeft: 8 }}>
                     {formIsBasiTar || 'Tarih Seçiniz (gg.AA.yyyy)'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* İş Günü */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Toplam İzin Gün Sayısı *</Text>
                 <TextInput
@@ -437,7 +450,6 @@ export const IzinScreen = () => {
                 />
               </View>
 
-              {/* Açıklama */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>İzin Gerekçesi / Açıklama</Text>
                 <TextInput
@@ -459,12 +471,9 @@ export const IzinScreen = () => {
                   {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.formSubmitBtnText}>Kaydet</Text>}
                 </TouchableOpacity>
               </View>
-
             </ScrollView>
           </View>
 
-          {/* Tarih seçiciler create modalının İÇİNDE — dışarıda kalınca iOS'ta
-              formun arkasında kalıyordu. */}
           <DatePickerModal
             visible={isCikisDatePickerOpen}
             onClose={() => setIsCikisDatePickerOpen(false)}
@@ -481,129 +490,135 @@ export const IzinScreen = () => {
         <KeyboardDismissBar />
       </Modal>
 
+      {/* Standartlaşmış Detay Modalı */}
+      <Modal visible={isDetailModalOpen} transparent animationType="fade" onRequestClose={handleCloseDetail}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>İzin Talebi Detayı</Text>
+              <TouchableOpacity onPress={handleCloseDetail}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
 
-      {/* Detail Modal */}
-      <Modal visible={isDetailModalOpen} animationType="slide" onRequestClose={handleCloseDetail}>
-        {selectedDetailRequest && (
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
-            <CreateModalHeader title="İzin Talebi Detayı" onClose={handleCloseDetail} colorTheme="purple" />
-            <View style={styles.modalContentWrapper}>
-              <ScrollView contentContainerStyle={styles.modalScroll}>
-                <View style={styles.detailCard}>
-                  <View style={styles.detailHeaderRow}>
-                    <Text style={styles.detailDocNo}>{selectedDetailRequest.belgeNo || 'Belge Kodu Yok'}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusStyle(selectedDetailRequest.durum, selectedDetailRequest.surecDurum).bg }]}>
-                      <Text style={[styles.statusText, { color: getStatusStyle(selectedDetailRequest.durum, selectedDetailRequest.surecDurum).text }]}>
-                        {getStatusStyle(selectedDetailRequest.durum, selectedDetailRequest.surecDurum).label}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {selectedDetailRequest.adSoyad ? (
+            {selectedDetailRequest && (() => {
+              const statusStyle = getStatusStyle(selectedDetailRequest.durum, selectedDetailRequest.surecDurum);
+              return (
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                  <View style={styles.detailCard}>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Talep Eden:</Text>
-                      <Text style={styles.detailValue}>{selectedDetailRequest.adSoyad} ({selectedDetailRequest.unvan || ''})</Text>
+                      <Text style={styles.detailLabel}>Belge No:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.belgeNo || 'Belge Kodu Yok'}</Text>
                     </View>
-                  ) : null}
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>İzin Türü:</Text>
-                    <Text style={styles.detailValue}>{selectedDetailRequest.izinTuru}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>İzin Süresi:</Text>
-                    <Text style={styles.detailValue}>{selectedDetailRequest.isGunu} Gün</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>İzin Çıkış Tarihi:</Text>
-                    <Text style={styles.detailValue}>{selectedDetailRequest.cikisTarStr}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>İşe Başlama Tarihi:</Text>
-                    <Text style={styles.detailValue}>{selectedDetailRequest.isBasiTarStr}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Talep Tarihi:</Text>
-                    <Text style={styles.detailValue}>{selectedDetailRequest.kayitTarStr || ''}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Süreç Bilgisi:</Text>
-                    <Text style={styles.detailValue}>{selectedDetailRequest.sonDurumBilgi || 'Bekliyor'}</Text>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Durum:</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                        <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+                      </View>
+                    </View>
+                    {selectedDetailRequest.adSoyad ? (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Talep Eden:</Text>
+                        <Text style={styles.detailValue}>{selectedDetailRequest.adSoyad}</Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>İzin Türü:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.izinTuru}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Süre:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.isGunu} Gün</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Çıkış Tarihi:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.cikisTarStr}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>İş Başı Tarihi:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.isBasiTarStr}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Talep Tarihi:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.kayitTarStr || ''}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Süreç Bilgisi:</Text>
+                      <Text style={styles.detailValue}>{selectedDetailRequest.sonDurumBilgi || 'Bekliyor'}</Text>
+                    </View>
                   </View>
 
                   {selectedDetailRequest.aciklama ? (
-                    <View style={styles.detailDescBox}>
-                      <Text style={styles.detailDescLabel}>Açıklama / Gerekçe:</Text>
-                      <Text style={styles.detailDescText}>{selectedDetailRequest.aciklama}</Text>
+                    <View style={styles.alertBox}>
+                      <Ionicons name="chatbox-ellipses-outline" size={20} color={colors.primary} />
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.alertTitle}>Açıklama / Gerekçe</Text>
+                        <Text style={styles.alertText}>{selectedDetailRequest.aciklama}</Text>
+                      </View>
                     </View>
                   ) : null}
-                </View>
 
-                {/* Collapsible History Section */}
-                <View style={styles.historySection}>
-                  <TouchableOpacity 
-                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}
-                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.historySectionTitle}>Talep Geçmişi</Text>
-                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.textSecondary }}>
-                      {isHistoryExpanded ? '▲' : '▼'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {isHistoryExpanded && (
-                    <View style={{ marginTop: 12, gap: 12 }}>
-                      {detailHistory && detailHistory.length > 0 ? (
-                        detailHistory.map((h, i) => (
-                          <View key={i} style={styles.historyCard}>
-                            <Text style={styles.historyTime}>{h.Tarih || h.tarih}</Text>
-                            <Text style={styles.historySubject}>{h.Konu || h.konu}</Text>
-                            <Text style={styles.historyDesc}>{h.Aciklama || h.aciklama}</Text>
-                          </View>
-                        ))
-                      ) : (
-                        <Text style={styles.emptyText}>Tarihçe kaydı bulunmamaktadır.</Text>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                {/* If we are looking at approvals list and the request is pending my approval */}
-                {activeTab === 'approvals' && selectedDetailRequest.durum === null && (
-                  <View style={styles.detailActionsRow}>
+                  {/* Collapsible History Section */}
+                  <View style={styles.historySection}>
                     <TouchableOpacity 
-                      style={styles.detailApproveBtn} 
-                      onPress={() => {
-                        setIsDetailModalOpen(false);
-                        handleApprove(selectedDetailRequest.izinOnayID);
-                        setSelectedDetailRequest(null);
-                      }}
+                      style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 }}
+                      onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                      activeOpacity={0.7}
                     >
-                      <Text style={styles.detailApproveBtnText}>Onayla</Text>
+                      <Text style={styles.historySectionTitle}>Talep Geçmişi</Text>
+                      <Ionicons name={isHistoryExpanded ? "chevron-up" : "chevron-down"} size={16} color={colors.textSecondary} />
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.detailRejectBtn} 
-                      onPress={() => {
-                        setIsDetailModalOpen(false);
-                        handleReject(selectedDetailRequest.izinOnayID);
-                        setSelectedDetailRequest(null);
-                      }}
-                    >
-                      <Text style={styles.detailRejectBtnText}>Reddet</Text>
-                    </TouchableOpacity>
+
+                    {isHistoryExpanded && (
+                      <View style={{ marginTop: 12, gap: 12 }}>
+                        {detailHistory && detailHistory.length > 0 ? (
+                          detailHistory.map((h, i) => (
+                            <View key={i} style={styles.historyCard}>
+                              <Text style={styles.historyTime}>{h.Tarih || h.tarih}</Text>
+                              <Text style={styles.historySubject}>{h.Konu || h.konu}</Text>
+                              <Text style={styles.historyDesc}>{h.Aciklama || h.aciklama}</Text>
+                            </View>
+                          ))
+                        ) : (
+                          <Text style={styles.emptyText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                        )}
+                      </View>
+                    )}
                   </View>
-                )}
-              </ScrollView>
+                </ScrollView>
+              );
+            })()}
+
+            <View style={styles.modalFooter}>
+              {activeTab === 'approvals' && selectedDetailRequest?.durum === null ? (
+                <>
+                  <TouchableOpacity 
+                    style={styles.detailRejectBtn} 
+                    onPress={() => {
+                      handleReject(selectedDetailRequest.izinOnayID);
+                      handleCloseDetail();
+                    }}
+                  >
+                    <Text style={styles.rejectBtnText}>Reddet</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.detailApproveBtn} 
+                    onPress={() => {
+                      handleApprove(selectedDetailRequest.izinOnayID);
+                      handleCloseDetail();
+                    }}
+                  >
+                    <Text style={styles.approveBtnText}>Onayla</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.cancelBtn} onPress={handleCloseDetail}>
+                  <Text style={styles.cancelBtnText}>Kapat</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-        )}
-        <KeyboardDismissBar />
+        </View>
       </Modal>
     </View>
   );
@@ -612,85 +627,30 @@ export const IzinScreen = () => {
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8fafc',
   },
   contentWrapper: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  topStatsCard: {
-    backgroundColor: colors.card,
-    padding: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  statInfo: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  addBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  addBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 3,
-    borderBottomColor: colors.primary,
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  activeTabText: {
-    color: colors.primary,
   },
   loader: {
     marginTop: 40,
   },
   listContainer: {
-    paddingVertical: 16,
-    gap: 8,
-    paddingBottom: 32,
+    padding: 16,
+    gap: 12,
+    paddingBottom: 100,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 14,
   },
   requestCard: {
     backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 16,
     shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -698,6 +658,16 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  cardInner: {
+    flex: 1,
+    padding: 16,
+  },
+  leftLine: {
+    width: 6,
+    height: '100%',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -707,7 +677,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   leaveType: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
   },
   leaveTypeSub: {
@@ -723,23 +693,23 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   employeeName: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
   },
   durationBadge: {
-    backgroundColor: colors.infoLight,
-    color: colors.info,
+    backgroundColor: colors.infoLight || 'rgba(23, 162, 184, 0.12)',
+    color: colors.info || '#17a2b8',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     overflow: 'hidden',
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   statusText: {
     fontSize: 11,
@@ -785,118 +755,73 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   approveBtn: {
     flex: 1,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 8,
-    height: 40,
+    backgroundColor: colors.success || '#28a745',
+    borderRadius: 12,
+    height: 42,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primary,
   },
   approveBtnText: {
-    color: colors.primary,
-    fontWeight: '700',
+    color: '#FFF',
+    fontWeight: '800',
     fontSize: 13,
   },
   rejectBtn: {
     flex: 1,
-    backgroundColor: colors.dangerLight,
-    borderRadius: 8,
-    height: 40,
+    backgroundColor: colors.danger || '#dc3545',
+    borderRadius: 12,
+    height: 42,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.danger,
   },
   rejectBtnText: {
-    color: colors.danger,
-    fontWeight: '700',
+    color: '#FFF',
+    fontWeight: '800',
     fontSize: 13,
   },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
+
+  // Modal & Form Stilleri (Kayıt ekranı için)
   modalContainer: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'ios' ? 0 : 0,
   },
   modalContentWrapper: {
     flex: 1,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 12 : 12,
-  },
-  closeButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: theme === 'light' ? '#fee2e2' : '#2d1e1e', // Light red background in light theme, dark red in dark theme
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  closeBtnText: {
-    color: colors.danger,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  modalScroll: {
-    padding: 20,
-    gap: 16,
   },
   formScroll: {
-    padding: 20,
-    gap: 16,
+    paddingVertical: 16,
   },
   formInfoBox: {
-    backgroundColor: (colors.primaryLight || colors.primary + '15') + '40',
+    backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: colors.primary + '15',
-    marginBottom: 8,
+    borderColor: colors.border,
   },
   formInfoBoxTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: colors.primary,
-    marginBottom: 4,
+    color: colors.text,
+    marginBottom: 6,
   },
   formInfoBoxText: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textSecondary,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   formGroup: {
-    marginBottom: 14,
-    gap: 8,
+    marginBottom: 16,
   },
   formLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 2,
+    color: colors.text,
+    marginBottom: 8,
   },
   selectorGrid: {
     flexDirection: 'row',
@@ -904,52 +829,39 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     gap: 8,
   },
   selectorItem: {
-    backgroundColor: colors.background,
-    borderColor: colors.border,
+    backgroundColor: colors.card,
     borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    paddingHorizontal: 14,
   },
   selectorItemActive: {
-    backgroundColor: colors.accentLight,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   selectorItemText: {
     fontSize: 12,
     color: colors.textSecondary,
+    fontWeight: '600',
   },
   selectorItemTextActive: {
-    color: colors.accent,
-    fontWeight: 'bold',
-  },
-  selectBox: {
-    height: 48,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  selectBoxText: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  dateInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    color: '#fff',
+    fontWeight: '800',
   },
   textInput: {
     height: 48,
     backgroundColor: colors.card,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
     paddingHorizontal: 16,
     color: colors.text,
     fontSize: 14,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   textArea: {
     height: 100,
@@ -965,197 +877,61 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   formCancelBtn: {
     flex: 1,
     height: 48,
-    borderRadius: 8,
-    backgroundColor: colors.dangerLight,
-    borderWidth: 1,
-    borderColor: colors.danger,
+    borderRadius: 12,
+    backgroundColor: colors.border || '#e2e8f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   formCancelBtnText: {
-    color: colors.danger,
-    fontWeight: '700',
+    color: colors.textSecondary,
+    fontWeight: '800',
     fontSize: 14,
   },
   formSubmitBtn: {
-    flex: 1,
+    flex: 1.5,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   formSubmitBtnText: {
     color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  overlayCard: {
-    maxHeight: '70%',
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 20,
-  },
-  overlayTitle: {
-    fontSize: 15,
     fontWeight: '800',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  overlayItem: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  overlayItemText: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  overlayCancel: {
-    marginTop: 12,
-    alignItems: 'center',
-    paddingVertical: 10,
-    backgroundColor: colors.dangerLight,
-    borderRadius: 8,
-  },
-  overlayCancelText: {
-    color: colors.danger,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  detailCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 20,
-  },
-  detailHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 14,
-    marginBottom: 16,
-  },
-  detailDocNo: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border + '50',
-  },
-  detailLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  detailValue: {
-    fontSize: 13,
-    color: colors.text,
-    fontWeight: '700',
-    textAlign: 'right',
-    flex: 1,
-    paddingLeft: 10,
-  },
-  detailDescBox: {
-    marginTop: 16,
-    backgroundColor: colors.background,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  detailDescLabel: {
-    fontSize: 11,
-    color: colors.placeholder,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  detailDescText: {
-    fontSize: 13,
-    color: colors.text,
-    lineHeight: 18,
-  },
-  detailActionsRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 10,
-  },
-  detailApproveBtn: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailApproveBtnText: {
-    color: '#fff',
-    fontWeight: '700',
     fontSize: 14,
   },
-  detailRejectBtn: {
-    flex: 1,
-    backgroundColor: colors.danger,
-    borderRadius: 10,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailRejectBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  historySection: {
-    padding: 16,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 8,
-  },
-  historySectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  historyCard: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  historyTime: {
-    fontSize: 10,
-    color: colors.placeholder,
-    fontWeight: '600',
-  },
-  historySubject: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 4,
-  },
-  historyDesc: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
-    lineHeight: 16,
-  },
+
+  // Standartlaşmış Detay/Modal Stilleri
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '100%', maxHeight: '85%', backgroundColor: colors.card, borderRadius: 24, overflow: 'hidden', elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  modalBody: { padding: 20 },
+  detailCard: { backgroundColor: colors.background || '#F8FAFC', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16, gap: 12 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  detailValue: { fontSize: 13, fontWeight: '700', color: colors.text },
+  alertBox: { flexDirection: 'row', backgroundColor: (colors.primary || '#3445C5') + '10', borderWidth: 1, borderColor: (colors.primary || '#3445C5') + '30', borderRadius: 14, padding: 14, marginBottom: 16 },
+  alertTitle: { fontSize: 14, fontWeight: '800', color: colors.primary, marginBottom: 4 },
+  alertText: { fontSize: 12.5, color: colors.textSecondary, lineHeight: 18 },
+  modalFooter: { flexDirection: 'row', padding: 16, borderTopWidth: 1, borderTopColor: colors.border, gap: 12 },
+  cancelBtn: { flex: 1, backgroundColor: colors.border || '#E2E8F0', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+  detailRejectBtn: { flex: 1, backgroundColor: colors.danger || '#dc3545', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  detailApproveBtn: { flex: 1.5, backgroundColor: colors.success || '#28a745', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+
+  // HelpDesk Stili Yatay Filtre Barı Stilleri
+  headerFiltersRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: 0, marginBottom: 6 },
+  headerFilterBtn: { flex: 1, backgroundColor: '#FFF', borderRadius: 20, paddingVertical: 10, paddingHorizontal: 8, justifyContent: 'center', alignItems: 'center' },
+  headerFilterBtnActive: { backgroundColor: colors.primary || '#3b82f6' },
+  headerFilterBtnText: { fontSize: 11, fontWeight: '600', color: slateTokens.textSecondary },
+  headerFilterBtnTextActive: { color: '#FFF', fontWeight: '800' },
+
+  // Tarihçe Stilleri
+  historySection: { padding: 14, backgroundColor: colors.background, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginTop: 8 },
+  historySectionTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
+  historyCard: { backgroundColor: colors.card, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: colors.border },
+  historyTime: { fontSize: 10, color: colors.placeholder, fontWeight: '600' },
+  historySubject: { fontSize: 12, fontWeight: '800', color: colors.text, marginTop: 4 },
+  historyDesc: { fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
 });

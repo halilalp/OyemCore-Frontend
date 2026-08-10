@@ -86,6 +86,22 @@ export const BakimPlanScreen = () => {
   const [selectedMachineKodu, setSelectedMachineKodu] = useState('');
   const [isSarfMachineOpen, setIsSarfMachineOpen] = useState(false);
 
+  // Tarihçe ve collapsible panel state'leri
+  const [detailHistory, setDetailHistory] = useState<any[]>([]);
+  const [isNotlarExpanded, setIsNotlarExpanded] = useState(false);
+  const [isSarfiyatsExpanded, setIsSarfiyatsExpanded] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+
+  const loadHistory = async (code: string) => {
+    try {
+      const res = await api.adminGetBelgeTarihcePaged({ documentCode: code, pageSize: 100 });
+      setDetailHistory(res?.items || []);
+    } catch (e) {
+      console.error('Tarihçe yüklenemedi:', e);
+      setDetailHistory([]);
+    }
+  };
+
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
@@ -112,7 +128,7 @@ export const BakimPlanScreen = () => {
 
   const getStatusBadgeColor = (durum: string) => {
     switch (durum) {
-      case 'TAMAMLANDI': return colors.primaryLight;
+      case 'TAMAMLANDI': return colors.successLight;
       case 'DEVAM': return colors.infoLight;
       case 'IPTAL': return colors.dangerLight;
       default: return colors.warningLight;
@@ -121,7 +137,7 @@ export const BakimPlanScreen = () => {
 
   const getStatusTextColor = (durum: string) => {
     switch (durum) {
-      case 'TAMAMLANDI': return colors.primary;
+      case 'TAMAMLANDI': return colors.success;
       case 'DEVAM': return colors.info;
       case 'IPTAL': return colors.danger;
       default: return colors.warning;
@@ -154,7 +170,12 @@ export const BakimPlanScreen = () => {
   const handleOpenPlan = async (plan: BakimPlan) => {
     setSelectedPlan(plan);
     setPlanSarfiyats([]); setHatMakines([]); setSelectedMaterial(null); setMaterialSearch(''); setMaterialQty(''); setSelectedMachineKodu('');
+    setDetailHistory([]);
+    setIsNotlarExpanded(false);
+    setIsSarfiyatsExpanded(false);
+    setIsHistoryExpanded(false);
     try {
+      loadHistory(plan.planKodu);
       const notlar = await api.getBakimPlanNotlar(plan.planKodu);
       setPlanNotlar(notlar || []);
       const sarf = await api.getBakimSarfiyats(plan.planKodu);
@@ -172,7 +193,7 @@ export const BakimPlanScreen = () => {
     setMaterialSearch(val);
     if (val.length < 2) { setMaterialsList([]); return; }
     try {
-      const res = await api.searchMalzemes(val, 1, 10, true);
+      const res = await api.searchMalzemes(val, 1, 10, false);
       setMaterialsList(res.results || []);
     } catch (err) { console.error(err); }
   };
@@ -228,9 +249,8 @@ export const BakimPlanScreen = () => {
   const handleAddPlanNot = async () => {
     if (!selectedPlan || !newPlanNot.trim()) return;
     try {
-      await api.updateBakimPlanStatus(selectedPlan.planKodu, {
-        durum: selectedPlan.durum,
-        not: newPlanNot
+      await api.saveBakimPlanGelisme(selectedPlan.planKodu, {
+        aciklama: newPlanNot
       });
       setNewPlanNot('');
       const notlar = await api.getBakimPlanNotlar(selectedPlan.planKodu);
@@ -251,6 +271,15 @@ export const BakimPlanScreen = () => {
       });
       setSelectedPlan(prev => prev ? { ...prev, durum: status } : null);
       loadPlans();
+      loadHistory(selectedPlan.planKodu);
+      try {
+        const notlar = await api.getBakimPlanNotlar(selectedPlan.planKodu);
+        setPlanNotlar(notlar || []);
+        const sarf = await api.getBakimSarfiyats(selectedPlan.planKodu);
+        setPlanSarfiyats(sarf || []);
+      } catch (e) {
+        console.error('Notlar/Sarfiyat tazelenemedi:', e);
+      }
       Alert.alert('Başarılı', 'Plan durumu güncellendi.');
     } catch (err: any) {
       Alert.alert('Hata', apiHataMesaji(err, 'Durum güncellenemedi.'));
@@ -326,19 +355,19 @@ export const BakimPlanScreen = () => {
             {/* Şirket standart filtre çipi (admin seçebilir; değilse kendi şirketine kilitli) */}
             <TouchableOpacity style={styles.filterChip} disabled={!isBakimAdmin} onPress={() => setIsGateSirketOpen(true)}>
               <Text style={styles.filterChipText}>
-                🏢 Şirket: {gateSirket
+                Şirket: {gateSirket
                   ? (dropdowns?.sirkets?.find((s: any) => s.sirketKodu === gateSirket)?.sirketAdi || gateSirket)
-                  : (isBakimAdmin ? 'Hepsi' : 'Şirket')}{!isBakimAdmin ? ' 🔒' : ''}
+                  : (isBakimAdmin ? 'Hepsi' : 'Şirket')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanBolumFltOpen(true)}>
               <Text style={styles.filterChipText}>
-                ⚙️ Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === planBolumFilter)?.bolumAdi || 'Hepsi'}
+                Bölüm: {dropdowns?.bolums?.find((b: any) => b.bolumKodu === planBolumFilter)?.bolumAdi || 'Hepsi'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterChip} onPress={() => setIsPlanDurumFltOpen(true)}>
               <Text style={styles.filterChipText}>
-                📊 Durum: {planDurumFilter || 'Hepsi'}
+                Durum: {planDurumFilter || 'Hepsi'}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -370,20 +399,27 @@ export const BakimPlanScreen = () => {
               data={plans}
               keyExtractor={(item) => item.planKodu}
               contentContainerStyle={styles.listContainer}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.card} onPress={() => handleOpenPlan(item)}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardCode}>{item.planKodu}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeColor(item.durum) }]}>
-                      <Text style={[styles.statusText, { color: getStatusTextColor(item.durum) }]}>{item.durum}</Text>
+              renderItem={({ item }) => {
+                const durumColor = getStatusTextColor(item.durum);
+                return (
+                  <TouchableOpacity style={styles.card} onPress={() => handleOpenPlan(item)}>
+                    {/* Sol durum çizgisi - Açık tonda pastel renk */}
+                    <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
+                    <View style={styles.cardInner}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardCode}>{item.planKodu}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusBadgeColor(item.durum) }]}>
+                          <Text style={[styles.statusText, { color: getStatusTextColor(item.durum) }]}>{item.durum}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.cardTitle}>{item.hatAdi || item.hatKodu} - {bakimTurLabel(item.bakimTuru)}</Text>
+                      <View style={styles.cardFooter}>
+                        <Text style={styles.cardFooterText}>📅 {item.hedefBaslangicStr} - {item.hedefBitisStr}</Text>
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.cardTitle}>{item.hatAdi || item.hatKodu} - {bakimTurLabel(item.bakimTuru)}</Text>
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.cardFooterText}>📅 {item.hedefBaslangicStr} - {item.hedefBitisStr}</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>Bakım planı bulunmamaktadır.</Text>
@@ -436,47 +472,140 @@ export const BakimPlanScreen = () => {
 
                 {/* Tüm aksiyonlar orta FAB → menüden (Düzenle/Başlat/Tamamla/Not/Sarfiyat/İptal) */}
 
-                {/* Progress / logs */}
-                <View style={styles.logsSection}>
-                  <Text style={styles.sectionHeader}>Gelişme Notları ({planNotlar.length})</Text>
-                  {planNotlar.length === 0 ? (
-                    <Text style={styles.noDataText}>Henüz not eklenmemiş.</Text>
-                  ) : (
-                    planNotlar.map(n => (
-                      <View key={n.id} style={styles.logCard}>
-                        <View style={styles.logHeader}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                            <UserAvatar sicilNo={(n as any).kayitSicil} name={n.kayitYapan} size={26} />
-                            <Text style={styles.logUser} numberOfLines={1}>{n.kayitYapan}</Text>
-                          </View>
-                          <Text style={styles.logTime}>{n.kayitTarihiStr}</Text>
+                {/* Gelişme Notları Akordeon Paneli */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsNotlarExpanded(!isNotlarExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.historyTitle}>Gelişme Notları</Text>
+                      {planNotlar.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Ionicons name="chatbubble-outline" size={11} color={colors.primary} />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{planNotlar.length}</Text>
                         </View>
-                        <Text style={styles.logBody}>{n.aciklama}</Text>
-                      </View>
-                    ))
-                  )}
+                      )}
+                    </View>
+                    <Ionicons name={isNotlarExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
 
-                  {/* Not ekleme artık orta FAB → "Not Ekle" modalından yapılıyor */}
+                  {isNotlarExpanded && (
+                    <View style={styles.historyContainer}>
+                      {planNotlar.length === 0 ? (
+                        <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                          <Text style={styles.noDataText}>Henüz not eklenmemiş.</Text>
+                        </View>
+                      ) : (
+                        planNotlar.map(n => (
+                          <View key={n.id} style={styles.logCard}>
+                            <View style={styles.logHeader}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                <UserAvatar sicilNo={(n as any).kayitSicil} name={n.kayitYapan} size={26} />
+                                <Text style={styles.logUser} numberOfLines={1}>{n.kayitYapan}</Text>
+                              </View>
+                              <Text style={styles.logTime}>{n.kayitTarihiStr}</Text>
+                            </View>
+                            <Text style={styles.logBody}>{n.aciklama}</Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  )}
                 </View>
 
-                {/* Malzeme Sarfiyatı */}
-                <View style={styles.sarfiyatSection}>
-                  <Text style={styles.sectionHeader}>Malzeme Sarfiyatı ({planSarfiyats.length})</Text>
-                  {planSarfiyats.length === 0 ? (
-                    <Text style={styles.noDataText}>Henüz sarfiyat kaydı yok.</Text>
-                  ) : planSarfiyats.map(s => (
-                    <View key={s.id} style={styles.sarfiyatCard}>
-                      <View style={styles.sarfiyatInfo}>
-                        <Text style={styles.sarfName}>{s.malzemeAdi} ({s.malzemeKodu})</Text>
-                        <Text style={styles.sarfDesc}>Miktar: {s.miktar} {s.birim || ''} | Makine: {s.makineAdi || s.makineKodu || '-'}</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => handleDeletePlanSarfiyat(s.id)} style={styles.deleteSarfBtn}>
-                        <Text style={styles.deleteSarfText}>✕</Text>
-                      </TouchableOpacity>
+                {/* Malzeme Sarfiyatı Akordeon Paneli */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsSarfiyatsExpanded(!isSarfiyatsExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.historyTitle}>Malzeme Sarfiyatı</Text>
+                      {planSarfiyats.length > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primaryLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Ionicons name="cube-outline" size={11} color={colors.primary} />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{planSarfiyats.length}</Text>
+                        </View>
+                      )}
                     </View>
-                  ))}
+                    <Ionicons name={isSarfiyatsExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
 
-                  {/* Sarfiyat ekleme artık orta FAB → "Sarfiyat Ekle" modalından yapılıyor */}
+                  {isSarfiyatsExpanded && (
+                    <View style={styles.historyContainer}>
+                      {planSarfiyats.length === 0 ? (
+                        <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                          <Text style={styles.noDataText}>Henüz sarfiyat kaydı yok.</Text>
+                        </View>
+                      ) : (
+                        planSarfiyats.map(s => (
+                          <View key={s.id} style={styles.sarfiyatCard}>
+                            <View style={styles.sarfiyatInfo}>
+                              <Text style={styles.sarfName}>{s.malzemeAdi} ({s.malzemeKodu})</Text>
+                              <Text style={styles.sarfDesc}>Miktar: {s.miktar} {s.birim || ''} | Makine: {s.makineAdi || s.makineKodu || '-'}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                                <UserAvatar sicilNo={s.kayitSicil} name={s.kayitYapan || s.kayitSicil} size={20} />
+                                <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500' }}>{s.kayitYapan || s.kayitSicil}</Text>
+                              </View>
+                            </View>
+                            <TouchableOpacity onPress={() => handleDeletePlanSarfiyat(s.id)} style={styles.deleteSarfBtn}>
+                              <Text style={styles.deleteSarfText}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                {/* Tarihçe / Geçmiş Akordeon Paneli */}
+                <View style={styles.historySection}>
+                  <TouchableOpacity 
+                    style={styles.historyHeader} 
+                    onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.historyTitle}>Tarihçe</Text>
+                    </View>
+                    <Ionicons name={isHistoryExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+
+                  {isHistoryExpanded && (
+                    <View style={styles.historyContainer}>
+                      {detailHistory && detailHistory.length > 0 ? (
+                        detailHistory.map((h, i) => {
+                          let displayDate = '';
+                          if (h.kayitTar) {
+                            try {
+                              const d = new Date(h.kayitTar);
+                              if (!isNaN(d.getTime())) {
+                                displayDate = d.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                              } else {
+                                displayDate = h.kayitTar;
+                              }
+                            } catch {
+                              displayDate = h.kayitTar;
+                            }
+                          }
+                          return (
+                            <View key={i} style={styles.historyCard}>
+                              <Text style={styles.historyTime}>{displayDate}</Text>
+                              <Text style={styles.historySubject}>{h.konu || ''}</Text>
+                              <Text style={styles.historyDesc}>{h.aciklama || ''}</Text>
+                            </View>
+                          );
+                        })
+                      ) : (
+                        <View style={[styles.detailCard, { marginTop: 8, padding: 12 }]}>
+                          <Text style={styles.noDataText}>Tarihçe kaydı bulunmamaktadır.</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
               </ScrollView>
             </View>
@@ -492,8 +621,33 @@ export const BakimPlanScreen = () => {
               title="Makine Seçin"
             />
 
-            {/* Standart alt bar (HelpDesk formatı): Not | ⋯ menü | Tamamla */}
-            {selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
+            {/* Planlama Modu Alt Butonları (Yalnızca Planlama sayfasında ve durum Beklemede iken görünür) */}
+            {mode === 'plan' && selectedPlan.durum === 'BEKLEMEDE' && (
+              <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14 }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: colors.primary, height: 48, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }} 
+                  onPress={openEditPlan}
+                >
+                  <Ionicons name="create-outline" size={18} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Planı Düzenle</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.danger, height: 48, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }} 
+                  onPress={() => {
+                    Alert.alert('Planı İptal Et', 'Bu bakım planını iptal etmek istediğinize emin misiniz?', [
+                      { text: 'Vazgeç', style: 'cancel' },
+                      { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdatePlanStatus('IPTAL') }
+                    ]);
+                  }}
+                >
+                  <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
+                  <Text style={{ color: colors.danger, fontWeight: '800', fontSize: 13 }}>İptal Et</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Standart İşlem Alt Barı (Sadece Uygulama/İşlem sayfasında görünür) */}
+            {mode === 'uygula' && selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#FFFFFF', borderRadius: 30, height: 66, marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16, elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, overflow: 'visible' }}>
                 <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} onPress={() => setNotModalOpen(true)}>
                   <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.primary} />
@@ -511,17 +665,11 @@ export const BakimPlanScreen = () => {
               </View>
             )}
 
-            {/* Aksiyon menüsü — Düzenle/Başlat/Not/Sarfiyat/Tamamla/İptal */}
+            {/* Aksiyon menüsü — Sadece İşlem Modu İçin (Başlat/Sarfiyat/İptal) */}
             <Modal visible={planActionsOpen} transparent animationType="fade" onRequestClose={() => setPlanActionsOpen(false)}>
               <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setPlanActionsOpen(false)}>
                 <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 18, paddingTop: 12, paddingBottom: 32 }}>
                   <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 8 }} />
-                  {mode === 'plan' && selectedPlan.durum === 'BEKLEMEDE' && (
-                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setPlanActionsOpen(false); openEditPlan(); }}>
-                      <Ionicons name="create-outline" size={22} color={colors.primary} />
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>Planı Düzenle</Text>
-                    </TouchableOpacity>
-                  )}
                   {selectedPlan.durum === 'BEKLEMEDE' && (
                     <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => { setPlanActionsOpen(false); handleUpdatePlanStatus('DEVAM'); }}>
                       <Ionicons name="play" size={22} color={colors.info} />
