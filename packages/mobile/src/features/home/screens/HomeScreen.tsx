@@ -569,9 +569,9 @@ export const HomeScreen = () => {
           {allowedDashboards.length > 0 && (
           <View style={styles.section}>
             <TouchableOpacity style={styles.sectionHeaderIconRow} activeOpacity={0.7} onPress={() => setPanolarAcik(a => !a)}>
-              <Ionicons name="stats-chart-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+              <Ionicons name="stats-chart-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.sectionTitle}>Panolar</Text>
-              <Ionicons name={panolarAcik ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} style={{ marginLeft: 6 }} />
+              <Ionicons name={panolarAcik ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textSecondary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
             {panolarAcik && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll} contentContainerStyle={styles.modulesScrollContent}>
@@ -596,7 +596,7 @@ export const HomeScreen = () => {
           {/* Takvim — Etkinlikler (Calendar Önizlemeli) */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderIconRow}>
-              <Ionicons name="calendar-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.sectionTitle}>Takvim & Etkinlikler</Text>
             </View>
             
@@ -615,7 +615,7 @@ export const HomeScreen = () => {
           <View style={styles.section}>
             <View style={[styles.sectionHeaderIconRow, { justifyContent: 'space-between' }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="megaphone-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Ionicons name="megaphone-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
                 <Text style={styles.sectionTitle}>Duyurular</Text>
               </View>
               {newsItems.length > 3 && (
@@ -1227,7 +1227,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
 
     // SECTION
     section: {
-      marginBottom: 20,
+      marginBottom: 12,
     },
     homeLoading: {
       paddingVertical: 60,
@@ -1288,16 +1288,16 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     sectionHeaderIconRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 8,
     },
     sectionTitle: {
-      fontSize: 18,
-      fontWeight: '800',
+      fontSize: 14,
+      fontWeight: '700',
       color: colors.text || '#0F172A',
     },
     seeAllBtn: {},
     seeAllText: {
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: '600',
       color: colors.primary,
     },
