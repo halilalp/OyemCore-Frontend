@@ -21,7 +21,7 @@ export const izinService = {
     return await api.approveIzin(id);
   },
 
-  rejectRequest: async (id: number): Promise<{ success: boolean; message: string }> => {
-    return await api.rejectIzin(id);
+  rejectRequest: async (id: number, aciklama: string): Promise<{ success: boolean; message: string }> => {
+    return await api.rejectIzin(id, aciklama);
   }
 };

@@ -809,8 +809,8 @@ export const api = {
     return response.data;
   },
 
-  rejectIzin: async (id: number): Promise<{ success: boolean, message: string }> => {
-    const response = await apiClient.post<{ success: boolean, message: string }>(`/izin/${id}/reject`);
+  rejectIzin: async (id: number, aciklama: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/izin/${id}/reject`, { aciklama });
     return response.data;
   },
 

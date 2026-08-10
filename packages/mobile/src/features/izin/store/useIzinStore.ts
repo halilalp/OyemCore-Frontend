@@ -13,7 +13,7 @@ interface IzinState {
   loadInitialData: () => Promise<void>;
   submitLeaveRequest: (payload: Partial<IzinOnay>) => Promise<{ success: boolean; message: string }>;
   approveRequest: (id: number) => Promise<{ success: boolean; message: string }>;
-  rejectRequest: (id: number) => Promise<{ success: boolean; message: string }>;
+  rejectRequest: (id: number, aciklama: string) => Promise<{ success: boolean; message: string }>;
 }
 
 export const useIzinStore = create<IzinState>((set, get) => ({
@@ -70,10 +70,10 @@ export const useIzinStore = create<IzinState>((set, get) => ({
     }
   },
 
-  rejectRequest: async (id) => {
+  rejectRequest: async (id, aciklama) => {
     set({ isSubmitting: true, error: null });
     try {
-      const res = await izinService.rejectRequest(id);
+      const res = await izinService.rejectRequest(id, aciklama);
       set({ isSubmitting: false });
       if (res.success !== false) {
         // Remove from approvals list

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, ScrollView, ActivityIndicator, Platform, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
@@ -42,6 +42,11 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   const [avansFormOpen, setAvansFormOpen] = useState(false);
   const [masrafFormOpen, setMasrafFormOpen] = useState(false);
   const route = useRoute<any>();
+  
+  // Rejection modal state
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectText, setRejectText] = useState('');
+  const [rejectTargetItem, setRejectTargetItem] = useState<any>(null);
 
 
 
@@ -74,18 +79,27 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
         { text: 'Vazgeç', style: 'cancel' }, { text: 'Onayla', onPress: () => yap('') },
       ]);
     } else {
-      const promptFn = (Alert as any).prompt;
-      if (typeof promptFn === 'function') {
-        promptFn('Reddet', 'Ret gerekçesi:', [
-          { text: 'Vazgeç', style: 'cancel' },
-          { text: 'Reddet', style: 'destructive', onPress: (t?: string) => yap(t || '') },
-        ]);
-      } else {
-        Alert.alert('Reddet', `#${item.belgeNo} reddedilsin mi?`, [
-          { text: 'Vazgeç', style: 'cancel' },
-          { text: 'Reddet', style: 'destructive', onPress: () => yap('') },
-        ]);
-      }
+      setRejectTargetItem(item);
+      setRejectText('');
+      setRejectModalVisible(true);
+    }
+  };
+
+  const submitRejection = async () => {
+    if (!rejectTargetItem) return;
+    if (!rejectText.trim()) {
+      Alert.alert('Hata', 'Ret gerekçesi yazılması zorunludur.');
+      return;
+    }
+    setRejectModalVisible(false);
+    try {
+      const id = rejectTargetItem.id ?? rejectTargetItem.ID ?? rejectTargetItem.masrafID ?? rejectTargetItem.avansID ?? rejectTargetItem.MasrafID ?? rejectTargetItem.AvansID;
+      const requestTip = (rejectTargetItem.tip ?? rejectTargetItem.Tip ?? 'AVANS').toUpperCase();
+      const r = await api.avansMasrafOnaylaReddet(requestTip, id, false, rejectText.trim());
+      if (r?.success) load(true);
+      else Alert.alert('Hata', r?.message || 'İşlem başarısız.');
+    } catch (_) {
+      Alert.alert('Hata', 'İşlem başarısız.');
     }
   };
 
@@ -240,7 +254,54 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
       <AvansFormModal visible={avansFormOpen} onClose={() => setAvansFormOpen(false)} onSaved={() => { setAvansFormOpen(false); load(true); }} />
       <MasrafFormModal visible={masrafFormOpen} onClose={() => setMasrafFormOpen(false)} onSaved={() => { setMasrafFormOpen(false); load(true); }} />
 
-
+      {/* Özelleştirilmiş Ret Gerekçesi Modalı */}
+      <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Talebi Reddet</Text>
+              <TouchableOpacity onPress={() => setRejectModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 20 }}>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 12 }}>Bu talebi reddetmek için lütfen bir gerekçe yazınız (Zorunlu):</Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  padding: 12,
+                  height: 100,
+                  textAlignVertical: 'top',
+                  color: colors.text,
+                  backgroundColor: colors.background,
+                  fontSize: 14,
+                }}
+                placeholder="Ret gerekçesi..."
+                placeholderTextColor={colors.placeholder || '#94A3B8'}
+                multiline
+                value={rejectText}
+                onChangeText={setRejectText}
+              />
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: colors.border || '#E2E8F0', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                  onPress={() => setRejectModalVisible(false)}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textSecondary }}>Vazgeç</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.danger + '40', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                  onPress={submitRejection}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.danger }}>Reddet</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
