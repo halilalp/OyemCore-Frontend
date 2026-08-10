@@ -44,7 +44,7 @@ export const AvansMasrafDetailScreen = () => {
   useEffect(() => {
     const loadDetails = async () => {
       if (tip === 'MASRAF') {
-        const mid = initialItem?.masrafID ?? initialItem?.id ?? initialItem?.MasrafID;
+        const mid = initialItem?.masrafID ?? initialItem?.id ?? initialItem?.ID ?? initialItem?.MasrafID;
         if (mid) {
           setLoading(true);
           try {
@@ -68,11 +68,12 @@ export const AvansMasrafDetailScreen = () => {
     const yap = async (aciklama: string) => {
       setActionLoading(true);
       try {
-        const id = detail?.id ?? initialItem?.id;
-        const r = await api.avansMasrafOnaylaReddet(tip, id, onay, aciklama);
+        const id = initialItem?.id ?? initialItem?.ID ?? initialItem?.masrafID ?? initialItem?.avansID ?? detail?.id ?? detail?.ID ?? detail?.masrafID ?? detail?.avansID ?? detail?.MasrafID ?? detail?.AvansID;
+        const requestTip = (tip || initialItem?.tip || detail?.tip || 'AVANS').toUpperCase();
+        const r = await api.avansMasrafOnaylaReddet(requestTip, id, onay, aciklama);
         if (r?.success) {
           Alert.alert('Başarılı', onay ? 'Talep onaylandı.' : 'Talep reddedildi.', [
-            { text: 'Tamam', onPress: () => navigation.navigate('AvansMasraf', { refresh: true }) }
+            { text: 'Tamam', onPress: () => navigation.goBack() }
           ]);
         } else {
           Alert.alert('Hata', r?.message || 'İşlem başarısız.');

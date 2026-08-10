@@ -62,7 +62,9 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   const onOnayReddet = (item: any, onay: boolean) => {
     const yap = async (aciklama: string) => {
       try {
-        const r = await api.avansMasrafOnaylaReddet(item.tip, item.id, onay, aciklama);
+        const id = item.id ?? item.ID ?? item.masrafID ?? item.avansID ?? item.MasrafID ?? item.AvansID;
+        const requestTip = (item.tip ?? item.Tip ?? 'AVANS').toUpperCase();
+        const r = await api.avansMasrafOnaylaReddet(requestTip, id, onay, aciklama);
         if (r?.success) load(true);
         else Alert.alert('Hata', r?.message || 'İşlem başarısız.');
       } catch (_) { Alert.alert('Hata', 'İşlem başarısız.'); }
