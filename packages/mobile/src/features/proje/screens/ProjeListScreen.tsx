@@ -148,12 +148,10 @@ export const ProjeListScreen = () => {
               const durumColor = tamamlandi ? colors.success : colors.warning;
               return (
                 <TouchableOpacity
-                  style={styles.card}
+                  style={[styles.card, { borderLeftWidth: 5, borderLeftColor: durumColor }]}
                   activeOpacity={0.7}
                   onPress={() => navigation.navigate('ProjeDetail', { id: item.id })}
                 >
-                  {/* Sol durum çizgisi - Açık tonda pastel renk */}
-                  <View style={[styles.leftLine, { backgroundColor: durumColor + '55' }]} />
                   <View style={styles.cardInner}>
                     <View style={styles.cardHeader}>
                       <View style={styles.turBadge}>
@@ -328,10 +326,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  leftLine: {
-    width: 6,
-    height: '100%',
-  },
+
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   turBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   turBadgeText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },

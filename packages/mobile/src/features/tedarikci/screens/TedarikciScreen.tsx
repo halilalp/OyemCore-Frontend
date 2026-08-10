@@ -520,9 +520,7 @@ export const TedarikciScreen = () => {
             keyExtractor={(item) => item.tedDegID.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.evalCard} onPress={() => openDetail(item.belgeNo)}>
-                {/* Sol durum dikey çizgisi */}
-                <View style={[styles.evalLeftLine, { backgroundColor: getStatusColor(item.durum) }]} />
+              <TouchableOpacity style={[styles.evalCard, { borderLeftWidth: 5, borderLeftColor: getStatusColor(item.durum) }]} onPress={() => openDetail(item.belgeNo)}>
                 <View style={styles.evalCardInner}>
                   <View style={styles.cardHeader}>
                     <View>
@@ -1182,10 +1180,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  evalLeftLine: {
-    width: 6,
-    height: '100%',
-  },
+
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
