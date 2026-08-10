@@ -956,7 +956,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     headerContent: {
       paddingHorizontal: 20,
       paddingTop: 10,
-      paddingBottom: 40, // overlap için alan
+      paddingBottom: 24, // overlap için alan
     },
     
     // TOP ROW
@@ -964,7 +964,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 30,
+      marginBottom: 16,
     },
     logoImage: {
       width: 180,
@@ -1048,7 +1048,7 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     // GREETING
     greetingSection: {
-      marginBottom: 24,
+      marginBottom: 12,
     },
     nameRow: {
       flexDirection: 'row',
