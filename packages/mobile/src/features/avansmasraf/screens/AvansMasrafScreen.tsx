@@ -43,11 +43,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   const [masrafFormOpen, setMasrafFormOpen] = useState(false);
   const route = useRoute<any>();
 
-  // Detay modalı
-  const [detayItem, setDetayItem] = useState<any | null>(null);
-  const [detayTip, setDetayTip] = useState<'AVANS' | 'MASRAF'>('AVANS');
-  const [detayKalemler, setDetayKalemler] = useState<any[]>([]);
-  const [detayLoading, setDetayLoading] = useState(false);
+
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -99,23 +95,15 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     navigation.setParams?.({ openCreate: undefined });
   }, [route.params?.openCreate]);
 
-  const openDetay = async (item: any, tip: 'AVANS' | 'MASRAF') => {
-    setDetayItem(item);
-    setDetayTip(tip);
-    setDetayKalemler([]);
-    if (tip === 'MASRAF') {
-      const mid = item.masrafID ?? item.id ?? item.MasrafID;
-      if (mid) {
-        setDetayLoading(true);
-        try {
-          const d = await api.getMasrafDetay(mid);
-          setDetayKalemler(d?.kalemler || d?.Kalemler || d?.detaylar || []);
-          if (d?.masraf) {
-            setDetayItem((prev: any) => prev ? { ...prev, ...d.masraf } : d.masraf);
-          }
-        } catch (_) { /* sessiz */ } finally { setDetayLoading(false); }
-      }
+  useEffect(() => {
+    if (route.params?.refresh) {
+      load(true);
+      navigation.setParams?.({ refresh: undefined });
     }
+  }, [route.params?.refresh, load]);
+
+  const openDetay = (item: any, tip: 'AVANS' | 'MASRAF') => {
+    navigation.navigate('AvansMasrafDetail', { item, tip, activeTab });
   };
 
   const renderTalep = (item: any, tip: 'AVANS' | 'MASRAF') => {
@@ -250,147 +238,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
       <AvansFormModal visible={avansFormOpen} onClose={() => setAvansFormOpen(false)} onSaved={() => { setAvansFormOpen(false); load(true); }} />
       <MasrafFormModal visible={masrafFormOpen} onClose={() => setMasrafFormOpen(false)} onSaved={() => { setMasrafFormOpen(false); load(true); }} />
 
-      {/* Standartlaştırılmış Detay Modalı */}
-      <Modal visible={!!detayItem} transparent animationType="fade" onRequestClose={() => setDetayItem(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{detayTip === 'AVANS' ? 'Avans Talebi' : 'Masraf Talebi'}</Text>
-              <TouchableOpacity onPress={() => setDetayItem(null)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
 
-            {detayItem && (() => {
-              const ds = durumStyle(detayItem.surecDurum, colors);
-              const tutar = detayTip === 'AVANS' ? detayItem.tutar : detayItem.toplamTutar;
-              return (
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                  <View style={styles.detailCard}>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Belge No:</Text>
-                      <Text style={styles.detailValue}>{detayItem.belgeNo}</Text>
-                    </View>
-                    <View style={styles.divider} />
-                    
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Durum:</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: ds.bg }]}><Text style={[styles.statusText, { color: ds.text }]}>{ds.label}</Text></View>
-                    </View>
-                    <View style={styles.divider} />
-                    
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Tutar:</Text>
-                      <Text style={styles.detailValue}>{fmtTL(tutar)}</Text>
-                    </View>
-                    <View style={styles.divider} />
-                    
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Talep Tarihi:</Text>
-                      <Text style={styles.detailValue}>{fmtTarih(detayItem.talepTarihi)}</Text>
-                    </View>
-                    {!(
-                      ['ONAYLANDI', 'REDDEDILDI', 'ODENDI', 'KAPATILDI'].includes((detayItem.surecDurum || '').toUpperCase()) ||
-                      !detayItem.bekleyenOnay ||
-                      detayItem.bekleyenOnay === '-'
-                    ) && (
-                      <>
-                        <View style={styles.divider} />
-                        <View style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>Bekleyen Onay:</Text>
-                          <Text style={styles.detailValue}>{detayItem.bekleyenOnayAdSoyad || '-'}</Text>
-                        </View>
-                      </>
-                    )}
-                  </View>
-
-                  {/* Onaylayan/Reddeden Amir Bilgisi */}
-                  {(() => {
-                    const islemYapanAd = (detayTip === 'AVANS' ? detayItem.islemYapanAdSoyad : detayItem.IslemYapanAdSoyad) || detayItem.islemYapanAdSoyad || detayItem.IslemYapanAdSoyad;
-                    const islemYapanSicil = (detayTip === 'AVANS' ? detayItem.islemYapanSicil : detayItem.IslemYapanSicil) || detayItem.islemYapanSicil || detayItem.IslemYapanSicil;
-                    if (!islemYapanAd) return null;
-                    return (
-                      <View style={styles.amirBox}>
-                        <UserAvatar sicilNo={islemYapanSicil} name={islemYapanAd} size={36} />
-                        <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={styles.amirSubtitle}>
-                            {detayItem.surecDurum === 'REDDEDILDI' ? 'REDDEDEN AMİR' : 'ONAYLAYAN AMİR'}
-                          </Text>
-                          <Text style={styles.amirTitle}>{islemYapanAd}</Text>
-                        </View>
-                      </View>
-                    );
-                  })()}
-
-                  {/* Detay açıklaması */}
-                  {!!detayItem.aciklama && (
-                    <View style={styles.alertBox}>
-                      <Ionicons name="chatbox-ellipses-outline" size={20} color={colors.primary} />
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={styles.alertTitle}>Açıklama</Text>
-                        <Text style={styles.alertText}>{detayItem.aciklama}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {detayTip === 'MASRAF' && (
-                    <View style={{ marginTop: 12 }}>
-                      <Text style={styles.detaySectionTitle}>Masraf Kalemleri ({detayKalemler.length})</Text>
-                      {detayLoading ? (
-                        <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
-                      ) : detayKalemler.length === 0 ? (
-                        <Text style={styles.detayEmpty}>Kalem bulunamadı.</Text>
-                      ) : detayKalemler.map((k: any, i: number) => (
-                        <View key={i} style={styles.kalemCard}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.kalemFirma} numberOfLines={1}>{k.Firma || k.firma || 'Firma -'}</Text>
-                            <Text style={styles.kalemTutar}>{fmtTL(k.Tutar ?? k.tutar ?? 0)}</Text>
-                          </View>
-                          <Text style={styles.kalemMeta}>Fiş: {k.FisNo || k.fisNo || '-'} · KDV: {fmtTL(k.KdvTutar ?? k.kdvTutar ?? 0)} · {fmtTarih(k.Tarih || k.tarih)}</Text>
-                          {!!(k.Aciklama || k.aciklama) && <Text style={styles.kalemAciklama}>{k.Aciklama || k.aciklama}</Text>}
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </ScrollView>
-              );
-            })()}
-
-            <View style={styles.modalFooter}>
-              {activeTab === 'onay' ? (
-                <>
-                  <TouchableOpacity 
-                    style={[styles.rejectBtn, { flex: 1, height: 42 }]} 
-                    onPress={() => {
-                      const itemToProcess = detayItem;
-                      setDetayItem(null);
-                      onOnayReddet(itemToProcess, false);
-                    }}
-                  >
-                    <Ionicons name="close-circle-outline" size={16} color={colors.danger} style={{ marginRight: 4 }} />
-                    <Text style={styles.rejectBtnText}>Reddet</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.approveBtn, { flex: 1, height: 42 }]} 
-                    onPress={() => {
-                      const itemToProcess = detayItem;
-                      setDetayItem(null);
-                      onOnayReddet(itemToProcess, true);
-                    }}
-                  >
-                    <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} style={{ marginRight: 4 }} />
-                    <Text style={styles.approveBtnText}>Onayla</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setDetayItem(null)}>
-                  <Text style={styles.cancelBtnText}>Kapat</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };

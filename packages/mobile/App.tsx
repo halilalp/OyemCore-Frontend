@@ -90,6 +90,7 @@ import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDe
 import { ChatListScreen } from './src/features/chat/screens/ChatListScreen';
 import { ChatConversationScreen } from './src/features/chat/screens/ChatConversationScreen';
 import { AvansMasrafScreen } from './src/features/avansmasraf/screens/AvansMasrafScreen';
+import { AvansMasrafDetailScreen } from './src/features/avansmasraf/screens/AvansMasrafDetailScreen';
 import { BakimYonetimHubScreen } from './src/features/bakim_yonetim/screens/BakimYonetimHubScreen';
 import { ProfilScreen } from './src/features/profile/screens/ProfilScreen';
 import { PerformansScreen } from './src/features/profile/screens/PerformansScreen';
@@ -375,6 +376,11 @@ export default function App() {
             <Stack.Screen
               name="AvansMasraf"
               component={AvansMasrafScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AvansMasrafDetail"
+              component={AvansMasrafDetailScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
