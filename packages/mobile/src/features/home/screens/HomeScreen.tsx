@@ -1399,8 +1399,8 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     },
     modulesScrollContent: {
       paddingHorizontal: 20,
-      paddingRight: 40,
-      gap: 20,
+      paddingRight: 24,
+      gap: 12,
     },
     moduleItem: {
       width: '21%',
