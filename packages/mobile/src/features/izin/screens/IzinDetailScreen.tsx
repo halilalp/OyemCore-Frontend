@@ -219,9 +219,11 @@ export const IzinDetailScreen = () => {
       {activeTab === 'approvals' && detail.durum === null && (
         <View style={[styles.bottomActionBar, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 20) : 16 }]}>
           <TouchableOpacity style={styles.rejectBtn} onPress={handleReject}>
+            <Ionicons name="close-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={styles.rejectBtnText}>Reddet</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.approveBtn} onPress={handleApprove}>
+            <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={styles.approveBtnText}>Onayla</Text>
           </TouchableOpacity>
         </View>
@@ -453,22 +455,22 @@ const createStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#fee2e2',
-    borderWidth: 1,
-    borderColor: '#ef4444',
+    backgroundColor: colors.danger || '#dc3545',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   rejectBtnText: {
-    color: '#dc2626',
+    color: '#FFF',
     fontSize: 14,
     fontWeight: '700',
   },
   approveBtn: {
-    flex: 2,
+    flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: slateTokens.brandPurple,
+    backgroundColor: colors.success || '#28a745',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
