@@ -55,9 +55,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   onPress,
 }) => {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {/* Sol durum çizgisi - Demirbaş listesindeki gibi net solid border rengi */}
-      <View style={[styles.leftLine, { backgroundColor: lineColor }]} />
+    <TouchableOpacity style={[styles.card, { borderLeftWidth: 5, borderLeftColor: lineColor }]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardInner}>
         {/* Content */}
         <View style={styles.contentContainer}>
@@ -306,9 +304,5 @@ const styles = StyleSheet.create({
     height: 18,
     backgroundColor: slateTokens.border,
     flexShrink: 0,        // sikisip kaybolmasin
-  },
-  leftLine: {
-    width: 6,
-    height: '100%',
   },
 });
