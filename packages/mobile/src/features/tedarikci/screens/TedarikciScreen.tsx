@@ -1167,6 +1167,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: colors.shadowColor || '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
     overflow: 'hidden', // alt çizginin köşelere düzgün oturması için
   },
   evalCardInner: {
