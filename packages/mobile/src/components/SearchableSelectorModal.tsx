@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, FlatList, ActivityIndicator } from 'react-native';
 import { useThemeStore } from '../store/useThemeStore';
 
 interface SearchableSelectorModalProps {
@@ -11,6 +11,8 @@ interface SearchableSelectorModalProps {
   labelExtractor: (item: any) => string;
   title: string;
   placeholder?: string;
+  onSearch?: (text: string) => void;
+  loading?: boolean;
 }
 
 export const SearchableSelectorModal: React.FC<SearchableSelectorModalProps> = ({
@@ -21,17 +23,32 @@ export const SearchableSelectorModal: React.FC<SearchableSelectorModalProps> = (
   keyExtractor,
   labelExtractor,
   title,
-  placeholder = 'Arama yapın...'
+  placeholder = 'Arama yapın...',
+  onSearch,
+  loading = false
 }) => {
   const { colors } = useThemeStore();
   const styles = createStyles(colors);
   const [searchText, setSearchText] = useState('');
 
+  useEffect(() => {
+    if (onSearch) {
+      const cleanText = searchText.trim();
+      if (cleanText.length >= 3) {
+        onSearch(cleanText);
+      } else {
+        onSearch('');
+      }
+    }
+  }, [searchText, onSearch]);
+
   const cleanSearchText = searchText.toLocaleLowerCase('tr').trim();
-  const filteredData = data.filter(item => {
-    const label = labelExtractor(item) || '';
-    return label.toLocaleLowerCase('tr').includes(cleanSearchText);
-  });
+  const filteredData = onSearch
+    ? data
+    : data.filter(item => {
+        const label = labelExtractor(item) || '';
+        return label.toLocaleLowerCase('tr').includes(cleanSearchText);
+      });
 
   const handleSelect = (item: any) => {
     onSelect(item);
@@ -55,6 +72,12 @@ export const SearchableSelectorModal: React.FC<SearchableSelectorModalProps> = (
             autoCapitalize="none"
           />
 
+          {loading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null}
+
           <FlatList
             data={filteredData}
             keyExtractor={keyExtractor}
@@ -71,7 +94,11 @@ export const SearchableSelectorModal: React.FC<SearchableSelectorModalProps> = (
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Sonuç bulunamadı.</Text>
+                <Text style={styles.emptyText}>
+                  {onSearch && searchText.trim().length < 3
+                    ? 'Aramak için en az 3 karakter giriniz.'
+                    : 'Sonuç bulunamadı.'}
+                </Text>
               </View>
             }
           />

@@ -1073,6 +1073,12 @@ export const api = {
     return response.data;
   },
 
+  searchTedarikciler: async (query: string): Promise<any[]> => {
+    if (query.trim().length < 3) return [];
+    const response = await apiClient.get<any[]>('/Tedarikci/search', { params: { query } });
+    return response.data;
+  },
+
   createAsset: async (data: any): Promise<{ success: boolean, message: string, aygitID?: number }> => {
     const response = await apiClient.post<{ success: boolean, message: string, aygitID?: number }>('/Zimmet/create', data);
     return response.data;

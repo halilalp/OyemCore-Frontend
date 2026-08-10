@@ -132,9 +132,14 @@ export const TedarikciScreen = () => {
   // Searchable Selector Modal helpers
   const [isSupplierSelectOpen, setIsSupplierSelectOpen] = useState(false);
   const [isTurSelectOpen, setIsTurSelectOpen] = useState(false);
+  const [isYearSelectOpen, setIsYearSelectOpen] = useState(false);
   const [isFilterSupplierSelectOpen, setIsFilterSupplierSelectOpen] = useState(false);
   const [isFilterTurSelectOpen, setIsFilterTurSelectOpen] = useState(false);
   const [isFilterDurumSelectOpen, setIsFilterDurumSelectOpen] = useState(false);
+  
+  // Serverside Supplier Search States
+  const [searchedSuppliers, setSearchedSuppliers] = useState<any[]>([]);
+  const [supplierLoading, setSupplierLoading] = useState(false);
   
   // Datepicker modal helpers
   const [isNewKayitDateOpen, setIsNewKayitDateOpen] = useState(false);
@@ -175,6 +180,22 @@ export const TedarikciScreen = () => {
       }
     } catch (e) {
       console.error('Dropdowns error:', e);
+    }
+  };
+
+  const handleSupplierSearch = async (query: string) => {
+    if (query.trim().length < 3) {
+      setSearchedSuppliers([]);
+      return;
+    }
+    setSupplierLoading(true);
+    try {
+      const list = await api.searchTedarikciler(query);
+      setSearchedSuppliers(list || []);
+    } catch (e) {
+      setSearchedSuppliers([]);
+    } finally {
+      setSupplierLoading(false);
     }
   };
 
@@ -598,17 +619,11 @@ export const TedarikciScreen = () => {
               {/* Mahsul Yılı */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Mahsul Yılı *</Text>
-                <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearScroll}>
-                  {yillar.map(yil => (
-                    <TouchableOpacity
-                      key={yil.toString()}
-                      style={[styles.yearChip, newYil === yil.toString() && styles.activeYearChip]}
-                      onPress={() => setNewYil(yil.toString())}
-                    >
-                      <Text style={[styles.yearChipText, newYil === yil.toString() && styles.activeYearChipText]}>{yil}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                <TouchableOpacity style={styles.selectBox} onPress={() => setIsYearSelectOpen(true)}>
+                  <Text style={styles.selectBoxText}>
+                    {newYil ? newYil : 'Seçiniz...'}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Kayıt Tarihi */}
@@ -655,15 +670,21 @@ export const TedarikciScreen = () => {
         {/* Suppliers Selector */}
         <SearchableSelectorModal
           visible={isSupplierSelectOpen}
-          onClose={() => setIsSupplierSelectOpen(false)}
+          onClose={() => {
+            setIsSupplierSelectOpen(false);
+            setSearchedSuppliers([]);
+          }}
           onSelect={(val) => {
             setNewSupplier(val);
             setIsSupplierSelectOpen(false);
+            setSearchedSuppliers([]);
           }}
-          data={suppliers}
+          data={searchedSuppliers}
           keyExtractor={item => item.id}
           labelExtractor={item => item.name}
           title="Tedarikçi Seçin"
+          onSearch={handleSupplierSearch}
+          loading={supplierLoading}
         />
 
         {/* Activity Area Selector */}
@@ -678,6 +699,20 @@ export const TedarikciScreen = () => {
           keyExtractor={item => item.id}
           labelExtractor={item => item.name}
           title="Faaliyet Alanı Seçin"
+        />
+
+        {/* Mahsul Yılı Selector */}
+        <SearchableSelectorModal
+          visible={isYearSelectOpen}
+          onClose={() => setIsYearSelectOpen(false)}
+          onSelect={(val) => {
+            setNewYil(val.toString());
+            setIsYearSelectOpen(false);
+          }}
+          data={yillar}
+          keyExtractor={item => item.toString()}
+          labelExtractor={item => item.toString()}
+          title="Mahsul Yılı Seçin"
         />
 
         <DatePickerModal
@@ -1002,15 +1037,21 @@ export const TedarikciScreen = () => {
       {/* Filter Supplier Selector */}
       <SearchableSelectorModal
         visible={isFilterSupplierSelectOpen}
-        onClose={() => setIsFilterSupplierSelectOpen(false)}
+        onClose={() => {
+          setIsFilterSupplierSelectOpen(false);
+          setSearchedSuppliers([]);
+        }}
         onSelect={(val) => {
           setSelectedTedFilter(val.id);
           setIsFilterSupplierSelectOpen(false);
+          setSearchedSuppliers([]);
         }}
-        data={suppliers}
+        data={searchedSuppliers}
         keyExtractor={item => item.id}
         labelExtractor={item => item.name}
         title="Tedarikçi Seçin"
+        onSearch={handleSupplierSearch}
+        loading={supplierLoading}
       />
 
       {/* Filter Faaliyet Alanı Selector */}
