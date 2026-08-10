@@ -48,6 +48,10 @@ export const ProjeDetailScreen = () => {
   const [personeller, setPersoneller] = useState<any[]>([]);
   // Dosya
   const [filePicker, setFilePicker] = useState(false);
+  // Collapsible sections
+  const [katilimcilarExpanded, setKatilimcilarExpanded] = useState(true);
+  const [gorevlerExpanded, setGorevlerExpanded] = useState(true);
+  const [dosyalarExpanded, setDosyalarExpanded] = useState(true);
   const [uploading, setUploading] = useState(false);   // upload + kayıt süresince overlay
   const pickedRef = useRef(false);                       // onPicked çağrıldıysa upload sonu overlay'i kapatma
 
@@ -262,8 +266,8 @@ export const ProjeDetailScreen = () => {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{t.tur === 'P' ? 'Proje' : 'Toplantı'} Detayı</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? '#dcfce7' : '#fef9c3', zIndex: 2 }]}>
-            <Text style={[styles.statusText, { color: tamamlandi ? '#15803d' : '#a16207' }]}>{t.durum}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: tamamlandi ? colors.successLight : colors.warningLight, zIndex: 2 }]}>
+            <Text style={[styles.statusText, { color: tamamlandi ? colors.success : colors.warning }]}>{t.durum}</Text>
           </View>
         </View>
 
@@ -310,85 +314,157 @@ export const ProjeDetailScreen = () => {
         </View>
 
         {/* Katılımcılar */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Katılımcılar ({detail.katilimcilar.length})</Text>
-          {detail.katilimcilar.length === 0 ? (
-            <Text style={styles.empty}>Katılımcı yok.</Text>
-          ) : detail.katilimcilar.map((k: any) => (
-            <View key={k.id} style={styles.kRow}>
-              {k.sicilNo
-                ? <UserAvatar sicilNo={k.sicilNo} name={k.ad} size={30} style={{ marginRight: 8 }} />
-                : <Ionicons name="person-circle-outline" size={30} color={colors.textMuted} style={{ marginRight: 8 }} />}
-              <Text style={[styles.kAd, { flex: 1 }]}>{k.ad}</Text>
-              {canManage && (
-                <TouchableOpacity style={styles.silBtn} onPress={() => cikarKatilimci(k.id, k.ad)}>
-                  <Ionicons name="close" size={16} color={colors.danger} />
-                </TouchableOpacity>
+        <View style={styles.cardSection}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            activeOpacity={0.8}
+            onPress={() => setKatilimcilarExpanded(!katilimcilarExpanded)}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionTitle}>Katılımcılar</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{detail.katilimcilar.length}</Text>
+              </View>
+            </View>
+            <Ionicons
+              name={katilimcilarExpanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {katilimcilarExpanded && (
+            <View style={styles.sectionContent}>
+              {detail.katilimcilar.length === 0 ? (
+                <View style={styles.detailCard}>
+                  <Text style={styles.empty}>Katılımcı yok.</Text>
+                </View>
+              ) : (
+                detail.katilimcilar.map((k: any) => (
+                  <View key={k.id} style={styles.kRow}>
+                    {k.sicilNo
+                      ? <UserAvatar sicilNo={k.sicilNo} name={k.ad} size={30} style={{ marginRight: 8 }} />
+                      : <Ionicons name="person-circle-outline" size={30} color={colors.textMuted} style={{ marginRight: 8 }} />}
+                    <Text style={[styles.kAd, { flex: 1 }]}>{k.ad}</Text>
+                    {canManage && (
+                      <TouchableOpacity style={styles.silBtn} onPress={() => cikarKatilimci(k.id, k.ad)}>
+                        <Ionicons name="close" size={16} color={colors.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))
               )}
             </View>
-          ))}
+          )}
         </View>
 
         {/* Görevler */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Görevler ({detail.gorevler.length})</Text>
-          {detail.gorevler.length === 0 ? (
-            <Text style={styles.empty}>Henüz görev yok.</Text>
-          ) : detail.gorevler.map((g: any) => {
-            const gTamam = g.durum === 'TAMAMLANDI';
-            return (
-              <View key={g.id} style={styles.gorevCard}>
-                <View style={styles.gorevHead}>
-                  <Text style={styles.gorevNo}>#{g.gorevNo}</Text>
-                  <View style={[styles.gDurum, { backgroundColor: gTamam ? colors.successLight : colors.warningLight }]}>
-                    <Text style={[styles.gDurumText, { color: gTamam ? colors.success : colors.warning }]}>{g.durum}</Text>
-                  </View>
+        <View style={styles.cardSection}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            activeOpacity={0.8}
+            onPress={() => setGorevlerExpanded(!gorevlerExpanded)}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionTitle}>Görevler</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{detail.gorevler.length}</Text>
+              </View>
+            </View>
+            <Ionicons
+              name={gorevlerExpanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {gorevlerExpanded && (
+            <View style={styles.sectionContent}>
+              {detail.gorevler.length === 0 ? (
+                <View style={styles.detailCard}>
+                  <Text style={styles.empty}>Henüz görev yok.</Text>
                 </View>
-                <Text style={styles.gorevAciklama}>{g.aciklama}</Text>
-                <View style={styles.gorevFooter}>
-                  <Text style={styles.gorevMeta}>{g.sorumluAd}{g.terminTarStr ? ` · Termin: ${g.terminTarStr}` : ''}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {!gTamam && !readonly && (
-                      <TouchableOpacity style={styles.tamamlaBtn} onPress={() => tamamlaGorev(g.id)}>
-                        <Ionicons name="checkmark" size={14} color={colors.success} />
-                        <Text style={styles.tamamlaText}>Tamamla</Text>
-                      </TouchableOpacity>
-                    )}
+              ) : (
+                detail.gorevler.map((g: any) => {
+                  const gTamam = g.durum === 'TAMAMLANDI';
+                  return (
+                    <View key={g.id} style={styles.gorevCard}>
+                      <View style={styles.gorevHead}>
+                        <Text style={styles.gorevNo}>#{g.gorevNo}</Text>
+                        <View style={[styles.gDurum, { backgroundColor: gTamam ? colors.successLight : colors.warningLight }]}>
+                          <Text style={[styles.gDurumText, { color: gTamam ? colors.success : colors.warning }]}>{g.durum}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.gorevAciklama}>{g.aciklama}</Text>
+                      <View style={styles.gorevFooter}>
+                        <Text style={styles.gorevMeta}>{g.sorumluAd}{g.terminTarStr ? ` · Termin: ${g.terminTarStr}` : ''}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          {!gTamam && !readonly && (
+                            <TouchableOpacity style={styles.tamamlaBtn} onPress={() => tamamlaGorev(g.id)}>
+                              <Ionicons name="checkmark" size={14} color={colors.success} />
+                              <Text style={styles.tamamlaText}>Tamamla</Text>
+                            </TouchableOpacity>
+                          )}
+                          {canManage && (
+                            <TouchableOpacity style={styles.silBtn} onPress={() => silGorev(g.id)}>
+                              <Ionicons name="trash-outline" size={15} color={colors.danger} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Ekli Dosyalar */}
+        <View style={styles.cardSection}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            activeOpacity={0.8}
+            onPress={() => setDosyalarExpanded(!dosyalarExpanded)}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionTitle}>Ekli Dosyalar</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{detail.dosyalar.length}</Text>
+              </View>
+            </View>
+            <Ionicons
+              name={dosyalarExpanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {dosyalarExpanded && (
+            <View style={styles.sectionContent}>
+              {detail.dosyalar.length === 0 ? (
+                <View style={styles.detailCard}>
+                  <Text style={styles.empty}>Ekli dosya yok.</Text>
+                </View>
+              ) : (
+                detail.dosyalar.map((d: any) => (
+                  <View key={d.id} style={styles.dRow}>
+                    <AttachmentPreview
+                      dosyaUrl={d.dosyaUrl}
+                      module="Toplanti"
+                      style={{ marginTop: 0, marginRight: 10, width: 52, height: 52 }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.dBaslik} numberOfLines={1}>{d.baslik || 'Dosya'}</Text>
+                      <Text style={styles.dDate}>{d.kayitTarStr}</Text>
+                    </View>
                     {canManage && (
-                      <TouchableOpacity style={styles.silBtn} onPress={() => silGorev(g.id)}>
+                      <TouchableOpacity style={styles.silBtn} onPress={() => silDosya(d.id)}>
                         <Ionicons name="trash-outline" size={15} color={colors.danger} />
                       </TouchableOpacity>
                     )}
                   </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Ekli Dosyalar */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ekli Dosyalar ({detail.dosyalar.length})</Text>
-          {detail.dosyalar.length === 0 ? (
-            <Text style={styles.empty}>Ekli dosya yok.</Text>
-          ) : detail.dosyalar.map((d: any) => (
-            <View key={d.id} style={styles.dRow}>
-              <AttachmentPreview
-                dosyaUrl={d.dosyaUrl}
-                module="Toplanti"
-                style={{ marginTop: 0, marginRight: 10, width: 52, height: 52 }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dBaslik} numberOfLines={1}>{d.baslik || 'Dosya'}</Text>
-                <Text style={styles.dDate}>{d.kayitTarStr}</Text>
-              </View>
-              {canManage && (
-                <TouchableOpacity style={styles.silBtn} onPress={() => silDosya(d.id)}>
-                  <Ionicons name="trash-outline" size={15} color={colors.danger} />
-                </TouchableOpacity>
+                ))
               )}
             </View>
-          ))}
+          )}
         </View>
       </ScrollView>
 
@@ -587,7 +663,67 @@ const createStyles = (colors: any) => StyleSheet.create({
   scroll: { padding: 16, gap: 12 },
   banner: { padding: 12, borderRadius: 12, borderWidth: 1 },
   bannerText: { fontSize: 12.5, fontWeight: '700', lineHeight: 16 },
-  card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
+  card: {
+    backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border,
+    shadowColor: colors.shadowColor || '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardSection: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: colors.shadowColor || '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.card,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  badge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  sectionContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  detailCard: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    marginTop: 8,
+  },
   cardTitle: { fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 12 },
   konu: { fontSize: 16, fontWeight: '800', color: colors.text },
   aciklama: { fontSize: 13.5, color: colors.textSecondary, lineHeight: 20 },

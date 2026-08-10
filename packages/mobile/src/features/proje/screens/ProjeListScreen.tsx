@@ -314,6 +314,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   card: {
     backgroundColor: colors.card, borderRadius: 16, marginBottom: 10,
     borderWidth: 1, borderColor: colors.border,
+    shadowColor: colors.shadowColor || '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
     flexDirection: 'row',
     overflow: 'hidden',
   },
