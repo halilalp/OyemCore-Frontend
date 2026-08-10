@@ -56,8 +56,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
 }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {/* Sol durum çizgisi - Açık tonda durum rengi */}
-      <View style={[styles.leftLine, { backgroundColor: lineColor + '55' }]} />
+      {/* Sol durum çizgisi - Demirbaş listesindeki gibi net solid border rengi */}
+      <View style={[styles.leftLine, { backgroundColor: lineColor }]} />
       <View style={styles.cardInner}>
         {/* Content */}
         <View style={styles.contentContainer}>
