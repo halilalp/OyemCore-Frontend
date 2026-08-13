@@ -390,7 +390,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         )}
       </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}>
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
         ) : (

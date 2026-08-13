@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, ChatUser } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -71,22 +71,24 @@ export const NewGroupModal: React.FC<Props> = ({ visible, onClose, onCreated, ed
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{editGroupCode ? 'Grubu Düzenle' : 'Yeni Grup'}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.header}>
+              <Text style={styles.title}>{editGroupCode ? 'Grubu Düzenle' : 'Yeni Grup'}</Text>
+              <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
 
-          <TextInput
-            style={styles.nameInput}
-            placeholder="Grup adı"
-            placeholderTextColor={colors.textMuted}
-            value={groupName}
-            onChangeText={setGroupName}
-          />
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Grup adı"
+              placeholderTextColor={colors.textMuted}
+              value={groupName}
+              onChangeText={setGroupName}
+              autoFocus={true}
+            />
 
           <View style={styles.searchWrap}>
             <Ionicons name="search" size={18} color={colors.textSecondary} />
@@ -126,6 +128,7 @@ export const NewGroupModal: React.FC<Props> = ({ visible, onClose, onCreated, ed
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

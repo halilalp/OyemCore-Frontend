@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar, KeyboardAvoidingView } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -537,7 +537,7 @@ export const DemirbasYonetimScreen = () => {
               ) : null
             }
             renderItem={({ item }) => (
-              <TouchableOpacity style={[styles.itemCard, { borderLeftWidth: 5, borderLeftColor: item.durum ? colors.success : colors.primary }]} onPress={() => handleAssetClick(item)}>
+              <TouchableOpacity style={[styles.itemCard, { borderLeftWidth: 5, borderLeftColor: item.durum ? '#86EFAC' : '#93C5FD' }]} onPress={() => handleAssetClick(item)}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.assetTitle}>{item.tanim}</Text>
                   <View style={[styles.badge, item.durum ? styles.successBadge : styles.infoBadge]}>
@@ -736,6 +736,7 @@ export const DemirbasYonetimScreen = () => {
               placeholderTextColor={colors.placeholder}
               value={createTanim}
               onChangeText={setCreateTanim}
+              autoFocus={true}
             />
           </View>
 
@@ -966,13 +967,15 @@ export const DemirbasYonetimScreen = () => {
             statusBarTranslucent={true}
             onRequestClose={() => setIsAssignOpen(false)}
           >
-            <View style={styles.container}>
-              <View style={styles.contentWrapper}>
-                {renderAssignView()}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+              <View style={styles.container}>
+                <View style={styles.contentWrapper}>
+                  {renderAssignView()}
+                </View>
+                {/* Personel seçici atama modalının İÇİNDE */}
+                {renderSelectorModal('assign')}
               </View>
-              {/* Personel seçici atama modalının İÇİNDE */}
-              {renderSelectorModal('assign')}
-            </View>
+            </KeyboardAvoidingView>
             <KeyboardDismissBar />
           </Modal>
         </View>
@@ -987,13 +990,15 @@ export const DemirbasYonetimScreen = () => {
         statusBarTranslucent={true}
         onRequestClose={() => { setCurrentView(selectedAsset ? 'detail' : 'list'); setEditingAsset(null); }}
       >
-        <View style={styles.container}>
-          <View style={styles.contentWrapper}>
-            {renderCreateView()}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.container}>
+            <View style={styles.contentWrapper}>
+              {renderCreateView()}
+            </View>
+            {/* Kategori/Marka/Departman seçicileri create modalının İÇİNDE */}
+            {renderSelectorModal('create')}
           </View>
-          {/* Kategori/Marka/Departman seçicileri create modalının İÇİNDE */}
-          {renderSelectorModal('create')}
-        </View>
+        </KeyboardAvoidingView>
         <KeyboardDismissBar />
       </Modal>
 
@@ -1132,11 +1137,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 16,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
     borderWidth: 1,
     borderColor: colors.border,
   },

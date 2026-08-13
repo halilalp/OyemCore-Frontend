@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
-// const LineChart: any = null; const BarChart: any = null; const PieChart: any = null;
-const LineChart: any = null;
-const BarChart: any = null;
-const PieChart: any = null;
+import { LineChart, BarChart, PieChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
+import { StatTile, PremiumStatTile, ChartCard, LegendRow, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 // Referans WebServicePersonel.IKDashboardVerisiGetir ile birebir İK dashboard'u.
 const num = (o: any, k: string) => (o && typeof o[k] === 'number') ? o[k] : 0;
@@ -89,10 +86,12 @@ export const IzinDashboardScreen = () => {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} showYil={false} showAy={false} />
-          <View style={styles.tilesGrid}>
-            <StatTile label="Aktif Personel" value={totalActive} icon="people-outline" color={colors.primary} />
-            <StatTile label="İşe Alınan" value={monthlyHired} icon="person-add-outline" color="#10b981" />
-            <StatTile label="Çıkan" value={monthlyFired} icon="person-remove-outline" color="#ef4444" />
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Aktif Personel" value={totalActive} icon="people-outline" bgColor="#3B82F6" />
+          </View>
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Bu Ay İşe Alınan" value={monthlyHired} icon="person-add-outline" bgColor="#10B981" />
+            <PremiumStatTile label="Bu Ay Çıkan" value={monthlyFired} icon="person-remove-outline" bgColor="#EF4444" />
           </View>
 
           {/* Turnover (giren/çıkan son 12 ay) */}
@@ -266,5 +265,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  premiumRow: { flexDirection: 'row', gap: 10, marginBottom: 10, width: '100%' },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
 });

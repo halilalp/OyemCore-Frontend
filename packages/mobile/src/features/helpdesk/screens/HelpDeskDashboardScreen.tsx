@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
-// const BarChart: any = null;
-const BarChart: any = null;
+import { BarChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
+import { StatTile, PremiumStatTile, ChartCard, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 // Referans WebServiceHelpDeskRapor.HelpDeskPerformansRaporuGetir ile birebir (IT/ERP).
 const num = (o: any, k: string) => (o && typeof o[k] === 'number') ? o[k] : 0;
@@ -78,22 +77,27 @@ export const HelpDeskDashboardScreen = () => {
               <Text selectable style={styles.errText}>{errMsg}</Text>
             </View>
           )}
-          <View style={styles.tilesGrid}>
-            <StatTile label="Toplam Talep" value={num(kpi, 'talepSayisi')} icon="albums-outline" color={colors.primary} />
-            <StatTile label="Açık" value={num(kpi, 'acikTalep')} icon="folder-open-outline" color="#f59e0b" />
-            <StatTile label="Tamamlanan" value={num(kpi, 'tamamlananTalep')} icon="checkmark-done-outline" color="#10b981" />
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Toplam Talep" value={num(kpi, 'talepSayisi')} icon="albums-outline" bgColor="#7C3AED" />
+            <PremiumStatTile label="Açık" value={num(kpi, 'acikTalep')} icon="folder-open-outline" bgColor="#F59E0B" />
+          </View>
+
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Tamamlanan" value={num(kpi, 'tamamlananTalep')} icon="checkmark-done-outline" bgColor="#10B981" />
             {isBakim ? (
-              <>
-                <StatTile label="Onay Bekleyen" value={num(kpi, 'onayBekleyen')} icon="hourglass-outline" color="#3b82f6" />
-                <StatTile label="Ort. SLA (Çözüm)" value={`${num(kpi, 'slaSuresi').toFixed(1)}s`} icon="time-outline" color="#8b5cf6" />
-              </>
+              <PremiumStatTile label="Onay Bekleyen" value={num(kpi, 'onayBekleyen')} icon="hourglass-outline" bgColor="#EF4444" />
             ) : (
-              <>
-                <StatTile label="Ort. Tamamlama" value={`${num(kpi, 'tamamlamaSuresi').toFixed(1)}s`} icon="time-outline" color="#3b82f6" />
-                <StatTile label="Ort. Müdahale" value={`${num(kpi, 'mudahaleSuresi').toFixed(1)}s`} icon="alarm-outline" color="#8b5cf6" />
-              </>
+              <PremiumStatTile label="Ort. Müdahale" value={`${num(kpi, 'mudahaleSuresi').toFixed(1)} s`} icon="alarm-outline" bgColor="#EF4444" />
             )}
-            <StatTile label="Ort. İş Yükü" value={num(kpi, 'ortIsYuku').toFixed(1)} icon="people-outline" color="#14b8a6" />
+          </View>
+
+          <View style={styles.premiumRow}>
+            {isBakim ? (
+              <PremiumStatTile label="Ort. SLA (Çözüm)" value={`${num(kpi, 'slaSuresi').toFixed(1)} s`} icon="time-outline" bgColor="#06B6D4" />
+            ) : (
+              <PremiumStatTile label="Ort. Tamamlama" value={`${num(kpi, 'tamamlamaSuresi').toFixed(1)} s`} icon="time-outline" bgColor="#06B6D4" />
+            )}
+            <PremiumStatTile label="Ort. İş Yükü" value={num(kpi, 'ortIsYuku').toFixed(1)} icon="people-outline" bgColor="#3B82F6" />
           </View>
 
           {perfBars.length > 0 && isSvgSupported && (
@@ -139,6 +143,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  premiumRow: { flexDirection: 'row', gap: 10, marginBottom: 10, width: '100%' },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 12 },
   errBox: { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 14 },
   errTitle: { fontSize: 12, fontWeight: '800', color: '#b91c1c', marginBottom: 4 },

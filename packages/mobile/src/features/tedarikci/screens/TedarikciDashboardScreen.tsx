@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
-// const LineChart: any = null; const BarChart: any = null; const PieChart: any = null;
-const LineChart: any = null;
-const BarChart: any = null;
-const PieChart: any = null;
+import { LineChart, BarChart, PieChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';

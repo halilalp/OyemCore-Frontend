@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { api, BakimPlan, BakimPlanDetay, Malzeme } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,6 +85,8 @@ export const BakimPlanScreen = () => {
   const [materialQty, setMaterialQty] = useState('');
   const [selectedMachineKodu, setSelectedMachineKodu] = useState('');
   const [isSarfMachineOpen, setIsSarfMachineOpen] = useState(false);
+  const [isMaterialSearchOpen, setIsMaterialSearchOpen] = useState(false);
+  const [materialLoading, setMaterialLoading] = useState(false);
 
   // Tarihçe ve collapsible panel state'leri
   const [detailHistory, setDetailHistory] = useState<any[]>([]);
@@ -144,6 +146,15 @@ export const BakimPlanScreen = () => {
     }
   };
 
+  const getStatusPastelColor = (durum: string) => {
+    switch (durum) {
+      case 'TAMAMLANDI': return '#86EFAC';
+      case 'DEVAM': return '#93C5FD';
+      case 'IPTAL': return '#FCA5A5';
+      default: return '#FDBA74';
+    }
+  };
+
   const loadPlans = async () => {
     setIsLoading(true);
     try {
@@ -189,14 +200,23 @@ export const BakimPlanScreen = () => {
     }
   };
 
-  const handleMaterialSearch = async (val: string) => {
+  const handleMaterialSearch = useCallback(async (val: string) => {
     setMaterialSearch(val);
-    if (val.length < 2) { setMaterialsList([]); return; }
+    if (val.trim().length < 3) {
+      setMaterialsList([]);
+      return;
+    }
+    setMaterialLoading(true);
     try {
       const res = await api.searchMalzemes(val, 1, 10, false);
       setMaterialsList(res.results || []);
-    } catch (err) { console.error(err); }
-  };
+    } catch (err) {
+      console.error(err);
+      setMaterialsList([]);
+    } finally {
+      setMaterialLoading(false);
+    }
+  }, []);
 
   const handleAddPlanSarfiyat = async () => {
     if (!selectedPlan || !selectedMaterial || !materialQty || !selectedMachineKodu) {
@@ -402,7 +422,7 @@ export const BakimPlanScreen = () => {
               renderItem={({ item }) => {
                 const durumColor = getStatusTextColor(item.durum);
                 return (
-                  <TouchableOpacity style={[styles.card, { borderLeftWidth: 5, borderLeftColor: durumColor }]} onPress={() => handleOpenPlan(item)}>
+                  <TouchableOpacity style={[styles.card, { borderLeftWidth: 5, borderLeftColor: getStatusPastelColor(item.durum) }]} onPress={() => handleOpenPlan(item)}>
                     <View style={styles.cardInner}>
                       <View style={styles.cardHeader}>
                         <Text style={styles.cardCode}>{item.planKodu}</Text>
@@ -608,16 +628,7 @@ export const BakimPlanScreen = () => {
               </ScrollView>
             </View>
 
-            {/* Makine seçici (hatta bağlı) — detay modalının İÇİNDE (iOS'ta üstte) */}
-            <SearchableSelectorModal
-              visible={isSarfMachineOpen}
-              onClose={() => { setIsSarfMachineOpen(false); setSarfModalOpen(true); }}
-              onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
-              data={hatMakines}
-              keyExtractor={(item) => item.makineKodu}
-              labelExtractor={(item) => item.makineAdi}
-              title="Makine Seçin"
-            />
+            {/* Makine seçici modalı artık sarfModalOpen modalının içerisine taşındı */}
 
             {/* Planlama Modu Alt Butonları (Yalnızca Planlama sayfasında ve durum Beklemede iken görünür) */}
             {mode === 'plan' && selectedPlan.durum === 'BEKLEMEDE' && (
@@ -688,23 +699,22 @@ export const BakimPlanScreen = () => {
 
             {/* Not Ekle modal */}
             <Modal visible={notModalOpen} transparent animationType="fade" onRequestClose={() => setNotModalOpen(false)}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
                 <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Not Ekle</Text>
                     <TouchableOpacity onPress={() => setNotModalOpen(false)}><Ionicons name="close" size={22} color={colors.textSecondary} /></TouchableOpacity>
                   </View>
-                  <TextInput style={[styles.textInput, { height: 90, textAlignVertical: 'top' }]} placeholder="Gelişme notu ekleyin..." placeholderTextColor={colors.placeholder} value={newPlanNot} onChangeText={setNewPlanNot} multiline />
+                  <TextInput style={[styles.textInput, { height: 90, textAlignVertical: 'top' }]} placeholder="Gelişme notu ekleyin..." placeholderTextColor={colors.placeholder} value={newPlanNot} onChangeText={setNewPlanNot} multiline autoFocus={true} />
                   <TouchableOpacity style={[styles.submitBtn, { marginTop: 12 }]} onPress={handleAddPlanNot}>
                     <Text style={styles.submitBtnText}>Kaydet</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </KeyboardAvoidingView>
             </Modal>
-
             {/* Sarfiyat Ekle modal */}
             <Modal visible={sarfModalOpen} transparent animationType="fade" onRequestClose={() => setSarfModalOpen(false)}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
                 <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18, maxHeight: '80%' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Sarfiyat Ekle</Text>
@@ -713,20 +723,15 @@ export const BakimPlanScreen = () => {
                   <ScrollView keyboardShouldPersistTaps="handled">
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>Malzeme Arama *</Text>
-                      <TextInput style={styles.textInput} placeholder="Malzeme adı veya kodu yazın..." placeholderTextColor={colors.placeholder} value={materialSearch} onChangeText={handleMaterialSearch} />
-                      {materialsList.length > 0 && (
-                        <View style={styles.searchResultsDropdown}>
-                          {materialsList.map(m => (
-                            <TouchableOpacity key={m.malzemeKodu} style={styles.searchResultItem} onPress={() => { setSelectedMaterial(m); setMaterialSearch(`${m.malzemeAdi} (${m.malzemeKodu})`); setMaterialsList([]); }}>
-                              <Text style={styles.searchResultText}>{m.malzemeAdi} ({(m as any).olcuBirimi || ''})</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
+                      <TouchableOpacity style={styles.selectBox} onPress={() => { setSarfModalOpen(false); setIsMaterialSearchOpen(true); }}>
+                        <Text style={styles.selectBoxText}>
+                          {selectedMaterial ? `${selectedMaterial.malzemeAdi} (${selectedMaterial.malzemeKodu})` : 'Malzeme Seçin...'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>Miktar *</Text>
-                      <TextInput style={styles.textInput} placeholder="Örn: 2" placeholderTextColor={colors.placeholder} keyboardType="numeric" value={materialQty} onChangeText={setMaterialQty} />
+                      <TextInput style={styles.textInput} placeholder="Örn: 2" placeholderTextColor={colors.placeholder} keyboardType="numeric" value={materialQty} onChangeText={setMaterialQty} autoFocus={true} />
                     </View>
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>İlgili Makine (hatta bağlı) *</Text>
@@ -739,7 +744,7 @@ export const BakimPlanScreen = () => {
                     </TouchableOpacity>
                   </ScrollView>
                 </View>
-              </View>
+              </KeyboardAvoidingView>
             </Modal>
           </View>
         )}
@@ -916,6 +921,46 @@ export const BakimPlanScreen = () => {
         keyExtractor={(item) => item.code}
         labelExtractor={(item) => item.label}
         title="Durum Filtresi"
+      />
+
+      {/* Malzeme arama ve makine seçici modalları (Sibling modal olarak z-index hatasını çözmek için) */}
+      <SearchableSelectorModal
+        visible={isMaterialSearchOpen}
+        onClose={() => {
+          setIsMaterialSearchOpen(false);
+          setMaterialsList([]);
+          setSarfModalOpen(true);
+        }}
+        onSelect={(item) => {
+          setSelectedMaterial(item);
+          setMaterialSearch(`${item.malzemeAdi} (${item.malzemeKodu})`);
+          setIsMaterialSearchOpen(false);
+          setMaterialsList([]);
+          setSarfModalOpen(true);
+        }}
+        data={materialsList}
+        keyExtractor={(item) => item.malzemeKodu}
+        labelExtractor={(item) => `${item.malzemeAdi} (${item.malzemeKodu})`}
+        title="Malzeme Seçin"
+        onSearch={handleMaterialSearch}
+        loading={materialLoading}
+      />
+
+      <SearchableSelectorModal
+        visible={isSarfMachineOpen}
+        onClose={() => {
+          setIsSarfMachineOpen(false);
+          setSarfModalOpen(true);
+        }}
+        onSelect={(item) => {
+          setSelectedMachineKodu(item.makineKodu);
+          setIsSarfMachineOpen(false);
+          setSarfModalOpen(true);
+        }}
+        data={hatMakines}
+        keyExtractor={(item) => item.makineKodu}
+        labelExtractor={(item) => item.makineAdi}
+        title="Makine Seçin"
       />
 
       <BottomNavBar

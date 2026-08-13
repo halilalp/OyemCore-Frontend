@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
@@ -109,6 +109,8 @@ export const TedarikciScreen = () => {
 
   // Filters
   const [selectedTedFilter, setSelectedTedFilter] = useState('');
+  const [selectedTedName, setSelectedTedName] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedTurFilter, setSelectedTurFilter] = useState('');
   const [selectedDurumFilter, setSelectedDurumFilter] = useState('');
   const [selectedYilFilter, setSelectedYilFilter] = useState('');
@@ -128,6 +130,7 @@ export const TedarikciScreen = () => {
   const [newKayitTar, setNewKayitTar] = useState('');
   const [newIstekTar, setNewIstekTar] = useState('');
   const [newAciklama, setNewAciklama] = useState('');
+  const [newSupplierSearchText, setNewSupplierSearchText] = useState('');
 
   // Searchable Selector Modal helpers
   const [isSupplierSelectOpen, setIsSupplierSelectOpen] = useState(false);
@@ -140,6 +143,8 @@ export const TedarikciScreen = () => {
   // Serverside Supplier Search States
   const [searchedSuppliers, setSearchedSuppliers] = useState<any[]>([]);
   const [supplierLoading, setSupplierLoading] = useState(false);
+  const [newRecordSearchedSuppliers, setNewRecordSearchedSuppliers] = useState<any[]>([]);
+  const [newRecordSupplierLoading, setNewRecordSupplierLoading] = useState(false);
   
   // Datepicker modal helpers
   const [isNewKayitDateOpen, setIsNewKayitDateOpen] = useState(false);
@@ -183,7 +188,7 @@ export const TedarikciScreen = () => {
     }
   };
 
-  const handleSupplierSearch = async (query: string) => {
+  const handleSupplierSearch = useCallback(async (query: string) => {
     if (query.trim().length < 3) {
       setSearchedSuppliers([]);
       return;
@@ -197,7 +202,23 @@ export const TedarikciScreen = () => {
     } finally {
       setSupplierLoading(false);
     }
-  };
+  }, []);
+
+  const handleNewRecordSupplierSearch = useCallback(async (query: string) => {
+    if (query.trim().length < 3) {
+      setNewRecordSearchedSuppliers([]);
+      return;
+    }
+    setNewRecordSupplierLoading(true);
+    try {
+      const list = await api.searchTedarikciler(query);
+      setNewRecordSearchedSuppliers(list || []);
+    } catch (e) {
+      setNewRecordSearchedSuppliers([]);
+    } finally {
+      setNewRecordSupplierLoading(false);
+    }
+  }, []);
 
   const fetchList = async () => {
     setIsLoading(true);
@@ -207,7 +228,7 @@ export const TedarikciScreen = () => {
         TurKod: selectedTurFilter,
         Durum: selectedDurumFilter,
         MahsulYil: selectedYilFilter,
-        Arama: searchQuery,
+        Arama: debouncedSearchQuery,
         PageIndex: pageIndex,
         PageSize: pageSize,
         BasTar: startDateFilter ? toISODate(startDateFilter) : undefined,
@@ -225,9 +246,28 @@ export const TedarikciScreen = () => {
   useEffect(() => {
     if (isFocused) {
       loadDropdowns();
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (isFocused) {
       fetchList();
     }
-  }, [isFocused, pageIndex, selectedTedFilter, selectedTurFilter, selectedDurumFilter, selectedYilFilter, startDateFilter, endDateFilter]);
+  }, [isFocused, pageIndex, selectedTedFilter, selectedTurFilter, selectedDurumFilter, selectedYilFilter, startDateFilter, endDateFilter, debouncedSearchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const len = searchQuery.trim().length;
+      if (len === 0 || len >= 3) {
+        setDebouncedSearchQuery(searchQuery);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPageIndex(1);
+  }, [debouncedSearchQuery]);
 
   const handleSearch = () => {
     setPageIndex(1);
@@ -384,6 +424,8 @@ export const TedarikciScreen = () => {
         showAlert('Başarılı', res.message || 'Kayıt oluşturuldu.');
         setIsNewRecordOpen(false);
         setNewSupplier(null);
+        setNewSupplierSearchText('');
+        setNewRecordSearchedSuppliers([]);
         setNewTur(null);
         setNewAciklama('');
         setNewKayitTar('');
@@ -406,10 +448,19 @@ export const TedarikciScreen = () => {
     return colors.warning;
   };
 
+  const getStatusPastelColor = (durum: string) => {
+    if (durum === "TAMAMLANDI") return '#86EFAC';
+    if (durum === "İPTAL EDİLDİ") return '#FCA5A5';
+    return '#FDBA74';
+  };
+
   const handleCreateNew = () => {
     const today = new Date();
     const todayStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth()+1).toString().padStart(2, '0')}.${today.getFullYear()}`;
     setNewKayitTar(todayStr);
+    setNewSupplier(null);
+    setNewSupplierSearchText('');
+    setNewRecordSearchedSuppliers([]);
     setIsNewRecordOpen(true);
   };
 
@@ -433,10 +484,10 @@ export const TedarikciScreen = () => {
               onPress={() => setIsFilterSupplierSelectOpen(true)}
             >
               <Text style={[styles.headerFilterBtnText, selectedTedFilter !== '' && styles.headerFilterBtnTextActive]} numberOfLines={1}>
-                {selectedTedFilter === '' ? 'Tedarikçi' : 'Tedarikçi Seçildi'}
+                {selectedTedFilter === '' ? 'Tedarikçi' : selectedTedName}
               </Text>
               {selectedTedFilter !== '' && (
-                <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedTedFilter(''); }} style={{ marginLeft: 6 }}>
+                <TouchableOpacity onPress={(e) => { e.stopPropagation(); setSelectedTedFilter(''); setSelectedTedName(''); }} style={{ marginLeft: 6 }}>
                   <Ionicons name="close-circle" size={14} color={colors.primary} />
                 </TouchableOpacity>
               )}
@@ -520,7 +571,7 @@ export const TedarikciScreen = () => {
             keyExtractor={(item) => item.tedDegID.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
-              <TouchableOpacity style={[styles.evalCard, { borderLeftWidth: 5, borderLeftColor: getStatusColor(item.durum) }]} onPress={() => openDetail(item.belgeNo)}>
+              <TouchableOpacity style={[styles.evalCard, { borderLeftWidth: 5, borderLeftColor: getStatusPastelColor(item.durum) }]} onPress={() => openDetail(item.belgeNo)}>
                 <View style={styles.evalCardInner}>
                   <View style={styles.cardHeader}>
                     <View>
@@ -667,25 +718,28 @@ export const TedarikciScreen = () => {
           </View>
         </View>
 
-        {/* Suppliers Selector */}
+        {/* Supplier Selector */}
         <SearchableSelectorModal
           visible={isSupplierSelectOpen}
           onClose={() => {
             setIsSupplierSelectOpen(false);
-            setSearchedSuppliers([]);
+            setNewRecordSearchedSuppliers([]);
           }}
           onSelect={(val) => {
             setNewSupplier(val);
+            setNewSupplierSearchText(val.name);
             setIsSupplierSelectOpen(false);
-            setSearchedSuppliers([]);
+            setNewRecordSearchedSuppliers([]);
           }}
-          data={searchedSuppliers}
+          data={newRecordSearchedSuppliers}
           keyExtractor={item => item.id}
           labelExtractor={item => item.name}
           title="Tedarikçi Seçin"
-          onSearch={handleSupplierSearch}
-          loading={supplierLoading}
+          onSearch={handleNewRecordSupplierSearch}
+          loading={newRecordSupplierLoading}
         />
+
+
 
         {/* Activity Area Selector */}
         <SearchableSelectorModal
@@ -1044,6 +1098,7 @@ export const TedarikciScreen = () => {
         }}
         onSelect={(val) => {
           setSelectedTedFilter(val.id);
+          setSelectedTedName(val.name);
           setIsFilterSupplierSelectOpen(false);
           setSearchedSuppliers([]);
         }}
@@ -1168,11 +1223,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: colors.shadowColor || '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1,
     flexDirection: 'row',
     overflow: 'hidden', // alt çizginin köşelere düzgün oturması için
   },

@@ -99,6 +99,62 @@ export const StatTile = ({
   );
 };
 
+export const PremiumStatTile = ({
+  label, value, icon, bgColor, textColor = '#FFFFFF', sub,
+}: { label: string; value: string | number; icon: any; bgColor: string; textColor?: string; sub?: string }) => {
+  const s = StyleSheet.create({
+    tile: {
+      flex: 1,
+      minWidth: 105,
+      backgroundColor: bgColor,
+      borderRadius: 16,
+      padding: 12,
+      position: 'relative',
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.08)',
+      minHeight: 82,
+    },
+    value: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: textColor,
+      marginBottom: 4,
+    },
+    label: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: textColor,
+      opacity: 0.85,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    subText: {
+      fontSize: 8,
+      color: textColor,
+      opacity: 0.7,
+      marginTop: 2,
+    },
+    iconWrap: {
+      position: 'absolute',
+      right: 8,
+      bottom: 8,
+      opacity: 0.25,
+    }
+  });
+
+  return (
+    <View style={s.tile}>
+      <Text style={s.value}>{value}</Text>
+      <Text style={s.label} numberOfLines={1}>{label}</Text>
+      {!!sub && <Text style={s.subText} numberOfLines={1}>{sub}</Text>}
+      <View style={s.iconWrap}>
+        <Ionicons name={icon} size={32} color={textColor} />
+      </View>
+    </View>
+  );
+};
+
 export const ChartCard = ({
   title, subtitle, children, right,
 }: { title: string; subtitle?: string; children: React.ReactNode; right?: React.ReactNode }) => {

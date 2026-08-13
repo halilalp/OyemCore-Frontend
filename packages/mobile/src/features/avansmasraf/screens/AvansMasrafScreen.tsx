@@ -29,6 +29,14 @@ const durumStyle = (durum: string, colors: any) => {
   return { bg: colors.warningLight || 'rgba(255, 193, 7, 0.12)', text: colors.warning || '#ffc107', label: 'Onayda' };
 };
 
+const durumPastelColor = (durum: string) => {
+  const d = (durum || '').toUpperCase();
+  if (d === 'ONAYLANDI' || d === 'ODENDI') return '#86EFAC';
+  if (d === 'REDDEDILDI') return '#FCA5A5';
+  if (d === 'KAPATILDI') return '#CBD5E1';
+  return '#FDBA74';
+};
+
 export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   const { colors } = useThemeStore();
   const styles = createStyles(colors);
@@ -128,7 +136,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
     const isCompleted = ['ONAYLANDI', 'REDDEDILDI', 'ODENDI', 'KAPATILDI'].includes((item.surecDurum || '').toUpperCase());
     const hasBekleyen = !!item.bekleyenOnay && item.bekleyenOnay !== '-';
     return (
-      <TouchableOpacity style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: ds.text }]} activeOpacity={0.7} onPress={() => openDetay(item, tip)}>
+      <TouchableOpacity style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: durumPastelColor(item.surecDurum) }]} activeOpacity={0.7} onPress={() => openDetay(item, tip)}>
         <View style={styles.cardInner}>
           <View style={styles.cardHeader}>
             <View>
@@ -153,7 +161,7 @@ export const AvansMasrafScreen: React.FC<any> = ({ navigation }) => {
   };
 
   const renderOnay = (item: any) => (
-    <View style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: colors.warning }]}>
+    <View style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: '#FB923C' }]}>
       <View style={styles.cardInner}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => openDetay(item, item.tip)}>
           <View style={styles.cardHeader}>
@@ -316,11 +324,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   requestCard: { 
     backgroundColor: colors.card, 
     borderRadius: 16, 
-    shadowColor: colors.shadowColor, 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.03, 
-    shadowRadius: 8, 
-    elevation: 2, 
     borderWidth: 1, 
     borderColor: colors.border,
     flexDirection: 'row',

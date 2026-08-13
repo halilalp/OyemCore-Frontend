@@ -268,6 +268,22 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   };
 
+  useEffect(() => {
+    if (detailData?.talep && selectedRequest && selectedRequest.talepID === detailData.talep.talepID) {
+      setSelectedRequest({
+        ...selectedRequest,
+        ...detailData.talep,
+        kategoriAdi: detailData.talep.kategoriAdi ?? selectedRequest.kategoriAdi,
+        kayitYapanAd: detailData.talep.kayitYapanAd ?? selectedRequest.kayitYapanAd,
+        sorumluAd: detailData.talep.sorumluAd ?? selectedRequest.sorumluAd,
+        durum: detailData.talep.durum ?? selectedRequest.durum,
+        onemSeviye: detailData.talep.onemSeviye ?? selectedRequest.onemSeviye,
+        aciklama: detailData.talep.aciklama ?? selectedRequest.aciklama,
+        konu: detailData.talep.konu ?? selectedRequest.konu,
+      });
+    }
+  }, [detailData]);
+
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setSelectedRequest(null);
@@ -919,10 +935,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
       {/* Create Modal (Full Screen Form) */}
       <Modal visible={isCreateOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsCreateOpen(false)}>
-        <View style={styles.formContainer}>
-          <CreateModalHeader title="Yeni Talep" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
-          <View style={styles.formContentWrapper}>
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.formContainer}>
+            <CreateModalHeader title="Yeni Talep" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
+            <View style={styles.formContentWrapper}>
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
               
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
@@ -983,6 +1000,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   placeholderTextColor={colors.placeholder}
                   value={formKonu}
                   onChangeText={setFormKonu}
+                  autoFocus={true}
                 />
               </View>
 
@@ -1171,6 +1189,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           labelExtractor={(item) => item.label}
           title="İş Güvenliği (İSG) Önceliği"
         />
+        </KeyboardAvoidingView>
         <KeyboardDismissBar />
       </Modal>
 
@@ -1250,9 +1269,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           return (
             <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
             <KeyboardAvoidingView
-              behavior="padding"
-              enabled={Platform.OS === 'ios'}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ flex: 1, backgroundColor: '#f8fafc' }}
+              enabled={true}
             >
               
               {/* New Dark Blue Header for Detail */}
@@ -1459,6 +1478,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                       placeholderTextColor={colors.placeholder}
                       value={questionResponse}
                       onChangeText={setQuestionResponse}
+                      autoFocus={true}
                     />
                     <TouchableOpacity style={styles.submitBtn} onPress={handleAnswerQuestion}>
                       <Text style={styles.submitBtnText}>Soruyu Cevapla</Text>
@@ -1912,6 +1932,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     placeholderTextColor={colors.placeholder}
                     value={questionText}
                     onChangeText={setQuestionText}
+                    autoFocus={true}
                   />
 
                   <TouchableOpacity style={[styles.submitBtn, { marginTop: 16 }]} onPress={handleAskQuestion}>
@@ -1976,6 +1997,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     multiline
                     value={newComment}
                     onChangeText={setNewComment}
+                    autoFocus={true}
                   />
 
                   {progressDosyaName && (
@@ -2055,6 +2077,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     multiline
                     value={approvalComment}
                     onChangeText={setApprovalComment}
+                    autoFocus={true}
                   />
 
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>

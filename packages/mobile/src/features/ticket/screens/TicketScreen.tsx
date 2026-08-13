@@ -108,6 +108,14 @@ const getStatusStyle = (durum: string) => {
   return { bg: '#ffedd5', text: '#c2410c', label: 'HAVUZ' };
 };
 
+const getStatusPastelColor = (durum: string) => {
+  const d = (durum || '').toUpperCase();
+  if (d === 'TAMAM') return '#86EFAC';
+  if (d === 'TEST')  return '#93C5FD';
+  if (d === 'ISLEM') return '#FDE68A';
+  return '#FDBA74';
+};
+
 const getPriorityStyle = (oncelik: string | null | undefined) => {
   if (!oncelik) return { bg: slateTokens.pastelBlueBg, text: slateTokens.brandPrimary, label: 'Normal' };
   const v = oncelik.toUpperCase();
@@ -612,7 +620,7 @@ export const TicketScreen = () => {
         iconName={iconName}
         iconColor={iconColor}
         iconBg={iconBg}
-        lineColor={statStyle.text}
+        lineColor={getStatusPastelColor(item.surecDurumu)}
         onPress={() => handleTicketPress(item)}
       />
     );
@@ -739,8 +747,8 @@ export const TicketScreen = () => {
         {selectedTicket && (
           <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
             <KeyboardAvoidingView
-              behavior="padding"
-              enabled={Platform.OS === 'ios'}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              enabled={true}
               style={{ flex: 1, backgroundColor: '#f8fafc' }}
             >
               {/* ── Gradient Header ─────────────────────────────────────────── */}
@@ -1162,79 +1170,82 @@ export const TicketScreen = () => {
               animationType="fade"
               onRequestClose={() => setIsAddCommentOpen(false)}
             >
-              <View style={styles.overlay}>
-                <View style={styles.overlayCard}>
-                  <Text style={styles.overlayTitle}>Gelişme Ekle</Text>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <View style={styles.overlay}>
+                  <View style={styles.overlayCard}>
+                    <Text style={styles.overlayTitle}>Gelişme Ekle</Text>
 
-                  <TextInput
-                    style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
-                    placeholder="Yorum/gelişme metnini yazın..."
-                    placeholderTextColor={colors.placeholder}
-                    multiline
-                    value={newComment}
-                    onChangeText={setNewComment}
-                  />
+                    <TextInput
+                      style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
+                      placeholder="Yorum/gelişme metnini yazın..."
+                      placeholderTextColor={colors.placeholder}
+                      multiline
+                      value={newComment}
+                      onChangeText={setNewComment}
+                      autoFocus={true}
+                    />
 
-                  {commentDosyaName && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
-                      <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
-                      <Text style={{ marginLeft: 6, color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
-                        {commentDosyaName}
-                      </Text>
-                      <TouchableOpacity onPress={() => { setCommentDosyaUrl(null); setCommentDosyaName(null); }}>
-                        <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                    {commentDosyaName && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
+                        <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
+                        <Text style={{ marginLeft: 6, color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                          {commentDosyaName}
+                        </Text>
+                        <TouchableOpacity onPress={() => { setCommentDosyaUrl(null); setCommentDosyaName(null); }}>
+                          <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Dosya Ekle Butonu */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                        onPress={promptDocumentPicker}
+                        disabled={isUploadingFile}
+                      >
+                        {isUploadingFile ? (
+                          <ActivityIndicator color={colors.primary} size="small" />
+                        ) : (
+                          <>
+                            <Ionicons name="attach-outline" size={18} color={colors.primary} />
+                            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Dosya Ekle</Text>
+                          </>
+                        )}
                       </TouchableOpacity>
                     </View>
-                  )}
 
-                  {/* Dosya Ekle Butonu */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                    <TouchableOpacity
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
-                      onPress={promptDocumentPicker}
-                      disabled={isUploadingFile}
-                    >
-                      {isUploadingFile ? (
-                        <ActivityIndicator color={colors.primary} size="small" />
-                      ) : (
-                        <>
-                          <Ionicons name="attach-outline" size={18} color={colors.primary} />
-                          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Dosya Ekle</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                    {/* İptal / Gönder */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+                      <TouchableOpacity
+                        style={[styles.submitBtn, { flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
+                        onPress={() => {
+                          setIsAddCommentOpen(false);
+                          setNewComment('');
+                          setCommentDosyaUrl(null);
+                          setCommentDosyaName(null);
+                        }}
+                      >
+                        <Text style={[styles.submitBtnText, { color: colors.text }]}>İptal</Text>
+                      </TouchableOpacity>
 
-                  {/* İptal / Gönder */}
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                    <TouchableOpacity
-                      style={[styles.submitBtn, { flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
-                      onPress={() => {
-                        setIsAddCommentOpen(false);
-                        setNewComment('');
-                        setCommentDosyaUrl(null);
-                        setCommentDosyaName(null);
-                      }}
-                    >
-                      <Text style={[styles.submitBtnText, { color: colors.text }]}>İptal</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.submitBtn, { flex: 1, opacity: (isUploadingFile || isSubmittingComment) ? 0.6 : 1 }]}
-                      disabled={isUploadingFile || isSubmittingComment}
-                      onPress={handleSubmitComment}
-                    >
-                      {isSubmittingComment ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <Text style={styles.submitBtnText}>
-                          {isUploadingFile ? 'Yükleniyor...' : 'Gönder'}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.submitBtn, { flex: 1, opacity: (isUploadingFile || isSubmittingComment) ? 0.6 : 1 }]}
+                        disabled={isUploadingFile || isSubmittingComment}
+                        onPress={handleSubmitComment}
+                      >
+                        {isSubmittingComment ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                          <Text style={styles.submitBtnText}>
+                            {isUploadingFile ? 'Yükleniyor...' : 'Gönder'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
+              </KeyboardAvoidingView>
               <KeyboardDismissBar />
             </Modal>
 
@@ -1251,189 +1262,192 @@ export const TicketScreen = () => {
         statusBarTranslucent={true}
         onRequestClose={() => setIsCreateOpen(false)}
       >
-        <View style={styles.modalContainer}>
-          <CreateModalHeader title="Yeni Bilet" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
-          <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalContainer}>
+            <CreateModalHeader title="Yeni Bilet" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
+            <View style={styles.modalContentWrapper}>
+              <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
-              {/* Form Info Box */}
-              <View style={styles.formInfoBox}>
-                <Text style={styles.formInfoBoxTitle}>Bilet Oluşturma Formu</Text>
-                <Text style={styles.formInfoBoxText}>Lütfen aşağıdaki yıldızlı alanları doldurarak biletinizi oluşturunuz.</Text>
-              </View>
-
-              {/* Başlık */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Bilet Başlığı *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Örn: Sunucu Hatası Alıyorum"
-                  placeholderTextColor={colors.placeholder}
-                  value={formBaslik}
-                  onChangeText={setFormBaslik}
-                />
-              </View>
-
-              {/* Açıklama */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Açıklama *</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="Hata veya isteğin detaylarını buraya yazın..."
-                  placeholderTextColor={colors.placeholder}
-                  multiline
-                  numberOfLines={4}
-                  value={formAciklama}
-                  onChangeText={setFormAciklama}
-                />
-              </View>
-
-              {/* Şirket — yetkili tüm şirketleri seçebilir; yetkisiz yalnızca kendi şirketi (kilitli) */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Şirket *</Text>
-                <View style={styles.selectorGrid}>
-                  {(isTicketAdmin ? companies : companies.filter(c => c.sirketKodu === ownSirket)).map(c => (
-                    <TouchableOpacity
-                      key={c.sirketKodu}
-                      disabled={!isTicketAdmin}
-                      style={[styles.selectorItem, formSirket === c.sirketKodu && styles.selectorItemActive]}
-                      onPress={() => setFormSirket(c.sirketKodu)}
-                    >
-                      <Text style={[styles.selectorItemText, formSirket === c.sirketKodu && styles.selectorItemTextActive]}>
-                        {c.sirketAdi || c.sirketKodu}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                {/* Form Info Box */}
+                <View style={styles.formInfoBox}>
+                  <Text style={styles.formInfoBoxTitle}>Bilet Oluşturma Formu</Text>
+                  <Text style={styles.formInfoBoxText}>Lütfen aşağıdaki yıldızlı alanları doldurarak biletinizi oluşturunuz.</Text>
                 </View>
-              </View>
 
-              {/* Kategori — seçili şirkete bağlı */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Kategori *</Text>
-                {categories.length === 0 ? (
-                  <Text style={{ color: colors.textMuted, fontSize: 13, fontStyle: 'italic', paddingVertical: 6 }}>
-                    Bu şirkete tanımlı kategori bulunmuyor.
-                  </Text>
-                ) : (
+                {/* Başlık */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Bilet Başlığı *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Örn: Sunucu Hatası Alıyorum"
+                    placeholderTextColor={colors.placeholder}
+                    value={formBaslik}
+                    onChangeText={setFormBaslik}
+                    autoFocus={true}
+                  />
+                </View>
+
+                {/* Açıklama */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Açıklama *</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
+                    placeholder="Hata veya isteğin detaylarını buraya yazın..."
+                    placeholderTextColor={colors.placeholder}
+                    multiline
+                    numberOfLines={4}
+                    value={formAciklama}
+                    onChangeText={setFormAciklama}
+                  />
+                </View>
+
+                {/* Şirket — yetkili tüm şirketleri seçebilir; yetkisiz yalnızca kendi şirketi (kilitli) */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Şirket *</Text>
                   <View style={styles.selectorGrid}>
-                    {categories.map(k => (
+                    {(isTicketAdmin ? companies : companies.filter(c => c.sirketKodu === ownSirket)).map(c => (
                       <TouchableOpacity
-                        key={k.id}
-                        style={[styles.selectorItem, formKategoriID === k.id && styles.selectorItemActive]}
-                        onPress={() => setFormKategoriID(k.id)}
+                        key={c.sirketKodu}
+                        disabled={!isTicketAdmin}
+                        style={[styles.selectorItem, formSirket === c.sirketKodu && styles.selectorItemActive]}
+                        onPress={() => setFormSirket(c.sirketKodu)}
                       >
-                        <Text style={[styles.selectorItemText, formKategoriID === k.id && styles.selectorItemTextActive]}>
-                          {k.tanim}
+                        <Text style={[styles.selectorItemText, formSirket === c.sirketKodu && styles.selectorItemTextActive]}>
+                          {c.sirketAdi || c.sirketKodu}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                )}
-              </View>
-
-              {/* İşlem Türü */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>İşlem Türü</Text>
-                <View style={styles.selectorGrid}>
-                  {['Hata', 'İstek', 'Soru'].map(type => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[styles.selectorItem, formTur === type && styles.selectorItemActive]}
-                      onPress={() => setFormTur(type)}
-                    >
-                      <Text style={[styles.selectorItemText, formTur === type && styles.selectorItemTextActive]}>
-                        {type}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
                 </View>
-              </View>
 
-              {/* Öncelik */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Öncelik</Text>
-                <View style={styles.selectorGrid}>
-                  {['DÜŞÜK', 'ORTA', 'YÜKSEK'].map(priority => (
-                    <TouchableOpacity
-                      key={priority}
-                      style={[styles.selectorItem, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemActive]}
-                      onPress={() => setFormOncelik(priority)}
-                    >
-                      <Text style={[styles.selectorItemText, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemTextActive]}>
-                        {priority}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Durum */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Durum</Text>
-                <View style={styles.selectorGrid}>
-                  {([
-                    { id: 'HAVUZ', label: 'HAVUZ' },
-                    { id: 'ISLEM', label: 'İŞLEMDE' },
-                    { id: 'TEST', label: 'TEST' },
-                    { id: 'TAMAM', label: 'TAMAM' },
-                  ] as const).map(d => (
-                    <TouchableOpacity
-                      key={d.id}
-                      style={[styles.selectorItem, formDurum === d.id && styles.selectorItemActive]}
-                      onPress={() => setFormDurum(d.id)}
-                    >
-                      <Text style={[styles.selectorItemText, formDurum === d.id && styles.selectorItemTextActive]}>
-                        {d.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Bitiş Tarihi */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Bitiş Tarihi</Text>
-                <TouchableOpacity
-                  onPress={() => setIsDatePickerOpen(true)}
-                  activeOpacity={0.7}
-                  style={[styles.textInput, { justifyContent: 'center' }]}
-                >
-                  <Text style={{ color: formBitisTarihi ? colors.text : colors.placeholder }}>
-                    {formBitisTarihi || 'Tarih Seçiniz (YYYY-MM-DD)'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Form Actions */}
-              <View style={styles.formActionsRow}>
-                <TouchableOpacity style={styles.formCancelBtnBottom} onPress={() => setIsCreateOpen(false)}>
-                  <Text style={styles.formCancelBtnTextBottom}>İptal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.formSubmitBtnBottom}
-                  onPress={handleCreateTicket}
-                  disabled={isSubmittingTicket}
-                >
-                  {isSubmittingTicket ? (
-                    <ActivityIndicator color="#ffffff" />
+                {/* Kategori — seçili şirkete bağlı */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Kategori *</Text>
+                  {categories.length === 0 ? (
+                    <Text style={{ color: colors.textMuted, fontSize: 13, fontStyle: 'italic', paddingVertical: 6 }}>
+                      Bu şirkete tanımlı kategori bulunmuyor.
+                    </Text>
                   ) : (
-                    <Text style={styles.formSubmitBtnTextBottom}>Kaydet</Text>
+                    <View style={styles.selectorGrid}>
+                      {categories.map(k => (
+                        <TouchableOpacity
+                          key={k.id}
+                          style={[styles.selectorItem, formKategoriID === k.id && styles.selectorItemActive]}
+                          onPress={() => setFormKategoriID(k.id)}
+                        >
+                          <Text style={[styles.selectorItemText, formKategoriID === k.id && styles.selectorItemTextActive]}>
+                            {k.tanim}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   )}
-                </TouchableOpacity>
-              </View>
+                </View>
 
-            </ScrollView>
+                {/* İşlem Türü */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>İşlem Türü</Text>
+                  <View style={styles.selectorGrid}>
+                    {['Hata', 'İstek', 'Soru'].map(type => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[styles.selectorItem, formTur === type && styles.selectorItemActive]}
+                        onPress={() => setFormTur(type)}
+                      >
+                        <Text style={[styles.selectorItemText, formTur === type && styles.selectorItemTextActive]}>
+                          {type}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Öncelik */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Öncelik</Text>
+                  <View style={styles.selectorGrid}>
+                    {['DÜŞÜK', 'ORTA', 'YÜKSEK'].map(priority => (
+                      <TouchableOpacity
+                        key={priority}
+                        style={[styles.selectorItem, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemActive]}
+                        onPress={() => setFormOncelik(priority)}
+                      >
+                        <Text style={[styles.selectorItemText, formOncelik.toLocaleUpperCase('tr') === priority && styles.selectorItemTextActive]}>
+                          {priority}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Durum */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Durum</Text>
+                  <View style={styles.selectorGrid}>
+                    {([
+                      { id: 'HAVUZ', label: 'HAVUZ' },
+                      { id: 'ISLEM', label: 'İŞLEMDE' },
+                      { id: 'TEST', label: 'TEST' },
+                      { id: 'TAMAM', label: 'TAMAM' },
+                    ] as const).map(d => (
+                      <TouchableOpacity
+                        key={d.id}
+                        style={[styles.selectorItem, formDurum === d.id && styles.selectorItemActive]}
+                        onPress={() => setFormDurum(d.id)}
+                      >
+                        <Text style={[styles.selectorItemText, formDurum === d.id && styles.selectorItemTextActive]}>
+                          {d.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Bitiş Tarihi */}
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Bitiş Tarihi</Text>
+                  <TouchableOpacity
+                    onPress={() => setIsDatePickerOpen(true)}
+                    activeOpacity={0.7}
+                    style={[styles.textInput, { justifyContent: 'center' }]}
+                  >
+                    <Text style={{ color: formBitisTarihi ? colors.text : colors.placeholder }}>
+                      {formBitisTarihi || 'Tarih Seçiniz (YYYY-MM-DD)'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Form Actions */}
+                <View style={styles.formActionsRow}>
+                  <TouchableOpacity style={styles.formCancelBtnBottom} onPress={() => setIsCreateOpen(false)}>
+                    <Text style={styles.formCancelBtnTextBottom}>İptal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.formSubmitBtnBottom}
+                    onPress={handleCreateTicket}
+                    disabled={isSubmittingTicket}
+                  >
+                    {isSubmittingTicket ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={styles.formSubmitBtnTextBottom}>Kaydet</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+              </ScrollView>
+            </View>
+
+            {/* Tarih seçici create modalının İÇİNDE — dışarıda kalınca iOS'ta arkada kalıyordu */}
+            <DatePickerModal
+              visible={isDatePickerOpen}
+              onClose={() => setIsDatePickerOpen(false)}
+              onSelectDate={setFormBitisTarihi}
+              title="Bitiş Tarihi Seçin"
+              outputFormat="yyyy-MM-dd"
+            />
           </View>
-
-          {/* Tarih seçici create modalının İÇİNDE — dışarıda kalınca iOS'ta arkada kalıyordu */}
-          <DatePickerModal
-            visible={isDatePickerOpen}
-            onClose={() => setIsDatePickerOpen(false)}
-            onSelectDate={setFormBitisTarihi}
-            title="Bitiş Tarihi Seçin"
-            outputFormat="yyyy-MM-dd"
-          />
-        </View>
+        </KeyboardAvoidingView>
         <KeyboardDismissBar />
       </Modal>
 

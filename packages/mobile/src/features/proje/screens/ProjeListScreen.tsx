@@ -145,7 +145,7 @@ export const ProjeListScreen = () => {
             renderItem={({ item }) => {
               const proje = item.tur === 'P';
               const tamamlandi = item.durum === 'TAMAMLANDI';
-              const durumColor = tamamlandi ? colors.success : colors.warning;
+              const durumColor = tamamlandi ? '#86EFAC' : '#FDBA74';
               return (
                 <TouchableOpacity
                   style={[styles.card, { borderLeftWidth: 5, borderLeftColor: durumColor }]}
@@ -314,11 +314,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   card: {
     backgroundColor: colors.card, borderRadius: 16, marginBottom: 10,
     borderWidth: 1, borderColor: colors.border,
-    shadowColor: colors.shadowColor || '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1,
     flexDirection: 'row',
     overflow: 'hidden',
   },

@@ -43,7 +43,7 @@ export const MasrafFormModal: React.FC<Props> = ({ visible, onClose, onSaved }) 
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>Yeni Masraf Talebi</Text>
@@ -52,7 +52,7 @@ export const MasrafFormModal: React.FC<Props> = ({ visible, onClose, onSaved }) 
 
           <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }}>
             <Text style={styles.label}>Açıklama</Text>
-            <TextInput style={[styles.input, styles.textArea]} placeholder="Masraf gerekçesi..." placeholderTextColor={colors.textMuted} multiline value={aciklama} onChangeText={setAciklama} />
+            <TextInput style={[styles.input, styles.textArea]} placeholder="Masraf gerekçesi..." placeholderTextColor={colors.textMuted} multiline value={aciklama} onChangeText={setAciklama} autoFocus={true} />
 
             <Text style={[styles.label, { marginTop: 14 }]}>Kalemler</Text>
             {kalemler.map((k, i) => (

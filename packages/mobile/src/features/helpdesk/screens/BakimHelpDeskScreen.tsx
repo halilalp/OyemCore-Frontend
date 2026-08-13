@@ -305,6 +305,22 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     }
   };
 
+  useEffect(() => {
+    if (detailData?.talep && selectedRequest && selectedRequest.talepID === detailData.talep.talepID) {
+      setSelectedRequest({
+        ...selectedRequest,
+        ...detailData.talep,
+        kategoriAdi: detailData.talep.kategoriAdi ?? selectedRequest.kategoriAdi,
+        kayitYapanAd: detailData.talep.kayitYapanAd ?? selectedRequest.kayitYapanAd,
+        sorumluAd: detailData.talep.sorumluAd ?? selectedRequest.sorumluAd,
+        durum: detailData.talep.durum ?? selectedRequest.durum,
+        onemSeviye: detailData.talep.onemSeviye ?? selectedRequest.onemSeviye,
+        aciklama: detailData.talep.aciklama ?? selectedRequest.aciklama,
+        konu: detailData.talep.konu ?? selectedRequest.konu,
+      });
+    }
+  }, [detailData]);
+
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setSelectedRequest(null);
@@ -507,7 +523,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       if (res.success) {
         Alert.alert('Başarılı', 'Kontrol formu kaydedildi ve talep kapatıldı.');
         setIsKontrolFormOpen(false);
-        if (selectedRequest?.talepID) loadRequestDetails(selectedRequest.talepID);
+        handleCloseDetail(); // Talebin otomatik tamamlandığını göstermek için detay ekranını kapat
+        loadInitialData(type); // Listeyi yenile
       }
     } catch (e: any) {
       Alert.alert('Hata', e?.response?.data?.message || 'Kontrol formu kaydedilemedi.');
@@ -1061,10 +1078,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
 
       {/* Create Modal (Full Screen Form) */}
       <Modal visible={isCreateOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setIsCreateOpen(false)}>
-        <View style={styles.formContainer}>
-          <CreateModalHeader title="Yeni Talep" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
-          <View style={styles.formContentWrapper}>
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.formContainer}>
+            <CreateModalHeader title="Yeni Talep" onClose={() => setIsCreateOpen(false)} colorTheme="purple" />
+            <View style={styles.formContentWrapper}>
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
               
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
@@ -1225,6 +1243,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   placeholderTextColor={colors.placeholder}
                   value={formKonu}
                   onChangeText={setFormKonu}
+                  autoFocus={true}
                 />
               </View>
 
@@ -1413,6 +1432,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           labelExtractor={(item) => item.label}
           title="İş Güvenliği (İSG) Önceliği"
         />
+        </KeyboardAvoidingView>
         <KeyboardDismissBar />
       </Modal>
 
@@ -1493,8 +1513,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           return (
             <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
             <KeyboardAvoidingView
-              behavior="padding"
-              enabled={Platform.OS === 'ios'}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              enabled={true}
               style={{ flex: 1, backgroundColor: '#f8fafc' }}
             >
 
@@ -2353,6 +2373,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     placeholderTextColor={colors.placeholder}
                     value={questionText}
                     onChangeText={setQuestionText}
+                    autoFocus={true}
                   />
 
                   <TouchableOpacity style={[styles.submitBtn, { marginTop: 16 }]} onPress={handleAskQuestion}>
@@ -2418,6 +2439,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     multiline
                     value={newComment}
                     onChangeText={setNewComment}
+                    autoFocus={true}
                   />
 
                   {progressDosyaName && (
@@ -2497,6 +2519,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     multiline
                     value={approvalComment}
                     onChangeText={setApprovalComment}
+                    autoFocus={true}
                   />
 
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
@@ -2586,6 +2609,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   numberOfLines={4}
                   value={woFormAciklama}
                   onChangeText={setWoFormAciklama}
+                  autoFocus={true}
                 />
 
                 {/* Dosya Ekle — referanstaki IsEmriKaydet DosyaUrl parametresinin karşılığı */}
@@ -2744,6 +2768,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   numberOfLines={4}
                   value={woFormAciklama}
                   onChangeText={setWoFormAciklama}
+                  autoFocus={true}
                 />
               </ScrollView>
               <View style={[styles.pageFormActionsRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>

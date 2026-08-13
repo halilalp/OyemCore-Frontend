@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, ChatUser } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -33,18 +33,19 @@ export const NewChatModal: React.FC<Props> = ({ visible, onClose, onSelect }) =>
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Yeni Sohbet</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.searchWrap}>
-            <Ionicons name="search" size={18} color={colors.textSecondary} />
-            <TextInput style={styles.searchInput} placeholder="Kişi ara..." placeholderTextColor={colors.textMuted} value={search} onChangeText={setSearch} />
-          </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Yeni Sohbet</Text>
+              <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.searchWrap}>
+              <Ionicons name="search" size={18} color={colors.textSecondary} />
+              <TextInput style={styles.searchInput} placeholder="Kişi ara..." placeholderTextColor={colors.textMuted} value={search} onChangeText={setSearch} autoFocus={true} />
+            </View>
           {loading ? (
             <View style={{ paddingVertical: 40 }}><ActivityIndicator color={colors.primary} /></View>
           ) : (
@@ -68,8 +69,9 @@ export const NewChatModal: React.FC<Props> = ({ visible, onClose, onSelect }) =>
               ItemSeparatorComponent={() => <View style={styles.sep} />}
             />
           )}
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -20,7 +20,7 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useAppStore } from '../../../store/useAppStore';
 import { mapKeenIconToIonicons } from '../../../utils/iconMapper';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useIsFocused } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { NotificationCenter } from '../../../components/NotificationCenter';
@@ -61,6 +61,7 @@ export const HomeScreen = () => {
   const { menuItems, setMenuItems } = useAppStore();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const isFocused = useIsFocused();
   // "Tümünü Gör" alt bardaki "Yetkili Projeler" menüsünü açar (ortak menü).
   const bottomNavRef = useRef<BottomNavBarHandle>(null);
   const [isModulesModalVisible, setIsModulesModalVisible] = useState(false);
@@ -255,6 +256,18 @@ export const HomeScreen = () => {
     fetchData();
   }, [fetchData]);
 
+  React.useEffect(() => {
+    if (isFocused) {
+      api.getChatUnreadCount()
+        .then(c => setChatUnread(c))
+        .catch(() => setChatUnread(0));
+
+      api.getUnreadNotificationCount()
+        .then(c => setBildirimUnread(c))
+        .catch(() => setBildirimUnread(0));
+    }
+  }, [isFocused]);
+
   const styles = createStyles(colors);
 
   // Sadece mobilde gosterilecek olanlari sec
@@ -274,15 +287,17 @@ export const HomeScreen = () => {
     }
   });
 
-  // Yetki seti GERÇEK sayfalardan kurulur (rawMobilePages), bölünmüş listeden değil.
-  // 'Talepler' tek bir sayfadır; yukarıda IT/ERP/Bakım diye üçe bölünüyor. Bölünmüş
-  // liste kullanılırsa yalnızca 'Talepler' yetkisi olan kullanıcı uydurma
-  // 'BakimHelpDesk' yetkisi kazanıp Bakım panolarını da görüyordu.
   const allowedMobilUrls = new Set(
     rawMobilePages.map(m => m.mobilUrl).filter(Boolean) as string[]
   );
 
+  // Case-insensitive & mobilGoster-agnostic yetki kontrolü
+  const isExecutive = menuItems.some(m => 
+    m.mobilUrl && m.mobilUrl.toLowerCase() === 'yonetimkontrolmerkezi'
+  );
+
   const allDashboards = [
+    ...(isExecutive ? [{ title: 'Yönetim Kontrol Merkezi', icon: 'business-outline', color: '#7C3AED', bg: '#f3e8ff', screen: 'PatronDashboard', params: undefined, requires: [] }] : []),
     { title: 'Ticket', icon: 'albums-outline', color: '#6366f1', bg: '#eef2ff', screen: 'TicketDashboard', params: undefined, requires: ['Ticket'] },
     // IT ve ERP aynı tb_Sayfa kaydından gelir (MobilUrl='Talepler').
     { title: 'IT HelpDesk', icon: 'laptop-outline', color: '#3b82f6', bg: '#eff6ff', screen: 'HelpDeskDashboard', params: { tur: 'IT', title: 'IT HelpDesk' }, requires: ['Talepler'] },
@@ -294,7 +309,9 @@ export const HomeScreen = () => {
     { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined, requires: ['Tedarikci'] },
   ];
   // Avans & Masraf artık panolarda değil; Yetkili Projeler menüsünde (BottomNavBar).
-  const allowedDashboards = allDashboards.filter(d => d.requires.some(r => allowedMobilUrls.has(r)));
+  const allowedDashboards = allDashboards.filter(d => 
+    d.screen === 'PatronDashboard' ? isExecutive : d.requires.some(r => allowedMobilUrls.has(r))
+  );
   
   // Modulleri Projeye gore grupla (Modal icin)
   const groupedModules = mobilePages.reduce((acc, m) => {
@@ -474,6 +491,24 @@ export const HomeScreen = () => {
 
         {/* ── İÇERİK (Beyaz Overlap Alanı) ──────────────────── */}
         <View style={styles.bodyContainer}>
+          {isExecutive && (
+            <TouchableOpacity 
+              style={styles.patronBanner} 
+              activeOpacity={0.9} 
+              onPress={() => navigation.navigate('PatronDashboard')}
+            >
+              <View style={styles.patronBannerLeft}>
+                <View style={styles.patronBannerHeader}>
+                  <Ionicons name="business-outline" size={16} color="#fff" />
+                  <Text style={styles.patronBannerTitle}>Yönetim Kontrol Merkezi</Text>
+                </View>
+                <Text style={styles.patronBannerSub}>Tüm operasyonel verileri ve iş gücünü tek ekranda izleyin.</Text>
+              </View>
+              <View style={styles.patronBannerRight}>
+                <Ionicons name="chevron-forward" size={18} color="#fff" />
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Bağlantı/veri hatası uyarısı — önceden hatalar sessizce yutuluyordu */}
           {!isLoading && loadError ? (
@@ -894,7 +929,6 @@ export const HomeScreen = () => {
         </View>
       </Modal>
 
-      {/* Bildirim merkezi (zil) — yenilenen tb_Notification modülü */}
       <NotificationCenter
         visible={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
@@ -904,16 +938,48 @@ export const HomeScreen = () => {
           const refVal = n.referansID;
           setIsNotifOpen(false);
           setTimeout(() => {
-            const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');
+            const refIdNum = parseInt(refVal);
             const routeParams = refVal ? { id: refVal, code: refVal } : {};
 
-            if (k === 'talep' || k === 'bakim') navigation.navigate('BakimHelpDesk', routeParams);
-            else if (k === 'ticket') navigation.navigate(isSvgSupported ? 'TicketDashboard' : 'Ticket', routeParams);
-            else if (k === 'zimmet') navigation.navigate('Zimmetlerim', routeParams);
-            else if (k === 'izin') navigation.navigate('Izin', routeParams);
-            else if (k === 'avans' || k === 'masraf') navigation.navigate('AvansMasraf', routeParams);
-            else if (k === 'tedarikci') navigation.navigate('Tedarikci', routeParams);
-            else if (k === 'proje' || k === 'toplanti' || k === 'gorev') navigation.navigate('ProjeList', routeParams);
+            if (k === 'talep' || k === 'bakim') {
+              const text = ((n.baslik || '') + ' ' + (n.aciklama || '')).toUpperCase();
+              if (text.includes('ERP')) {
+                navigation.navigate('ERPHelpDesk', routeParams);
+              } else if (text.includes('BAKIM') || text.includes('ARIZA')) {
+                navigation.navigate('BakimHelpDesk', routeParams);
+              } else {
+                navigation.navigate('ITHelpDesk', routeParams);
+              }
+            } else if (k === 'ticket') {
+              navigation.navigate('Ticket', routeParams);
+            } else if (k === 'zimmet') {
+              navigation.navigate('Zimmetlerim', routeParams);
+            } else if (k === 'izin') {
+              if (!isNaN(refIdNum)) {
+                navigation.navigate('IzinDetail', { id: refIdNum });
+              } else {
+                navigation.navigate('Izin');
+              }
+            } else if (k === 'avans' || k === 'masraf') {
+              if (!isNaN(refIdNum)) {
+                const isMasraf = k === 'masraf' || ((n.baslik || '') + ' ' + (n.aciklama || '')).toLowerCase().includes('masraf');
+                const tip = isMasraf ? 'MASRAF' : 'AVANS';
+                const isApproval = ((n.baslik || '') + ' ' + (n.aciklama || '')).toLowerCase().includes('onay');
+                const activeTab = isApproval ? 'onay' : (isMasraf ? 'masraf' : 'avans');
+
+                navigation.navigate('AvansMasrafDetail', {
+                  tip,
+                  activeTab,
+                  item: { id: refIdNum }
+                });
+              } else {
+                navigation.navigate('AvansMasraf');
+              }
+            } else if (k === 'tedarikci') {
+              navigation.navigate('TedarikciDashboard', routeParams);
+            } else if (k === 'proje' || k === 'toplanti' || k === 'gorev') {
+              navigation.navigate('ProjeList', routeParams);
+            }
           }, 200);
         }}
       />
@@ -1229,6 +1295,49 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       paddingHorizontal: 20,
       paddingTop: 30,
       minHeight: 500, // içeriği dolduracak kadar
+    },
+
+    patronBanner: {
+      backgroundColor: '#7C3AED',
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+      elevation: 3,
+      shadowColor: '#7C3AED',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+    },
+    patronBannerLeft: {
+      flex: 1,
+      paddingRight: 8,
+    },
+    patronBannerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 4,
+    },
+    patronBannerTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+    patronBannerSub: {
+      fontSize: 11,
+      color: 'rgba(255, 255, 255, 0.8)',
+      lineHeight: 16,
+    },
+    patronBannerRight: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     // SECTION

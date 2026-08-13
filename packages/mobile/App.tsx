@@ -68,12 +68,13 @@ const DummyScreen = (title: string, targetScreen?: string, targetLabel?: string)
   </View>
 );
 
-const TicketDashboardScreen = DummyScreen('Ticket Panosu', 'Ticket', 'Ticket Taleplerine Git');
-const BakimDashboardScreen = DummyScreen('Bakım Panosu', 'BakimYonetim', 'Bakım İşlemlerine Git');
-const IzinDashboardScreen = DummyScreen('İzin Panosu', 'Izin', 'İzin Taleplerine Git');
-const HelpDeskDashboardScreen = DummyScreen('HelpDesk Panosu', 'ITHelpDesk', 'IT Yardım Masasına Git');
-const ZimmetDashboardScreen = DummyScreen('Demirbaş Panosu', 'Zimmetlerim', 'Zimmetlerime Git');
-const TedarikciDashboardScreen = DummyScreen('Tedarikçi Panosu', 'Tedarikci', 'Tedarikçi Listesine Git');
+import { TicketDashboardScreen } from './src/features/ticket/screens/TicketDashboardScreen';
+import { BakimDashboardScreen } from './src/features/bakim_yonetim/screens/BakimDashboardScreen';
+import { IzinDashboardScreen } from './src/features/izin/screens/IzinDashboardScreen';
+import { HelpDeskDashboardScreen } from './src/features/helpdesk/screens/HelpDeskDashboardScreen';
+import { ZimmetDashboardScreen } from './src/features/zimmet/screens/ZimmetDashboardScreen';
+import { TedarikciDashboardScreen } from './src/features/tedarikci/screens/TedarikciDashboardScreen';
+import { PatronDashboardScreen } from './src/features/dashboard/screens/PatronDashboardScreen';
 const CalendarScreen = DummyScreen('Takvim');
 
 import { BakimRaporScreen } from './src/features/bakim_yonetim/screens/BakimRaporScreen';
@@ -389,6 +390,7 @@ export default function App() {
               options={{ headerShown: false }}
             />
             <Stack.Screen name="TicketDashboard" component={TicketDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="PatronDashboard" component={PatronDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimYonetim" component={BakimYonetimHubScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimDashboard" component={BakimDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BakimRapor" component={BakimRaporScreen} options={{ headerShown: false }} />

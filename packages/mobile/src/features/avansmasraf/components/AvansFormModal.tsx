@@ -30,14 +30,14 @@ export const AvansFormModal: React.FC<Props> = ({ visible, onClose, onSaved }) =
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>Yeni Avans Talebi</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
           </View>
           <Text style={styles.label}>Tutar (₺)</Text>
-          <TextInput style={styles.input} placeholder="0,00" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" value={tutar} onChangeText={setTutar} />
+          <TextInput style={styles.input} placeholder="0,00" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" value={tutar} onChangeText={setTutar} autoFocus={true} />
           <Text style={styles.label}>Açıklama</Text>
           <TextInput style={[styles.input, styles.textArea]} placeholder="Avans gerekçesi..." placeholderTextColor={colors.textMuted} multiline value={aciklama} onChangeText={setAciklama} />
           <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={kaydet} disabled={saving}>

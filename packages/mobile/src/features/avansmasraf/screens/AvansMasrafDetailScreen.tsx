@@ -61,6 +61,35 @@ export const AvansMasrafDetailScreen = () => {
             setLoading(false);
           }
         }
+      } else if (tip === 'AVANS') {
+        const aid = initialItem?.avansID ?? initialItem?.id ?? initialItem?.ID ?? initialItem?.AvansID;
+        if (aid) {
+          setLoading(true);
+          try {
+            // 1. Önce onay bekleyenlerden ara
+            const onayBekleyenler = await api.getAvansMasrafOnayBekleyenler().catch(() => []);
+            let found = onayBekleyenler.find((x: any) => 
+              (x.id === aid || x.ID === aid || x.avansID === aid || x.AvansID === aid) && 
+              (x.tip || '').toUpperCase() === 'AVANS'
+            );
+            
+            // 2. Bulamazsak kendi avans taleplerinden ara
+            if (!found) {
+              const avanslar = await api.getAvansListesi().catch(() => []);
+              found = avanslar.find((x: any) => 
+                x.id === aid || x.ID === aid || x.avansID === aid || x.AvansID === aid
+              );
+            }
+
+            if (found) {
+              setDetail((prev: any) => prev ? { ...prev, ...found } : found);
+            }
+          } catch (e) {
+            console.error('Avans detayı yüklenemedi:', e);
+          } finally {
+            setLoading(false);
+          }
+        }
       }
     };
     loadDetails();

@@ -590,14 +590,15 @@ export const AnnouncementScreen = () => {
         statusBarTranslucent={true}
         onRequestClose={() => setShowFormModal(false)}
       >
-        <View style={styles.formContainer}>
-          <CreateModalHeader
-            title={isEditing ? 'Duyuruyu Düzenle' : 'Yeni Duyuru Ekle'}
-            onClose={() => setShowFormModal(false)}
-            colorTheme="purple"
-          />
-          <View style={styles.formContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.formContainer}>
+            <CreateModalHeader
+              title={isEditing ? 'Duyuruyu Düzenle' : 'Yeni Duyuru Ekle'}
+              onClose={() => setShowFormModal(false)}
+              colorTheme="purple"
+            />
+            <View style={styles.formContentWrapper}>
+              <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
@@ -614,6 +615,7 @@ export const AnnouncementScreen = () => {
                   placeholderTextColor={colors.placeholder}
                   value={formKonu}
                   onChangeText={setFormKonu}
+                  autoFocus={true}
                 />
               </View>
 
@@ -694,6 +696,7 @@ export const AnnouncementScreen = () => {
             </ScrollView>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <BottomNavBar

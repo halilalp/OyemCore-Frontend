@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, FlatList, Platform } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useIzinStore } from '../store/useIzinStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
@@ -259,6 +259,12 @@ export const IzinScreen = () => {
     return { bg: colors.warningLight || 'rgba(255, 193, 7, 0.12)', text: colors.warning || '#ffc107', label: surecDurum || 'AMİR ONAYINDA' };
   };
 
+  const getStatusPastelColor = (status: boolean | null) => {
+    if (status === true) return '#86EFAC'; // Daha açık pastel yeşil
+    if (status === false) return '#FCA5A5'; // Daha açık pastel kırmızı
+    return '#FDBA74'; // Daha açık pastel turuncu
+  };
+
   return (
     <View style={styles.container}>
       <ListHeader
@@ -296,11 +302,12 @@ export const IzinScreen = () => {
             keyExtractor={(item) => item.izinOnayID.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => {
-              const statusStyle = getStatusStyle(item.durum, item.surecDurum);
-              return (
-                <TouchableOpacity 
-                  style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: statusStyle.text }]}
-                  activeOpacity={0.8}
+                const statusStyle = getStatusStyle(item.durum, item.surecDurum);
+                const leftColor = getStatusPastelColor(item.durum);
+                return (
+                  <TouchableOpacity 
+                    style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: leftColor }]}
+                    activeOpacity={0.8}
                   onPress={() => {
                     navigation.navigate('IzinDetail', { id: item.izinOnayID, activeTab: 'my' });
                   }}
@@ -352,7 +359,7 @@ export const IzinScreen = () => {
             keyExtractor={(item) => item.izinOnayID.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={({ item }) => (
-              <View style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: colors.warning }]}>
+              <View style={[styles.requestCard, { borderLeftWidth: 5, borderLeftColor: '#FDBA74' }]}>
                 <View style={styles.cardInner}>
                   <TouchableOpacity 
                     activeOpacity={0.8}
@@ -426,10 +433,11 @@ export const IzinScreen = () => {
         statusBarTranslucent={true}
         onRequestClose={() => setIsModalOpen(false)}
       >
-        <View style={styles.modalContainer}>
-          <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="purple" />
-          <View style={styles.modalContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalContainer}>
+            <CreateModalHeader title="Yeni İzin Talebi" onClose={() => setIsModalOpen(false)} colorTheme="purple" />
+            <View style={styles.modalContentWrapper}>
+              <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               <View style={styles.formInfoBox}>
                 <Text style={styles.formInfoBoxTitle}>İzin Talep Formu</Text>
                 <Text style={styles.formInfoBoxText}>Lütfen yıldızlı alanları doldurarak izin talebinizi oluşturunuz. Talebiniz amir onayına gönderilecektir.</Text>
@@ -529,14 +537,16 @@ export const IzinScreen = () => {
             title="İşe Başlama Tarihi Seçin"
           />
         </View>
+        </KeyboardAvoidingView>
         <KeyboardDismissBar />
       </Modal>
 
       {/* Özelleştirilmiş Ret Gerekçesi Modalı */}
       <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Talebi Reddet</Text>
               <TouchableOpacity onPress={() => setRejectModalVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
@@ -561,6 +571,7 @@ export const IzinScreen = () => {
                 multiline
                 value={rejectText}
                 onChangeText={setRejectText}
+                autoFocus={true}
               />
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
                 <TouchableOpacity 
@@ -578,7 +589,8 @@ export const IzinScreen = () => {
               </View>
             </View>
           </View>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -611,13 +623,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   requestCard: {
     backgroundColor: colors.card,
     borderRadius: 16,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E2E8F0', // Açık gri/füme tonlarında klasik 1px border
     flexDirection: 'row',
     overflow: 'hidden',
   },

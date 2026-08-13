@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
-// const PieChart: any = null; const BarChart: any = null;
-const PieChart: any = null;
-const BarChart: any = null;
+import { PieChart, BarChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
+import { StatTile, PremiumStatTile, ChartCard, LegendRow, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 const g = (o: any, ...keys: string[]) => {
   for (const k of keys) if (o && o[k] !== undefined && o[k] !== null) return o[k];
@@ -57,6 +55,10 @@ export const BakimDashboardScreen = () => {
   };
 
   const sum = (key: string, key2: string) => months.reduce((a, m) => a + (g(m, key, key2) || 0), 0);
+  const avg = (key: string, key2: string) => {
+    const valid = months.filter(m => (g(m, key, key2) || 0) > 0);
+    return valid.length > 0 ? valid.reduce((a, m) => a + (g(m, key, key2) || 0), 0) / valid.length : 0;
+  };
   const toplam = sum('totalCount', 'TotalCount');
   const tamam = sum('completedCount', 'CompletedCount');
   const kalan = sum('remainingCount', 'RemainingCount');
@@ -64,7 +66,14 @@ export const BakimDashboardScreen = () => {
   const mekanik = sum('mechanicCount', 'MechanicCount');
   const durus = sum('downtimeHours', 'DowntimeHours');
 
-  const chartWidth = Math.min(Dimensions.get('window').width, 800) - 64;
+  const mttrVal = avg('mttrAvgHours', 'MttrAvgHours');
+  const mtbfVal = avg('mtbfHours', 'MtbfHours');
+
+  const mttrText = mttrVal > 0 ? `${mttrVal.toFixed(1)} s` : '0 s';
+  const mtbfText = mtbfVal > 0 ? `${mtbfVal.toFixed(1)} s` : '0 s';
+  const kapatmaOrani = toplam > 0 ? `${Math.round((tamam / toplam) * 100)}%` : '0%';
+
+  const chartWidth = Math.min(Dimensions.get('window').width, 800) - 32;
 
   const barData = months.map(m => ({
     value: g(m, 'totalCount', 'TotalCount') || 0,
@@ -96,24 +105,24 @@ export const BakimDashboardScreen = () => {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <DashboardFilterBar companies={companies} value={filter} onChange={setFilter} showAy={false} />
-          {/* Planlı/periyodik özet (DashboardOzetGetir) */}
-          {ozet && (
-            <View style={styles.tilesGrid}>
-              <StatTile label="Bekleyen Talep" value={g(ozet, 'bekleyenTalepSayisi', 'BekleyenTalepSayisi') || 0} icon="file-tray-outline" color="#f59e0b" />
-              <StatTile label="Açık İş Emri" value={g(ozet, 'acikIsEmriSayisi', 'AcikIsEmriSayisi') || 0} icon="hammer-outline" color="#3b82f6" />
-              <StatTile label="Onay Bekleyen" value={g(ozet, 'onayBekleyenSayisi', 'OnayBekleyenSayisi') || 0} icon="hourglass-outline" color="#8b5cf6" />
-              <StatTile label="Bu Ay Tamamlanan" value={g(ozet, 'tamamlananTalepSayisi', 'TamamlananTalepSayisi') || 0} icon="checkmark-done-outline" color="#10b981" />
-            </View>
-          )}
-
-          <View style={styles.tilesGrid}>
-            <StatTile label="Toplam Kontrol" value={toplam} icon="construct-outline" color={colors.primary} />
-            <StatTile label="Tamamlanan" value={tamam} icon="checkmark-done-outline" color="#10b981" />
-            <StatTile label="Kalan" value={kalan} icon="hourglass-outline" color="#f59e0b" />
-            <StatTile label="Elektrik" value={elektrik} icon="flash-outline" color="#f59e0b" />
-            <StatTile label="Mekanik" value={mekanik} icon="cog-outline" color="#3b82f6" />
-            <StatTile label="Duruş (saat)" value={Math.round(durus)} icon="time-outline" color="#ef4444" />
+          
+          {/* Üst Kısım: Web dashboard kalitesinde 6'lı Premium Stat Grid */}
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Toplam Talep" value={toplam} icon="file-tray-full-outline" bgColor="#7C3AED" />
+            <PremiumStatTile label="İşlem Bekleyen" value={g(ozet, 'bekleyenTalepSayisi', 'BekleyenTalepSayisi') || 0} icon="time-outline" bgColor="#F59E0B" />
           </View>
+
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Onay Bekleyen" value={g(ozet, 'onayBekleyenSayisi', 'OnayBekleyenSayisi') || 0} icon="hourglass-outline" bgColor="#EF4444" />
+            <PremiumStatTile label="Kapatma Oranı" value={kapatmaOrani} icon="checkmark-circle-outline" bgColor="#10B981" />
+          </View>
+
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Ortalama MTTR" value={mttrText} icon="build-outline" bgColor="#06B6D4" />
+            <PremiumStatTile label="Ortalama MTBF" value={mtbfText} icon="pulse-outline" bgColor="#3B82F6" />
+          </View>
+
+          <View style={{ height: 12 }} />
 
           {/* Aylık toplam kontrol - bar */}
           <ChartCard title="Aylık Kontrol Sayısı" subtitle={`${year} yılı ay bazında`}>
@@ -204,6 +213,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     marginBottom: 16,
+  },
+  premiumRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    width: '100%',
   },
   empty: {
     color: colors.textSecondary,

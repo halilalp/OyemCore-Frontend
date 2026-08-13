@@ -341,14 +341,15 @@ export const TrainingScreen = () => {
         statusBarTranslucent={true}
         onRequestClose={() => setShowFormModal(false)}
       >
-        <View style={styles.formContainer}>
-          <CreateModalHeader
-            title={isEditing ? 'Eğitimi Düzenle' : 'Yeni Eğitim Ekle'}
-            onClose={() => setShowFormModal(false)}
-            colorTheme="purple"
-          />
-          <View style={styles.formContentWrapper}>
-            <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.formContainer}>
+            <CreateModalHeader
+              title={isEditing ? 'Eğitimi Düzenle' : 'Yeni Eğitim Ekle'}
+              onClose={() => setShowFormModal(false)}
+              colorTheme="purple"
+            />
+            <View style={styles.formContentWrapper}>
+              <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               
               {/* Form Info Box */}
               <View style={styles.formInfoBox}>
@@ -397,6 +398,7 @@ export const TrainingScreen = () => {
                   placeholderTextColor={colors.placeholder}
                   value={formKonu}
                   onChangeText={setFormKonu}
+                  autoFocus={true}
                 />
               </View>
 
@@ -463,6 +465,7 @@ export const TrainingScreen = () => {
             </ScrollView>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Detay modali — karta dokununca */}

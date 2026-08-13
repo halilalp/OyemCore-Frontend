@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar, KeyboardAvoidingView } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -225,30 +225,33 @@ export const ZimmetlerimScreen = () => {
 
             {/* Objection Report Form Modal */}
             <Modal visible={isObjectionOpen} animationType="slide" transparent>
-              <View style={styles.backdrop}>
-                <View style={styles.dialogContainer}>
-                  <Text style={styles.dialogTitle}>Hata / İtiraz Bildirimi</Text>
-                  <Text style={styles.dialogSub}>Demirbaşın neden size ait olmadığını veya cihazdaki hatayı kısaca açıklayın.</Text>
-                  
-                  <TextInput
-                    style={styles.dialogInput}
-                    placeholder="Bildirim açıklaması..."
-                    placeholderTextColor={colors.placeholder}
-                    multiline
-                    value={objectionText}
-                    onChangeText={setObjectionText}
-                  />
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <View style={styles.backdrop}>
+                  <View style={styles.dialogContainer}>
+                    <Text style={styles.dialogTitle}>Hata / İtiraz Bildirimi</Text>
+                    <Text style={styles.dialogSub}>Demirbaşın neden size ait olmadığını veya cihazdaki hatayı kısaca açıklayın.</Text>
+                    
+                    <TextInput
+                      style={styles.dialogInput}
+                      placeholder="Bildirim açıklaması..."
+                      placeholderTextColor={colors.placeholder}
+                      multiline
+                      value={objectionText}
+                      onChangeText={setObjectionText}
+                      autoFocus={true}
+                    />
 
-                  <View style={styles.dialogActions}>
-                    <TouchableOpacity style={styles.dialogCancelBtn} onPress={() => setIsObjectionOpen(false)}>
-                      <Text style={styles.dialogCancelText}>İptal</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.dialogConfirmBtn} onPress={submitObjection}>
-                      <Text style={styles.dialogConfirmText}>Gönder</Text>
-                    </TouchableOpacity>
+                    <View style={styles.dialogActions}>
+                      <TouchableOpacity style={styles.dialogCancelBtn} onPress={() => setIsObjectionOpen(false)}>
+                        <Text style={styles.dialogCancelText}>İptal</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.dialogConfirmBtn} onPress={submitObjection}>
+                        <Text style={styles.dialogConfirmText}>Gönder</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
+              </KeyboardAvoidingView>
             </Modal>
 
           </SafeAreaView>

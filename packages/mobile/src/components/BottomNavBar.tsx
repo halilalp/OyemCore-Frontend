@@ -75,9 +75,10 @@ const ROUTE_ALIASES: Record<string, string> = {
 // BakimPlan/PeriyodikKontrol ekranları mode paramıyla açılır (BakimYonetim hub
 // ile aynı hedefler). Sayfa adına göre doğru ekran+moda yönlendir.
 const resolveBakimRoute = (s: string): { screen: string; params?: any } | null => {
-  const has = (w: string) => s.includes(w);
+  const clean = s.toLowerCase().replace(/\u0307/g, '');
+  const has = (w: string) => clean.includes(w);
   if (!(has('bakım') || has('bakim') || has('periyodik'))) return null;
-  const islem = has('işlem') || has('islem') || has('uygula');
+  const islem = has('işlem') || has('islem') || has('uygula') || has('şlem');
   if (has('periyodik')) return { screen: 'PeriyodikKontrol', params: { mode: islem ? 'uygula' : 'plan' } };
   if (has('plan')) return { screen: 'BakimPlan', params: { mode: islem ? 'uygula' : 'plan' } };
   if (has('dashboard') || has('pano') || has('gösterge')) return { screen: 'BakimDashboard' };
@@ -335,15 +336,17 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
       }
     }
 
-    // Kayıtlı değilse: bakım alt sayfalarını sayfa adına göre doğru ekran+moda
-    // yönlendir (Bakım Planı→plan, Bakım Planı İşlem→uygula, Periyodik→..., vb.).
+    // 1. Önce Bakım Yönetimi alt sayfalarını (Bakım Planı, Bakım Planı İşlem, Periyodik Kontrol, Periyodik Kontrol İşlem vb.)
+    // sayfa adı veya mobilUrl'sine göre çözüp doğru mode parametresiyle yönlendir.
+    const br = resolveBakimRoute(`${sayfaAdi || ''} ${mobilUrl || ''}`.toLowerCase());
+    if (br) {
+      setIsProjectsMenuVisible(false);
+      setTimeout(() => navigation.navigate(br.screen as any, br.params as any), 150);
+      return;
+    }
+
+    // 2. Diğer standart rotalar için yetki kontrolü ve doğrudan yönlendirme:
     if (!REGISTERED_SCREENS.has(hedef)) {
-      const br = resolveBakimRoute(`${sayfaAdi || ''} ${mobilUrl || ''}`.toLowerCase());
-      if (br) {
-        setIsProjectsMenuVisible(false);
-        setTimeout(() => navigation.navigate(br.screen as any, br.params as any), 150);
-        return;
-      }
       Alert.alert('Kullanılamıyor', `"${sayfaAdi || 'Bu modül'}" mobil uygulamada henüz mevcut değil.`);
       return;
     }
@@ -516,8 +519,12 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
                               }}
                               activeOpacity={0.7}
                               onPress={() => {
-                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                setExpandedProject(isExpanded ? null : projeAdi);
+                                if (mods.length === 1) {
+                                  navigateToModule(mods[0].mobilUrl, mods[0].sayfaAdi);
+                                } else {
+                                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                  setExpandedProject(isExpanded ? null : projeAdi);
+                                }
                               }}
                             >
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -536,11 +543,13 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
                                   {projeAdi}
                                 </Text>
                               </View>
-                              <Ionicons
-                                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                                size={18}
-                                color={colors.textSecondary}
-                              />
+                              {mods.length > 1 && (
+                                <Ionicons
+                                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                  size={18}
+                                  color={colors.textSecondary}
+                                />
+                              )}
                             </TouchableOpacity>
 
                             {/* Accordion Content (Submodules) */}

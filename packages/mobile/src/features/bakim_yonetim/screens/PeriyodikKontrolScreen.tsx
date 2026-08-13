@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
 import { useIsFocused, useRoute } from '@react-navigation/native';
 import { api, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,6 +82,8 @@ export const PeriyodikKontrolScreen = () => {
   const [materialQty, setMaterialQty] = useState('');
   const [selectedMachineKodu, setSelectedMachineKodu] = useState('');
   const [isSarfMachineOpen, setIsSarfMachineOpen] = useState(false);
+  const [isMaterialSearchOpen, setIsMaterialSearchOpen] = useState(false);
+  const [materialLoading, setMaterialLoading] = useState(false);
 
   // Tarihçe ve collapsible panel state'leri
   const [detailHistory, setDetailHistory] = useState<any[]>([]);
@@ -138,6 +140,15 @@ export const PeriyodikKontrolScreen = () => {
       case 'DEVAM': return colors.info;
       case 'IPTAL': return colors.danger;
       default: return colors.warning;
+    }
+  };
+
+  const getStatusPastelColor = (durum: string) => {
+    switch (durum) {
+      case 'TAMAMLANDI': return '#86EFAC';
+      case 'DEVAM': return '#93C5FD';
+      case 'IPTAL': return '#FCA5A5';
+      default: return '#FDBA74';
     }
   };
 
@@ -273,19 +284,23 @@ export const PeriyodikKontrolScreen = () => {
     }
   };
 
-  const handleMaterialSearch = async (val: string) => {
+  const handleMaterialSearch = useCallback(async (val: string) => {
     setMaterialSearch(val);
-    if (val.length < 2) {
+    if (val.trim().length < 3) {
       setMaterialsList([]);
       return;
     }
+    setMaterialLoading(true);
     try {
       const res = await api.searchMalzemes(val, 1, 10, false);
       setMaterialsList(res.results || []);
     } catch (err) {
       console.error(err);
+      setMaterialsList([]);
+    } finally {
+      setMaterialLoading(false);
     }
-  };
+  }, []);
 
   const handleAddSarfiyat = async () => {
     if (!selectedCtrl || !selectedMaterial || !materialQty || !selectedMachineKodu) {
@@ -406,7 +421,7 @@ export const PeriyodikKontrolScreen = () => {
               renderItem={({ item }) => {
                 const durumColor = getStatusTextColor(item.durum);
                 return (
-                  <TouchableOpacity style={[styles.card, { borderLeftWidth: 5, borderLeftColor: durumColor }]} onPress={() => handleOpenCtrl(item)}>
+                  <TouchableOpacity style={[styles.card, { borderLeftWidth: 5, borderLeftColor: getStatusPastelColor(item.durum) }]} onPress={() => handleOpenCtrl(item)}>
                     <View style={styles.cardInner}>
                       <View style={styles.cardHeader}>
                         <Text style={styles.cardCode}>{item.kontrolKodu}</Text>
@@ -616,16 +631,7 @@ export const PeriyodikKontrolScreen = () => {
 
             {/* İşlem aksiyonları tek orta FAB → menüde (aşağıda) */}
 
-            {/* Makine seçici detay modalının İÇİNDE — üstte açılması için */}
-            <SearchableSelectorModal
-              visible={isSarfMachineOpen}
-              onClose={() => { setIsSarfMachineOpen(false); setCtrlSarfModalOpen(true); }}
-              onSelect={(item) => setSelectedMachineKodu(item.makineKodu)}
-              data={(dropdowns?.makines || []).filter((m: any) => selectedCtrl && m.bolumKodu === selectedCtrl.bolumKodu)}
-              keyExtractor={(item) => item.makineKodu}
-              labelExtractor={(item) => item.makineAdi}
-              title="Makine Seçin"
-            />
+            {/* Makine seçici modalı artık ctrlSarfModalOpen modalının içerisine taşındı */}
 
             <FilePickerSheet
               visible={isCtrlFilePickerOpen}
@@ -706,13 +712,13 @@ export const PeriyodikKontrolScreen = () => {
 
             {/* Gelişme Ekle modal (dosya ekleme dahil) */}
             <Modal visible={ctrlNotModalOpen} transparent animationType="fade" onRequestClose={() => setCtrlNotModalOpen(false)}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
                 <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Gelişme Ekle</Text>
                     <TouchableOpacity onPress={() => setCtrlNotModalOpen(false)}><Ionicons name="close" size={22} color={colors.textSecondary} /></TouchableOpacity>
                   </View>
-                  <TextInput style={[styles.textInput, { height: 90, textAlignVertical: 'top' }]} placeholder="Gelişme açıklaması..." placeholderTextColor={colors.placeholder} value={newCtrlNot} onChangeText={setNewCtrlNot} multiline />
+                  <TextInput style={[styles.textInput, { height: 90, textAlignVertical: 'top' }]} placeholder="Gelişme açıklaması..." placeholderTextColor={colors.placeholder} value={newCtrlNot} onChangeText={setNewCtrlNot} multiline autoFocus={true} />
                   {ctrlDosyaName && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: colors.border }}>
                       <Ionicons name="document-attach-outline" size={16} color={colors.primary} />
@@ -730,12 +736,12 @@ export const PeriyodikKontrolScreen = () => {
                     <Text style={styles.submitBtnText}>Kaydet</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </KeyboardAvoidingView>
             </Modal>
 
             {/* Sarfiyat Ekle modal */}
             <Modal visible={ctrlSarfModalOpen} transparent animationType="fade" onRequestClose={() => setCtrlSarfModalOpen(false)}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
                 <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18, maxHeight: '80%' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Sarfiyat Ekle</Text>
@@ -744,20 +750,15 @@ export const PeriyodikKontrolScreen = () => {
                   <ScrollView keyboardShouldPersistTaps="handled">
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>Malzeme Arama *</Text>
-                      <TextInput style={styles.textInput} placeholder="Malzeme adı veya kodu yazın..." placeholderTextColor={colors.placeholder} value={materialSearch} onChangeText={handleMaterialSearch} />
-                      {materialsList.length > 0 && (
-                        <View style={styles.searchResultsDropdown}>
-                          {materialsList.map(m => (
-                            <TouchableOpacity key={m.malzemeKodu} style={styles.searchResultItem} onPress={() => { setSelectedMaterial(m); setMaterialSearch(`${m.malzemeAdi} (${m.malzemeKodu})`); setMaterialsList([]); }}>
-                              <Text style={styles.searchResultText}>{m.malzemeAdi} ({m.olcuBirimi})</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
+                      <TouchableOpacity style={styles.selectBox} onPress={() => { setCtrlSarfModalOpen(false); setIsMaterialSearchOpen(true); }}>
+                        <Text style={styles.selectBoxText}>
+                          {selectedMaterial ? `${selectedMaterial.malzemeAdi} (${selectedMaterial.malzemeKodu})` : 'Malzeme Seçin...'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>Miktar *</Text>
-                      <TextInput style={styles.textInput} placeholder="Örn: 2" placeholderTextColor={colors.placeholder} keyboardType="numeric" value={materialQty} onChangeText={setMaterialQty} />
+                      <TextInput style={styles.textInput} placeholder="Örn: 2" placeholderTextColor={colors.placeholder} keyboardType="numeric" value={materialQty} onChangeText={setMaterialQty} autoFocus={true} />
                     </View>
                     <View style={styles.formGroup}>
                       <Text style={styles.formLabel}>İlgili Makine *</Text>
@@ -770,7 +771,7 @@ export const PeriyodikKontrolScreen = () => {
                     </TouchableOpacity>
                   </ScrollView>
                 </View>
-              </View>
+              </KeyboardAvoidingView>
             </Modal>
           </View>
         )}
@@ -779,7 +780,8 @@ export const PeriyodikKontrolScreen = () => {
 
       {/* NEW PERIODIC CONTROL MODAL */}
       <Modal visible={isNewCtrlOpen} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => { setIsNewCtrlOpen(false); setEditCtrlKodu(''); }}>
-        <View style={styles.modalContainer}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalContainer}>
           <CreateModalHeader title={editCtrlKodu ? 'Periyodik Kontrol Düzenle' : 'Yeni Periyodik Kontrol'} onClose={() => { setIsNewCtrlOpen(false); setEditCtrlKodu(''); }} colorTheme="purple" />
           <View style={styles.modalContentWrapper}>
             <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
@@ -858,6 +860,7 @@ export const PeriyodikKontrolScreen = () => {
                   numberOfLines={4}
                   value={formCtrlAciklama}
                   onChangeText={setFormCtrlAciklama}
+                  autoFocus={true}
                 />
               </View>
 
@@ -908,7 +911,8 @@ export const PeriyodikKontrolScreen = () => {
             onSelectDate={setFormCtrlBitis}
             title="Kontrol Hedef Bitiş Tarihi Seçin"
           />
-        </View>
+          </View>
+        </KeyboardAvoidingView>
         <KeyboardDismissBar />
       </Modal>
 
@@ -946,6 +950,46 @@ export const PeriyodikKontrolScreen = () => {
         keyExtractor={(item) => item.code}
         labelExtractor={(item) => item.label}
         title="Durum Filtresi"
+      />
+
+      {/* Malzeme arama ve makine seçici modalları (Sibling modal olarak z-index hatasını çözmek için) */}
+      <SearchableSelectorModal
+        visible={isMaterialSearchOpen}
+        onClose={() => {
+          setIsMaterialSearchOpen(false);
+          setMaterialsList([]);
+          setCtrlSarfModalOpen(true);
+        }}
+        onSelect={(item) => {
+          setSelectedMaterial(item);
+          setMaterialSearch(`${item.malzemeAdi} (${item.malzemeKodu})`);
+          setIsMaterialSearchOpen(false);
+          setMaterialsList([]);
+          setCtrlSarfModalOpen(true);
+        }}
+        data={materialsList}
+        keyExtractor={(item) => item.malzemeKodu}
+        labelExtractor={(item) => `${item.malzemeAdi} (${item.malzemeKodu})`}
+        title="Malzeme Seçin"
+        onSearch={handleMaterialSearch}
+        loading={materialLoading}
+      />
+
+      <SearchableSelectorModal
+        visible={isSarfMachineOpen}
+        onClose={() => {
+          setIsSarfMachineOpen(false);
+          setCtrlSarfModalOpen(true);
+        }}
+        onSelect={(item) => {
+          setSelectedMachineKodu(item.makineKodu);
+          setIsSarfMachineOpen(false);
+          setCtrlSarfModalOpen(true);
+        }}
+        data={(dropdowns?.makines || []).filter((m: any) => selectedCtrl && m.bolumKodu === selectedCtrl.bolumKodu)}
+        keyExtractor={(item) => item.makineKodu}
+        labelExtractor={(item) => item.makineAdi}
+        title="Makine Seçin"
       />
 
       <BottomNavBar

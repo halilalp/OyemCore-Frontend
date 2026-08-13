@@ -100,7 +100,7 @@ export const themes: Record<ThemeType, ThemeColors> = {
     infoLight:       slateTokens.brandAccentLt,
 
     // Kenarlık
-    border:          slateTokens.border,
+    border:          slateTokens.borderLight,
     borderOnDark:    slateTokens.borderOnDark,
 
     // Durum

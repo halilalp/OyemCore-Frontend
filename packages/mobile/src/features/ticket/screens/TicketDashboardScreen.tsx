@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Dimensions, UIManager } from 'react-native';
-// const LineChart: any = null; const BarChart: any = null;
-const LineChart: any = null;
-const BarChart: any = null;
+import { LineChart, BarChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow, InsightRow, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
+import { StatTile, PremiumStatTile, ChartCard, LegendRow, InsightRow, CHART_PALETTE, DashboardFilterBar, DashboardFilterValue } from '../../../components/dashboard/DashboardKit';
 
 // Referans WebServiceTicket.GetDashboardStats ile birebir aynı veriyi gösterir.
 // Backend camelCase döndürür: total, open, completed, highPriority, inProgress,
@@ -133,15 +131,25 @@ export const TicketDashboardScreen = () => {
               <Text selectable style={styles.errText}>{errMsg}</Text>
             </View>
           )}
-          <View style={styles.tilesGrid}>
-            <StatTile label="Toplam" value={total} icon="albums-outline" color={colors.primary} />
-            <StatTile label="Açık" value={open} icon="folder-open-outline" color="#f59e0b" />
-            <StatTile label="Tamamlanan" value={completed} icon="checkmark-done-outline" color="#10b981" />
-            <StatTile label="Yüksek Öncelik" value={highPriority} icon="alert-circle-outline" color="#ef4444" />
-            <StatTile label="İşlemde" value={inProgress} icon="construct-outline" color="#3b82f6" />
-            <StatTile label="Testte" value={inTest} icon="flask-outline" color="#8b5cf6" />
-            <StatTile label="Bugün" value={today} icon="today-outline" color="#14b8a6" />
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Toplam Bilet" value={total} icon="albums-outline" bgColor="#7C3AED" />
+            <PremiumStatTile label="Açık Biletler" value={open} icon="folder-open-outline" bgColor="#F59E0B" />
           </View>
+
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Tamamlanan" value={completed} icon="checkmark-done-outline" bgColor="#10B981" />
+            <PremiumStatTile label="Yüksek Öncelik" value={highPriority} icon="alert-circle-outline" bgColor="#EF4444" />
+          </View>
+
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="İşlemdeki" value={inProgress} icon="construct-outline" bgColor="#3B82F6" />
+            <PremiumStatTile label="Test Aşamasında" value={inTest} icon="flask-outline" bgColor="#06B6D4" />
+          </View>
+
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Bugün Açılan" value={today} icon="today-outline" bgColor="#14B8A6" />
+          </View>
+          <View style={{ height: 10 }} />
 
           {/* Trend (Son 15 gün) */}
           <ChartCard title="Yeni Talep Trendi" subtitle="Son 15 gün, günlük açılan bilet">
@@ -278,6 +286,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  premiumRow: { flexDirection: 'row', gap: 10, marginBottom: 10, width: '100%' },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
   errBox: {
     backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1,

@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet, UIManager } from 'react-native';
-// const PieChart: any = null;
-const PieChart: any = null;
+import { PieChart } from 'react-native-gifted-charts';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { api } from '@oyemcore/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
-import { StatTile, ChartCard, LegendRow } from '../../../components/dashboard/DashboardKit';
+import { StatTile, PremiumStatTile, ChartCard, LegendRow } from '../../../components/dashboard/DashboardKit';
 
 export const ZimmetDashboardScreen = () => {
   const { colors } = useThemeStore();
@@ -64,10 +63,12 @@ export const ZimmetDashboardScreen = () => {
         <LogoLoader style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.tilesGrid}>
-            <StatTile label="Toplam Demirbaş" value={counts.toplam} icon="cube-outline" color={colors.primary} />
-            <StatTile label="Boşta" value={counts.bosta} icon="checkmark-circle-outline" color="#10b981" />
-            <StatTile label="Zimmetli" value={counts.zimmetli} icon="person-outline" color="#3b82f6" />
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Toplam Demirbaş" value={counts.toplam} icon="cube-outline" bgColor="#7C3AED" />
+          </View>
+          <View style={styles.premiumRow}>
+            <PremiumStatTile label="Boşta" value={counts.bosta} icon="checkmark-circle-outline" bgColor="#10B981" />
+            <PremiumStatTile label="Zimmetli" value={counts.zimmetli} icon="person-outline" bgColor="#3B82F6" />
           </View>
 
           <ChartCard title="Zimmet Durumu" subtitle="Boşta / Zimmetli dağılımı">
@@ -105,5 +106,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  premiumRow: { flexDirection: 'row', gap: 10, marginBottom: 10, width: '100%' },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
 });
