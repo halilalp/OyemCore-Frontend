@@ -83,7 +83,7 @@ const resolveBakimRoute = (s: string): { screen: string; params?: any } | null =
   if (has('plan')) return { screen: 'BakimPlan', params: { mode: islem ? 'uygula' : 'plan' } };
   if (has('dashboard') || has('pano') || has('gösterge')) return { screen: 'BakimDashboard' };
   if (has('rapor')) return { screen: 'BakimRapor' };
-  if (has('talep') || has('arıza') || has('ariza')) return { screen: 'BakimHelpDesk' };
+  if (has('talep') || has('arıza') || has('ariza') || has('helpdesk') || has('hd')) return { screen: 'BakimHelpDesk' };
   return { screen: 'BakimYonetim' };
 };
 
