@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export const LoginScreen = () => {
   const { login, resetPassword, isLoading, error } = useAuthStore();
-  const { colors, theme, toggleTheme } = useThemeStore();
+  const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, theme);
 
   const [username, setUsername] = useState('');
@@ -206,11 +206,7 @@ export const LoginScreen = () => {
             styles.animatedWrapper,
             { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
           ]}>
-            {/* Tema Butonu (Sağ Üst) */}
-            <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
-              <Ionicons name={theme === 'light' ? 'moon-outline' : 'sunny-outline'} size={20} color="#ffffff" />
-            </TouchableOpacity>
-
+            
             {/* Logo İkon + Yazı Ayrılmış (Splash ile Aynı) */}
             <View style={styles.logoContainer}>
               <Image
@@ -423,18 +419,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     maxWidth: 420,
     alignSelf: 'center',
     paddingVertical: 12,
-  },
-  themeToggle: {
-    alignSelf: 'flex-end',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 8,
   },
   logoContainer: {
     alignItems: 'center',
