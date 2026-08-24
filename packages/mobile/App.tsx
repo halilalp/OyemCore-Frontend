@@ -277,10 +277,26 @@ export default function App() {
       notificationListener = Notifications.addNotificationReceivedListener(notification => {
         try {
           const content = notification?.request?.content || {};
+          const data = content.data || {};
+
+          // Görüntülü/sesli arama ise doğrudan arama ekranını tetikle, banner gösterme!
+          if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+            if ((globalThis as any).triggerIncomingCallNotification) {
+              (globalThis as any).triggerIncomingCallNotification({
+                callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
+                callerName: data.callerName || data.targetName || 'Arayan',
+                roomUrl: data.roomUrl,
+                callType: data.callType || 'video',
+                callerImage: data.callerImage || '',
+              });
+            }
+            return;
+          }
+
           useNotificationStore.getState().showNotification(
             content.title || 'Bildirim',
             content.body || '',
-            content.data || null
+            data
           );
         } catch (e) {
           console.warn('In-app notification banner failed:', e);
@@ -293,10 +309,26 @@ export default function App() {
       responseListener = Notifications.addNotificationResponseReceivedListener(response => {
         try {
           const content = response?.notification?.request?.content || {};
+          const data = content.data || {};
+
+          // Görüntülü/sesli arama ise doğrudan arama ekranını tetikle, banner gösterme!
+          if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+            if ((globalThis as any).triggerIncomingCallNotification) {
+              (globalThis as any).triggerIncomingCallNotification({
+                callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
+                callerName: data.callerName || data.targetName || 'Arayan',
+                roomUrl: data.roomUrl,
+                callType: data.callType || 'video',
+                callerImage: data.callerImage || '',
+              });
+            }
+            return;
+          }
+
           useNotificationStore.getState().showNotification(
             content.title || 'Bildirim',
             content.body || '',
-            content.data || null
+            data
           );
         } catch (e) {
           console.warn('Notification response banner failed:', e);
@@ -304,17 +336,30 @@ export default function App() {
       });
 
       // Soğuk başlangıç: uygulama tamamen kapalıyken bildirime dokunulup açıldıysa,
-      // son bildirim yanıtını alıp banner olarak göster (kısa gecikme ile, UI hazır olsun).
+      // doğrudan arama ekranını tetikle (kısa gecikme ile, UI hazır olsun).
       if (Notifications.getLastNotificationResponseAsync) {
         Notifications.getLastNotificationResponseAsync()
           .then((response: any) => {
             const content = response?.notification?.request?.content;
             if (content) {
+              const data = content.data || {};
               setTimeout(() => {
+                if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+                  if ((globalThis as any).triggerIncomingCallNotification) {
+                    (globalThis as any).triggerIncomingCallNotification({
+                      callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
+                      callerName: data.callerName || data.targetName || 'Arayan',
+                      roomUrl: data.roomUrl,
+                      callType: data.callType || 'video',
+                      callerImage: data.callerImage || '',
+                    });
+                  }
+                  return;
+                }
                 useNotificationStore.getState().showNotification(
                   content.title || 'Bildirim',
                   content.body || '',
-                  content.data || null
+                  data
                 );
               }, 1200);
             }
