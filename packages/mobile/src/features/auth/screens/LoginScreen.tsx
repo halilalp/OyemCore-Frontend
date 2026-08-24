@@ -8,7 +8,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { setApiBaseUrl, api } from '@oyemcore/shared';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import AsyncStorage from '../../../store/storage';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -192,10 +191,12 @@ export const LoginScreen = () => {
       <View style={styles.orb2} />
       <View style={styles.orb3} />
 
-      {/* Cam Görünümü Sağlayan Blur Katmanı */}
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 70 : 100}
-        tint={theme === 'light' ? 'light' : 'dark'}
+      {/* Cam Görünümü Sağlayan Yarı Saydam Kaplama Katmanı (Stabil, Çökme Yapmaz) */}
+      <LinearGradient
+        colors={theme === 'light' 
+          ? ['rgba(240, 244, 248, 0.45)', 'rgba(224, 231, 255, 0.55)', 'rgba(240, 244, 248, 0.45)'] 
+          : ['rgba(7, 7, 13, 0.75)', 'rgba(19, 17, 36, 0.8)', 'rgba(7, 7, 13, 0.75)']
+        }
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -404,7 +405,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: width * 0.8,
     height: width * 0.8,
     borderRadius: (width * 0.8) / 2,
-    backgroundColor: theme === 'light' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.18)',
+    backgroundColor: theme === 'light' ? 'rgba(59, 130, 246, 0.22)' : 'rgba(59, 130, 246, 0.14)',
   },
   orb2: {
     position: 'absolute',
@@ -413,7 +414,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: width * 0.9,
     height: width * 0.9,
     borderRadius: (width * 0.9) / 2,
-    backgroundColor: theme === 'light' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(139, 92, 246, 0.15)',
+    backgroundColor: theme === 'light' ? 'rgba(168, 85, 247, 0.22)' : 'rgba(139, 92, 246, 0.12)',
   },
   orb3: {
     position: 'absolute',
@@ -422,7 +423,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: width * 0.6,
     height: width * 0.6,
     borderRadius: (width * 0.6) / 2,
-    backgroundColor: theme === 'light' ? 'rgba(45, 212, 191, 0.2)' : 'rgba(20, 184, 166, 0.12)',
+    backgroundColor: theme === 'light' ? 'rgba(45, 212, 191, 0.18)' : 'rgba(20, 184, 166, 0.1)',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -436,9 +437,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignSelf: 'center',
     borderRadius: 24,
     padding: 24,
-    backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.55)' : 'rgba(20, 20, 35, 0.45)',
+    backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.82)' : 'rgba(20, 20, 35, 0.82)',
     borderWidth: 1.5,
-    borderColor: theme === 'light' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme === 'light' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: theme === 'light' ? 0.05 : 0.25,
