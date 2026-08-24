@@ -7,6 +7,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { api } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
+import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
@@ -161,13 +162,11 @@ export const ZimmetlerimScreen = () => {
         {selectedAsset && (
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalContentWrapper}>
-              <View style={styles.modalHeader}>
-                <View style={{ width: 40 }} />
-                <Text style={styles.modalTitle}>Zimmet Detayı</Text>
-                <TouchableOpacity onPress={() => setIsDetailOpen(false)} style={styles.closeButton}>
-                  <Ionicons name="close" size={22} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
+              <CreateModalHeader
+                title="Zimmet Detayı"
+                onClose={() => setIsDetailOpen(false)}
+                colorTheme="blue"
+              />
               <ScrollView contentContainerStyle={styles.modalScroll}>
                 
                 {/* Info Card */}

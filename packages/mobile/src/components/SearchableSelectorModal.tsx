@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, FlatList, ActivityIndicator } from 'react-native';
 import { useThemeStore } from '../store/useThemeStore';
+import { KeyboardDismissBar } from './KeyboardDismissBar';
 
 interface SearchableSelectorModalProps {
   visible: boolean;
@@ -112,6 +113,7 @@ export const SearchableSelectorModal: React.FC<SearchableSelectorModalProps> = (
           </TouchableOpacity>
         </View>
       </View>
+      <KeyboardDismissBar />
     </Modal>
   );
 };

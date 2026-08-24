@@ -1030,9 +1030,10 @@ export const TicketScreen = () => {
                         </View>
                       </TouchableOpacity>
 
-                      {/* Kapat — etiketsiz ikon */}
+                      {/* Bileti Tamamla (sağ) */}
                       <TouchableOpacity style={styles.tabItem} onPress={handleCloseTicket} disabled={isClosed}>
                         <Ionicons name="checkmark-circle-outline" size={30} color={isClosed ? '#94a3b8' : colors.success} />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: isClosed ? '#94a3b8' : colors.success, marginTop: 3 }}>Tamamlandı</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

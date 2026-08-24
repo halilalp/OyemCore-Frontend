@@ -8,7 +8,7 @@ import { slateTokens } from '@oyemcore/shared';
 interface CreateModalHeaderProps {
   title: string;
   onClose: () => void;
-  colorTheme?: 'purple' | 'gold';
+  colorTheme?: 'purple' | 'gold' | 'blue';
   /** Opsiyonel sağ aksiyon (ör. detayda "düzenle") — kapat butonunun solunda görünür. */
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightPress?: () => void;
@@ -25,7 +25,9 @@ export const CreateModalHeader: React.FC<CreateModalHeaderProps> = ({
 
   const gradientColors = colorTheme === 'purple' 
     ? ['#4338CA', slateTokens.brandPurple] // Indigo 700 to Indigo 600
-    : ['#D97706', slateTokens.brandGold];  // Amber 600 to Amber 500
+    : colorTheme === 'gold'
+    ? ['#D97706', slateTokens.brandGold]   // Amber 600 to Amber 500
+    : [slateTokens.brandPrimaryDk, slateTokens.brandPrimary]; // Blue theme (standard blue)
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 40 : 16) }]}>
