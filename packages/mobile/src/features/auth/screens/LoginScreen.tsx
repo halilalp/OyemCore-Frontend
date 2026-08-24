@@ -117,7 +117,7 @@ export const LoginScreen = () => {
     const serverMsg = err.response?.data?.message || err.response?.data;
     
     if (status === 401) {
-      return 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
+      return typeof serverMsg === 'string' && serverMsg ? serverMsg : 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
     }
     if (status === 400) {
       return typeof serverMsg === 'string' ? serverMsg : 'Geçersiz istek. Bilgilerinizi kontrol edin.';
@@ -134,7 +134,7 @@ export const LoginScreen = () => {
     
     const msg = err.message || '';
     if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
-      return 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
+      return typeof serverMsg === 'string' && serverMsg ? serverMsg : 'Kullanıcı adı veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
     }
     if (msg.includes('400')) {
       return 'Bilgiler eksik veya hatalı.';
