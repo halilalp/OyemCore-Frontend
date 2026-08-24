@@ -28,10 +28,6 @@ export const LoginScreen = () => {
   const [verifiedCompany, setVerifiedCompany] = useState<{ tenantId: string; unvan: string; apiServer?: string } | null>(null);
   const [isTenantsLoading, setIsTenantsLoading] = useState(false);
 
-  // Gelişmiş Ayarlar (Manuel IP / URL girişi için)
-  const [isAdvancedVisible, setIsAdvancedVisible] = useState(false);
-  const [customApiUrl, setCustomApiUrl] = useState('https://api.oyemsoft.com/api');
-
   const windowWidth = Dimensions.get('window').width;
   const isTablet = windowWidth > 768;
 
@@ -40,7 +36,6 @@ export const LoginScreen = () => {
     const init = async () => {
       const savedTenantId = await AsyncStorage.getItem('tenantId');
       const savedApiUrl = await AsyncStorage.getItem('apiUrl') || 'https://api.oyemsoft.com/api';
-      setCustomApiUrl(savedApiUrl);
       
       if (savedTenantId) {
         setCompanyCode(savedTenantId);
@@ -171,36 +166,28 @@ export const LoginScreen = () => {
   };
 
   return (
-    <LinearGradient
-      colors={theme === 'light' ? ['#eff3fa', '#cbd5e1'] : ['#0c0c14', '#06060a']}
-      style={{ flex: 1 }}
-    >
+    <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           <View style={isTablet ? styles.tabletContainer : styles.phoneContainer}>
 
-            {/* Logo */}
-            <View style={isTablet ? styles.leftLogoContainer : styles.topLogoContainer}>
+            {/* Logo Üst Alanı */}
+            <View style={styles.logoWrapper}>
               <Image
                 source={require('../../../../assets/oyemcore.png')}
-                style={isTablet ? styles.logoTablet : styles.logoPhone}
+                style={styles.logo}
                 resizeMode="contain"
               />
             </View>
 
-            {/* Login Card */}
-            <View style={styles.card}>
-              <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.actionBtn} onPress={toggleTheme}>
-                  <Ionicons name={theme === 'light' ? 'moon-outline' : 'sunny-outline'} size={18} color={colors.text} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => setIsAdvancedVisible(true)}>
-                  <Ionicons name="settings-outline" size={18} color={colors.text} />
-                </TouchableOpacity>
-              </View>
+            {/* Form Gövdesi (Ekranı Dikeyde Kaplayan Konteyner) */}
+            <View style={styles.formContainer}>
+              <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
+                <Text style={styles.themeToggleText}>{theme === 'light' ? '🌙 Koyu' : '☀️ Açık'}</Text>
+              </TouchableOpacity>
 
               <Text style={styles.title}>
                 {isResetMode ? 'ŞİFRE SIFIRLAMA' : 'HOŞGELDİNİZ'}
@@ -233,7 +220,7 @@ export const LoginScreen = () => {
                       setCompanyCode(val);
                       if (!val) setVerifiedCompany(null);
                     }}
-                    onBlur={() => validateAndSetupTenant(companyCode, customApiUrl)}
+                    onBlur={() => validateAndSetupTenant(companyCode)}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
@@ -305,26 +292,20 @@ export const LoginScreen = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/* Giriş Butonu */}
+              {/* Giriş Butonu (Düz Renkli Marka Mavisi) */}
               <TouchableOpacity
-                style={styles.primaryButtonContainer}
+                style={styles.primaryButton}
                 onPress={handleLogin}
                 disabled={isLoading}
+                activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={[colors.accent, colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.primaryButtonGradient}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#ffffff" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>
-                      {isResetMode ? 'Şifre Sıfırlama İsteği Gönder' : 'Giriş Yap'}
-                    </Text>
-                  )}
-                </LinearGradient>
+                {isLoading ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>
+                    {isResetMode ? 'Şifre Sıfırlama İsteği Gönder' : 'Giriş Yap'}
+                  </Text>
+                )}
               </TouchableOpacity>
 
               {/* Footer */}
@@ -334,161 +315,81 @@ export const LoginScreen = () => {
             </View>
           </View>
         </ScrollView>
-
-        {/* Gelişmiş Ayarlar Modalı (Offline/On-Premise IP için) */}
-        <Modal
-          visible={isAdvancedVisible}
-          animationType="fade"
-          transparent
-          onRequestClose={() => setIsAdvancedVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Gelişmiş Ayarlar</Text>
-                <TouchableOpacity onPress={() => setIsAdvancedVisible(false)}>
-                  <Ionicons name="close" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ gap: 16 }}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Özel API Sunucu Adresi</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="https://api.oyemsoft.com/api"
-                    placeholderTextColor={colors.placeholder}
-                    value={customApiUrl}
-                    onChangeText={setCustomApiUrl}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-
-                {/* Hızlı Seçim Badge'leri */}
-                <View style={styles.presetsRow}>
-                  <TouchableOpacity
-                    style={styles.presetBadge}
-                    onPress={() => setCustomApiUrl('https://api.oyemsoft.com/api')}
-                  >
-                    <Text style={styles.presetBadgeText}>Varsayılan Bulut API</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.presetBadge}
-                    onPress={() => setCustomApiUrl('http://10.0.2.2:5140/api')}
-                  >
-                    <Text style={styles.presetBadgeText}>Android Emu</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.presetBadge}
-                    onPress={() => setCustomApiUrl('http://192.168.1.122:5140/api')}
-                  >
-                    <Text style={styles.presetBadgeText}>WiFi IP</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.primaryButtonContainer, { marginTop: 12 }]}
-                  onPress={() => {
-                    setIsAdvancedVisible(false);
-                    validateAndSetupTenant(companyCode, customApiUrl);
-                  }}
-                >
-                  <LinearGradient
-                    colors={[colors.accent, colors.primary]}
-                    style={styles.primaryButtonGradient}
-                  >
-                    <Text style={styles.primaryButtonText}>Kaydet ve Uygula</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme === 'light' ? '#eff3fa' : '#0c0c14',
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
+    justifyContent: 'space-between',
   },
   tabletContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    maxWidth: 1100,
+    maxWidth: 600,
     width: '100%',
     alignSelf: 'center',
-    gap: 40,
+    flex: 1,
+    paddingTop: 40,
   },
   phoneContainer: {
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     width: '100%',
+    flex: 1,
   },
-  leftLogoContainer: {
-    width: '45%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topLogoContainer: {
+  logoWrapper: {
     width: '100%',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 28,
+    justifyContent: 'center',
+    paddingVertical: Platform.OS === 'ios' ? 44 : 24,
+    backgroundColor: theme === 'light' ? '#eff3fa' : '#0c0c14',
   },
-  logoTablet: { width: '95%', height: 180 },
-  logoPhone: { width: '85%', height: 100 },
-  card: {
-    backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(24, 24, 37, 0.9)',
-    borderRadius: 24,
-    padding: 32,
+  logo: {
+    width: '75%',
+    height: 90,
+  },
+  formContainer: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 24,
     borderWidth: 1,
-    borderColor: theme === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme === 'light' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
     shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: theme === 'light' ? 0.06 : 0.35,
-    shadowRadius: 24,
-    elevation: 8,
-    maxWidth: 450,
-    width: '100%',
-    alignSelf: 'center',
-    position: 'relative',
-    overflow: 'hidden',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: theme === 'light' ? 0.03 : 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  headerActions: {
-    flexDirection: 'row',
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    gap: 8,
-    zIndex: 10,
-  },
-  actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme === 'light' ? '#f1f5f9' : '#1e1e2f',
-    alignItems: 'center',
-    justifyContent: 'center',
+  themeToggle: {
+    alignSelf: 'flex-end',
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 20,
+    backgroundColor: theme === 'light' ? '#ffffff' : '#1b1b29',
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 8,
   },
+  themeToggleText: { fontSize: 11, fontWeight: '700', color: colors.text },
   title: {
     fontSize: 20,
     fontWeight: '900',
     color: colors.text,
     textAlign: 'center',
     marginBottom: 6,
-    marginTop: 12,
   },
   subtitle: {
     fontSize: 13,
@@ -562,63 +463,20 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 20 },
   forgotBtnText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-  primaryButtonContainer: {
+  primaryButton: {
+    backgroundColor: colors.primary,
     borderRadius: 12,
-    overflow: 'hidden',
-    width: '100%',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  primaryButtonGradient: {
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   primaryButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
-  footerContainer: { marginTop: 24, alignItems: 'center' },
+  footerContainer: { marginTop: 28, alignItems: 'center' },
   footerText: { color: colors.placeholder, fontSize: 11, fontWeight: '600' },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 24,
-  },
-  modalContent: {
-    borderRadius: 24,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '800' },
-  presetsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-    flexWrap: 'wrap',
-  },
-  presetBadge: {
-    backgroundColor: theme === 'light' ? '#eff3fa' : '#1b1b29',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  presetBadgeText: { color: colors.textSecondary, fontSize: 11.5, fontWeight: '700' },
 });
