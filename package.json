@@ -10,6 +10,10 @@
   "scripts": {
     "web:dev": "npm run dev -w packages/web",
     "web:build": "npm run build -w packages/web",
-    "mobile:start": "npm run start -w packages/mobile"
+    "mobile:start": "npm run start -w packages/mobile",
+    "postinstall": "patch-package"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.1"
   }
 }

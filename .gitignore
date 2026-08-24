@@ -41,6 +41,7 @@ Thumbs.db
 
 # Temporary / Scratch Files
 *.patch
+!patches/*.patch
 *.patch2
 *.txt
 *.png

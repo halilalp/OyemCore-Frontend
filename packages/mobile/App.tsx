@@ -34,6 +34,7 @@ import * as Device from 'expo-device';
 import { Platform, Alert, View, ActivityIndicator, LogBox, Text, TouchableOpacity } from 'react-native';
 LogBox.ignoreAllLogs();
 import { api, setUnauthorizedHandler } from '@oyemcore/shared';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useThemeStore } from './src/store/useThemeStore';
@@ -90,6 +91,9 @@ import { ERPHelpDeskScreen } from './src/features/helpdesk/screens/ERPHelpDeskSc
 import { BakimHelpDeskScreen } from './src/features/helpdesk/screens/BakimHelpDeskScreen';
 import { ChatListScreen } from './src/features/chat/screens/ChatListScreen';
 import { ChatConversationScreen } from './src/features/chat/screens/ChatConversationScreen';
+import { GameScreen } from './src/features/game/screens/GameScreen';
+import { AnketVoteScreen } from './src/features/anket/screens/AnketVoteScreen';
+import { AnketListScreen } from './src/features/anket/screens/AnketListScreen';
 import { AvansMasrafScreen } from './src/features/avansmasraf/screens/AvansMasrafScreen';
 import { AvansMasrafDetailScreen } from './src/features/avansmasraf/screens/AvansMasrafDetailScreen';
 import { BakimYonetimHubScreen } from './src/features/bakim_yonetim/screens/BakimYonetimHubScreen';
@@ -112,7 +116,24 @@ import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
 import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
 import { SasDetailScreen } from './src/features/satsas/screens/SasDetailScreen';
 import { BordroScreen } from './src/features/bordro/screens/BordroScreen';
+import { MalzemeListesiScreen } from './src/features/malzeme/screens/MalzemeListesiScreen';
+import { MalzemeStokHubScreen } from './src/features/malzeme/screens/MalzemeStokHubScreen';
+import { MalzemeGrubuScreen } from './src/features/malzeme/screens/MalzemeGrubuScreen';
+import { MalzemeTedarikciKodlariScreen } from './src/features/malzeme/screens/MalzemeTedarikciKodlariScreen';
+import { FizikselAnalizTanimlariScreen } from './src/features/malzeme/screens/FizikselAnalizTanimlariScreen';
+import { StokDashboardScreen } from './src/features/malzeme/screens/StokDashboardScreen';
+import { StokDurumRaporuScreen } from './src/features/malzeme/screens/StokDurumRaporuScreen';
+import { StokHareketleriScreen } from './src/features/malzeme/screens/StokHareketleriScreen';
+import { StokFisleriScreen } from './src/features/malzeme/screens/StokFisleriScreen';
+import { FizikselAnalizGirisiScreen } from './src/features/malzeme/screens/FizikselAnalizGirisiScreen';
+import { DepoKartlariScreen } from './src/features/malzeme/screens/DepoKartlariScreen';
+import { AdminMalzemeAyarlariScreen } from './src/features/admin/screens/AdminMalzemeAyarlariScreen';
+import { AdminDepoSorumlulariScreen } from './src/features/admin/screens/AdminDepoSorumlulariScreen';
+import { OzellikTanimlariScreen } from './src/features/malzeme/screens/OzellikTanimlariScreen';
+import { VaryantScreen } from './src/features/malzeme/screens/VaryantScreen';
 import { InAppNotification } from './src/components/InAppNotification';
+import { CallProvider } from './src/features/chat/call/CallProvider';
+import { AnimatedSplash } from './src/components/AnimatedSplash';
 import { useNotificationStore } from './src/store/useNotificationStore';
 import { navigationRef, navigateFromNotificationData } from './src/navigation/navigationRef';
 
@@ -199,6 +220,13 @@ async function registerForPushNotificationsAsync() {
 export default function App() {
   const { isAuthenticated, isLoading, restoreSession, logout } = useAuthStore();
   const { colors } = useThemeStore();
+
+  // İlk açılış animasyonunun tam oynaması için minimum gösterim süresi.
+  const [splashMinDone, setSplashMinDone] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setSplashMinDone(true), 2100);
+    return () => clearTimeout(t);
+  }, []);
 
   React.useEffect(() => {
     restoreSession();
@@ -307,16 +335,14 @@ export default function App() {
     };
   }, [isAuthenticated]);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+  if (isLoading || !splashMinDone) {
+    return <AnimatedSplash />;
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <SafeAreaProvider>
+      <NavigationContainer ref={navigationRef}>
+        <CallProvider>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -372,6 +398,21 @@ export default function App() {
             <Stack.Screen
               name="ChatConversation"
               component={ChatConversationScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Game"
+              component={GameScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AnketVote"
+              component={AnketVoteScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AnketList"
+              component={AnketListScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -444,12 +485,29 @@ export default function App() {
             <Stack.Screen name="SatSas" component={SatSasScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SatDetail" component={SatDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SasDetail" component={SasDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="MalzemeStokHub" component={MalzemeStokHubScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="MalzemeListesi" component={MalzemeListesiScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="MalzemeGrubu" component={MalzemeGrubuScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="MalzemeTedarikciKodlari" component={MalzemeTedarikciKodlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="FizikselAnalizTanimlari" component={FizikselAnalizTanimlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StokDashboard" component={StokDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StokDurumRaporu" component={StokDurumRaporuScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StokHareketleri" component={StokHareketleriScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StokFisleri" component={StokFisleriScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="FizikselAnalizGirisi" component={FizikselAnalizGirisiScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="DepoKartlari" component={DepoKartlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminMalzemeAyarlari" component={AdminMalzemeAyarlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminDepoSorumlulari" component={AdminDepoSorumlulariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="OzellikTanimlari" component={OzellikTanimlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Varyant" component={VaryantScreen} options={{ headerShown: false }} />
           </>
         )}
       </Stack.Navigator>
       <StatusBar style={colors.statusBar} />
       <InAppNotification />
-    </NavigationContainer>
+      </CallProvider>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 
 
