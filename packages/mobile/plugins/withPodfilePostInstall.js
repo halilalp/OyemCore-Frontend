@@ -12,9 +12,9 @@ const withPodfilePostInstall = (config) => {
       const patch = `
 # Workaround for Xcode 14+ resource bundle signing error
 post_install do |installer|
-  installer.target_installation_results.pod_target_installation_results.each do |pod_name, target_installation_result|
-    target_installation_result.resource_bundle_targets.each do |resource_bundle_target|
-      resource_bundle_target.build_configurations.each do |config|
+  installer.pods_project.targets.each do |target|
+    if target.respond_to?(:product_type) and target.product_type == "com.apple.product-type.bundle"
+      target.build_configurations.each do |config|
         config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       end
@@ -23,7 +23,7 @@ post_install do |installer|
 end
 `;
 
-      if (!contents.includes("resource_bundle_targets")) {
+      if (!contents.includes("product-type.bundle")) {
         contents += patch;
         fs.writeFileSync(podfilePath, contents, 'utf-8');
         console.log('Successfully appended resource bundle signing workaround to Podfile');
