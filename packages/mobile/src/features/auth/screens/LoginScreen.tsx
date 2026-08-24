@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-  Image, Dimensions, Modal
+  Image, Dimensions, Animated
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { setApiBaseUrl, api } from '@oyemcore/shared';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import AsyncStorage from '../../../store/storage';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -23,13 +24,33 @@ export const LoginScreen = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  // Focus states for input styling
+  const [focusField, setFocusField] = useState<string | null>(null);
+
   // Tenant / Şirket Doğrulama State'leri
   const [companyCode, setCompanyCode] = useState('');
   const [verifiedCompany, setVerifiedCompany] = useState<{ tenantId: string; unvan: string; apiServer?: string } | null>(null);
   const [isTenantsLoading, setIsTenantsLoading] = useState(false);
 
-  const windowWidth = Dimensions.get('window').width;
-  const isTablet = windowWidth > 768;
+  // Animasyon Değerleri
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Başlangıç animasyonu
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 900,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   // Başlangıçta kaydedilmiş verileri yükle
   useEffect(() => {
@@ -39,7 +60,7 @@ export const LoginScreen = () => {
       
       if (savedTenantId) {
         setCompanyCode(savedTenantId);
-        // Sessiz doğrulama yap (kullanıcıya yükleniyor animasyonu göstermeden)
+        // Sessiz doğrulama yap
         await validateAndSetupTenant(savedTenantId, savedApiUrl, true);
       }
     };
@@ -65,7 +86,6 @@ export const LoginScreen = () => {
         setVerifiedCompany(match);
         let targetUrl = centralUrl;
         
-        // Eğer veritabanında apiServer kolonu doluysa otomatik yönlendir
         if (match.apiServer) {
           const isLocal = /^(10\.|192\.168\.|127\.|localhost)/.test(match.apiServer);
           const protocol = isLocal ? 'http' : 'https';
@@ -85,7 +105,7 @@ export const LoginScreen = () => {
       setVerifiedCompany(null);
       if (!silent) {
         console.warn("Tenant load error:", err);
-        setLocalError('Şirket kodu doğrulanamadı. Bağlantıyı veya şirket kodunu kontrol edin.');
+        setLocalError('Şirket kodu doğrulanamadı. Bağlantıyı kontrol edin.');
       }
     } finally {
       if (!silent) setIsTenantsLoading(false);
@@ -167,15 +187,34 @@ export const LoginScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Aurora Arka Plan Küreleri */}
+      <View style={styles.orb1} />
+      <View style={styles.orb2} />
+      <View style={styles.orb3} />
+
+      {/* Cam Görünümü Sağlayan Blur Katmanı */}
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 70 : 100}
+        tint={theme === 'light' ? 'light' : 'dark'}
+        style={StyleSheet.absoluteFillObject}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-          <View style={isTablet ? styles.tabletContainer : styles.phoneContainer}>
+          <Animated.View style={[
+            styles.animatedWrapper,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+          ]}>
+            {/* Tema Butonu (Sağ Üst) */}
+            <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
+              <Ionicons name={theme === 'light' ? 'moon' : 'sunny'} size={18} color={colors.text} />
+            </TouchableOpacity>
 
-            {/* Logo Üst Alanı */}
-            <View style={styles.logoWrapper}>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
               <Image
                 source={require('../../../../assets/oyemcore.png')}
                 style={styles.logo}
@@ -183,64 +222,77 @@ export const LoginScreen = () => {
               />
             </View>
 
-            {/* Form Gövdesi (Ekranı Dikeyde Kaplayan Konteyner) */}
-            <View style={styles.formContainer}>
-              <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
-                <Text style={styles.themeToggleText}>{theme === 'light' ? '🌙 Koyu' : '☀️ Açık'}</Text>
-              </TouchableOpacity>
-
+            {/* Başlık Grubu */}
+            <View style={styles.titleContainer}>
               <Text style={styles.title}>
                 {isResetMode ? 'ŞİFRE SIFIRLAMA' : 'HOŞGELDİNİZ'}
               </Text>
               <Text style={styles.subtitle}>
-                {isResetMode ? 'Sıfırlama bilgilerinizi giriniz.' : 'Hesap bilgilerinizi giriniz.'}
+                {isResetMode ? 'Sıfırlama bilgilerinizi giriniz.' : 'OyemCore sistemine güvenle giriş yapın.'}
               </Text>
+            </View>
 
-              {!!successMessage && (
-                <View style={[styles.alert, styles.successAlert]}>
-                  <Text style={styles.successAlertText}>{successMessage}</Text>
-                </View>
-              )}
-              {!!(localError || error) && (
-                <View style={[styles.alert, styles.errorAlert]}>
-                  <Text style={styles.errorAlertText}>{localError || error}</Text>
-                </View>
-              )}
-
-              {/* Şirket Kodu */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Şirket Kodu</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Örn: isik_tarim"
-                    placeholderTextColor={colors.placeholder}
-                    value={companyCode}
-                    onChangeText={(val) => {
-                      setCompanyCode(val);
-                      if (!val) setVerifiedCompany(null);
-                    }}
-                    onBlur={() => validateAndSetupTenant(companyCode)}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  {isTenantsLoading && (
-                    <ActivityIndicator size="small" color={colors.primary} style={styles.inputIcon} />
-                  )}
-                </View>
+            {/* Hata/Başarı Mesajları */}
+            {!!successMessage && (
+              <View style={[styles.alert, styles.successAlert]}>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
+                <Text style={styles.successAlertText}>{successMessage}</Text>
               </View>
+            )}
+            {!!(localError || error) && (
+              <View style={[styles.alert, styles.errorAlert]}>
+                <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                <Text style={styles.errorAlertText}>{localError || error}</Text>
+              </View>
+            )}
 
-              {/* Şirket Unvanı Doğrulandı Label */}
-              {verifiedCompany && (
-                <View style={styles.verifiedContainer}>
-                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                  <Text style={styles.verifiedText} numberOfLines={1}>{verifiedCompany.unvan}</Text>
-                </View>
-              )}
+            {/* Şirket Kodu */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Şirket Kodu</Text>
+              <View style={[
+                styles.inputWrapper,
+                focusField === 'company' && styles.inputWrapperFocused
+              ]}>
+                <Ionicons name="business" size={18} color={focusField === 'company' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Şirket Kodunu Girin"
+                  placeholderTextColor={colors.placeholder}
+                  value={companyCode}
+                  onChangeText={(val) => {
+                    setCompanyCode(val);
+                    if (!val) setVerifiedCompany(null);
+                  }}
+                  onBlur={() => {
+                    setFocusField(null);
+                    validateAndSetupTenant(companyCode);
+                  }}
+                  onFocus={() => setFocusField('company')}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {isTenantsLoading && (
+                  <ActivityIndicator size="small" color={colors.primary} style={styles.inputSpinner} />
+                )}
+              </View>
+            </View>
 
-              {/* Kullanıcı Adı */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Kullanıcı Adı</Text>
+            {/* Doğrulandı Label */}
+            {verifiedCompany && (
+              <View style={styles.verifiedContainer}>
+                <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                <Text style={styles.verifiedText} numberOfLines={1}>{verifiedCompany.unvan}</Text>
+              </View>
+            )}
+
+            {/* Kullanıcı Adı */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Kullanıcı Adı</Text>
+              <View style={[
+                styles.inputWrapper,
+                focusField === 'username' && styles.inputWrapperFocused
+              ]}>
+                <Ionicons name="person" size={18} color={focusField === 'username' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="kullanici.adi"
@@ -249,13 +301,21 @@ export const LoginScreen = () => {
                   autoCorrect={false}
                   value={username}
                   onChangeText={setUsername}
+                  onFocus={() => setFocusField('username')}
+                  onBlur={() => setFocusField(null)}
                 />
               </View>
+            </View>
 
-              {/* Şifre / SicilNo */}
-              {!isResetMode ? (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Şifre</Text>
+            {/* Şifre / Sicil */}
+            {!isResetMode ? (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Şifre</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  focusField === 'password' && styles.inputWrapperFocused
+                ]}>
+                  <Ionicons name="lock-closed" size={18} color={focusField === 'password' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="••••••••"
@@ -263,197 +323,240 @@ export const LoginScreen = () => {
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
+                    onFocus={() => setFocusField('password')}
+                    onBlur={() => setFocusField(null)}
                   />
                 </View>
-              ) : (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Sicil Numarası</Text>
+              </View>
+            ) : (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Sicil Numarası</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  focusField === 'sicilNo' && styles.inputWrapperFocused
+                ]}>
+                  <Ionicons name="card" size={18} color={focusField === 'sicilNo' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Örn: 12345"
                     placeholderTextColor={colors.placeholder}
                     value={sicilNo}
                     onChangeText={setSicilNo}
+                    onFocus={() => setFocusField('sicilNo')}
+                    onBlur={() => setFocusField(null)}
                   />
                 </View>
-              )}
+              </View>
+            )}
 
-              {/* Şifremi Unuttum */}
-              <TouchableOpacity
-                style={styles.forgotBtn}
-                onPress={() => {
-                  setIsResetMode(!isResetMode);
-                  setLocalError(null);
-                  setSuccessMessage(null);
-                }}
-              >
-                <Text style={styles.forgotBtnText}>
-                  {isResetMode ? 'Giriş Ekranına Dön' : 'Şifremi Unuttum?'}
-                </Text>
-              </TouchableOpacity>
+            {/* Şifremi Unuttum */}
+            <TouchableOpacity
+              style={styles.forgotBtn}
+              onPress={() => {
+                setIsResetMode(!isResetMode);
+                setLocalError(null);
+                setSuccessMessage(null);
+              }}
+            >
+              <Text style={styles.forgotBtnText}>
+                {isResetMode ? 'Giriş Ekranına Dön' : 'Şifremi Unuttum?'}
+              </Text>
+            </TouchableOpacity>
 
-              {/* Giriş Butonu (Düz Renkli Marka Mavisi) */}
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={handleLogin}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
+            {/* Giriş Butonu (Vurucu Glow Efektli Solid Buton) */}
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.85}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <View style={styles.buttonInner}>
                   <Text style={styles.primaryButtonText}>
                     {isResetMode ? 'Şifre Sıfırlama İsteği Gönder' : 'Giriş Yap'}
                   </Text>
-                )}
-              </TouchableOpacity>
+                  <Ionicons name="arrow-forward" size={16} color="#ffffff" style={{ marginLeft: 6 }} />
+                </View>
+              )}
+            </TouchableOpacity>
 
-              {/* Footer */}
-              <View style={styles.footerContainer}>
-                <Text style={styles.footerText}>2026© OyemSoft</Text>
-              </View>
-            </View>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 };
 
+const { width, height } = Dimensions.get('window');
+
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'light' ? '#eff3fa' : '#0c0c14',
+    backgroundColor: theme === 'light' ? '#f4f6fa' : '#07070d',
+    overflow: 'hidden',
+  },
+  orb1: {
+    position: 'absolute',
+    top: -height * 0.1,
+    left: -width * 0.2,
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: (width * 0.8) / 2,
+    backgroundColor: theme === 'light' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.18)',
+  },
+  orb2: {
+    position: 'absolute',
+    top: height * 0.4,
+    right: -width * 0.3,
+    width: width * 0.9,
+    height: width * 0.9,
+    borderRadius: (width * 0.9) / 2,
+    backgroundColor: theme === 'light' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(139, 92, 246, 0.15)',
+  },
+  orb3: {
+    position: 'absolute',
+    bottom: -height * 0.1,
+    left: -width * 0.1,
+    width: width * 0.6,
+    height: width * 0.6,
+    borderRadius: (width * 0.6) / 2,
+    backgroundColor: theme === 'light' ? 'rgba(45, 212, 191, 0.2)' : 'rgba(20, 184, 166, 0.12)',
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'space-between',
-  },
-  tabletContainer: {
-    alignItems: 'center',
     justifyContent: 'center',
-    maxWidth: 600,
+    paddingHorizontal: 28,
+    paddingVertical: 40,
+  },
+  animatedWrapper: {
     width: '100%',
+    maxWidth: 440,
     alignSelf: 'center',
-    flex: 1,
-    paddingTop: 40,
-  },
-  phoneContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: '100%',
-    flex: 1,
-  },
-  logoWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Platform.OS === 'ios' ? 44 : 24,
-    backgroundColor: theme === 'light' ? '#eff3fa' : '#0c0c14',
-  },
-  logo: {
-    width: '75%',
-    height: 90,
-  },
-  formContainer: {
-    flex: 1,
-    width: '100%',
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 24,
-    borderWidth: 1,
-    borderColor: theme === 'light' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: theme === 'light' ? 0.03 : 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    borderRadius: 24,
+    padding: 24,
+    backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.55)' : 'rgba(20, 20, 35, 0.45)',
+    borderWidth: 1.5,
+    borderColor: theme === 'light' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: theme === 'light' ? 0.05 : 0.25,
+    shadowRadius: 20,
+    elevation: 8,
   },
   themeToggle: {
     alignSelf: 'flex-end',
-    paddingVertical: 5,
-    paddingHorizontal: 11,
-    borderRadius: 20,
-    backgroundColor: theme === 'light' ? '#ffffff' : '#1b1b29',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 8,
+    borderColor: theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)',
   },
-  themeToggleText: { fontSize: 11, fontWeight: '700', color: colors.text },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 14,
+  },
+  logo: {
+    width: '80%',
+    height: 70,
+  },
+  titleContainer: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
     color: colors.text,
-    textAlign: 'center',
-    marginBottom: 6,
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
   },
   alert: {
-    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 12,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 18,
     width: '100%',
   },
   successAlert: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
-  successAlertText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  successAlertText: { color: theme === 'light' ? '#065F46' : '#34D399', fontSize: 13, fontWeight: '600', flex: 1 },
   errorAlert: {
-    backgroundColor: colors.dangerLight,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
   },
-  errorAlertText: { color: colors.danger, fontSize: 13, fontWeight: '600' },
-  inputContainer: { marginBottom: 18, width: '100%' },
-  inputWrapper: {
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  inputIcon: {
-    position: 'absolute',
-    right: 14,
+  errorAlertText: { color: theme === 'light' ? '#991B1B' : '#FCA5A5', fontSize: 13, fontWeight: '600', flex: 1 },
+  inputContainer: {
+    marginBottom: 16,
+    width: '100%',
   },
   label: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.textSecondary,
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.05)',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 14,
+    height: 50,
+  },
+  inputWrapperFocused: {
+    borderColor: colors.primary,
+    backgroundColor: theme === 'light' ? '#ffffff' : 'rgba(255,255,255,0.08)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  fieldIcon: {
+    marginRight: 10,
   },
   input: {
-    backgroundColor: theme === 'light' ? '#eff3fa' : '#1b1b29',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    flex: 1,
     color: colors.inputText,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: theme === 'light' ? '#cbd5e1' : '#2a2a3c',
-    minHeight: 48,
-    width: '100%',
+    fontSize: 14.5,
+    height: '100%',
+  },
+  inputSpinner: {
+    position: 'absolute',
+    right: 14,
   },
   verifiedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: theme === 'light' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     marginTop: -8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   verifiedText: {
     color: '#10B981',
@@ -461,22 +564,48 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontWeight: '700',
     flex: 1,
   },
-  forgotBtn: { alignSelf: 'flex-end', marginBottom: 20 },
-  forgotBtnText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: 22,
+  },
+  forgotBtnText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
   primaryButton: {
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    height: 48,
+    borderRadius: 14,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  primaryButtonText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
-  footerContainer: { marginTop: 28, alignItems: 'center' },
-  footerText: { color: colors.placeholder, fontSize: 11, fontWeight: '600' },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  tabletContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    flex: 1,
+  },
+  phoneContainer: {
+    width: '100%',
+    flex: 1,
+    justifyContent: 'center',
+  },
 });
