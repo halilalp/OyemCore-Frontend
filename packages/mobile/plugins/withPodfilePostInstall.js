@@ -10,6 +10,16 @@ const withPodfilePostInstall = (config) => {
       let contents = fs.readFileSync(podfilePath, 'utf-8');
       
       const targetRegex = /post_install\s+do\s+\|installer\|/;
+      
+      console.log('--- withPodfilePostInstall DIAGNOSTICS ---');
+      console.log('Checking Podfile for post_install do |installer| block...');
+      
+      if (!targetRegex.test(contents)) {
+        console.log('ERROR: Could not find post_install do |installer| block. Printing Podfile contents:');
+        console.log(contents);
+        throw new Error('CRITICAL ERROR: withPodfilePostInstall plugin could not find post_install block in Podfile!');
+      }
+
       const replacementString = `post_install do |installer|
   installer.pods_project.targets.each do |target|
     if target.respond_to?(:product_type) and target.product_type == "com.apple.product-type.bundle"
@@ -20,10 +30,12 @@ const withPodfilePostInstall = (config) => {
     end
   end`;
 
-      if (targetRegex.test(contents) && !contents.includes("product-type.bundle")) {
+      if (!contents.includes("product-type.bundle")) {
         contents = contents.replace(targetRegex, replacementString);
         fs.writeFileSync(podfilePath, contents, 'utf-8');
         console.log('Successfully injected resource bundle signing workaround into Podfile');
+      } else {
+        console.log('Workaround already injected, skipping.');
       }
       return config;
     },
