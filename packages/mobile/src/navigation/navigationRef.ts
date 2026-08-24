@@ -11,7 +11,23 @@ export const navigationRef = createNavigationContainerRef();
 // dokunuşu (response listener) hem de ön planda gösterilen uygulama içi banner
 // dokunuşu bu tek fonksiyonu kullanır.
 export function navigateFromNotificationData(data: any, _retry = 0) {
-  if (!data || !data.screen) return;
+  if (!data) return;
+
+  // Görüntülü/sesli arama push bildirimleri: oda URL'si varsa arama ekranını tetikle
+  if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+    if ((globalThis as any).triggerIncomingCallNotification) {
+      (globalThis as any).triggerIncomingCallNotification({
+        callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
+        callerName: data.callerName || data.targetName || 'Arayan',
+        roomUrl: data.roomUrl,
+        callType: data.callType || 'video',
+        callerImage: data.callerImage || '',
+      });
+    }
+    return;
+  }
+
+  if (!data.screen) return;
   // Soğuk başlangıçta bildirime dokunulduğunda navigasyon henüz hazır olmayabilir;
   // hazır olana kadar kısa aralıklarla yeniden dene (en fazla ~5 sn).
   if (!navigationRef.isReady()) {
@@ -22,6 +38,22 @@ export function navigateFromNotificationData(data: any, _retry = 0) {
   }
 
   let targetScreen = data.screen;
+
+  // Sohbet/arama bildirimleri: kayıtlı route "ChatList"/"ChatConversation" (route adı "Chat" yok).
+  // Hedef bilgisi varsa doğrudan konuşmayı aç, yoksa sohbet listesine düş.
+  if (targetScreen === 'Chat' || targetScreen === 'ChatConversation') {
+    if (data.targetSicilNo) {
+      (navigationRef as any).navigate('ChatConversation', {
+        targetSicilNo: data.targetSicilNo,
+        targetName: data.targetName || '',
+        isGroup: data.isGroup === true || data.isGroup === 'true',
+        olusturanSicilNo: data.olusturanSicilNo || '',
+      });
+    } else {
+      (navigationRef as any).navigate('ChatList');
+    }
+    return;
+  }
 
   // SVG desteği olmayan cihaz/emülatör ortamlarında panoları doğrudan işlem sayfalarına yönlendir
   const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');

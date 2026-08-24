@@ -55,6 +55,20 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Dışarıdan (push bildirim tıklamaları) gelen aramaları tetikleyebilmek için global callback kaydet
+  useEffect(() => {
+    (globalThis as any).triggerIncomingCallNotification = (info: IncomingCallInfo) => {
+      if (activeRef.current || outgoingRef.current || incomingRef.current) {
+        chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
+        return;
+      }
+      setIncoming(info);
+    };
+    return () => {
+      (globalThis as any).triggerIncomingCallNotification = undefined;
+    };
+  }, []);
+
   // Oturum açıkken SignalR bağlantısını uygulama genelinde canlı tut (arama her ekrandan gelebilsin).
   useEffect(() => {
     if (!isAuthenticated || !mySicil) return;
