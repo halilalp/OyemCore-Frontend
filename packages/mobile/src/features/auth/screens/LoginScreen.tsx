@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-  Image, Dimensions, Animated
+  Image, Dimensions, Animated, StatusBar
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { setApiBaseUrl, api } from '@oyemcore/shared';
+import { setApiBaseUrl, api, slateTokens } from '@oyemcore/shared';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '../../../store/storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -185,20 +185,17 @@ export const LoginScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Aurora Arka Plan Küreleri */}
-      <View style={styles.orb1} />
-      <View style={styles.orb2} />
-      <View style={styles.orb3} />
+    <LinearGradient
+      colors={[slateTokens.brandPrimaryDk, slateTokens.brandPrimary]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={styles.container}
+    >
+      <StatusBar barStyle="light-content" />
 
-      {/* Cam Görünümü Sağlayan Yarı Saydam Kaplama Katmanı (Stabil, Çökme Yapmaz) */}
-      <LinearGradient
-        colors={theme === 'light' 
-          ? ['rgba(240, 244, 248, 0.45)', 'rgba(224, 231, 255, 0.55)', 'rgba(240, 244, 248, 0.45)'] 
-          : ['rgba(7, 7, 13, 0.75)', 'rgba(19, 17, 36, 0.8)', 'rgba(7, 7, 13, 0.75)']
-        }
-        style={StyleSheet.absoluteFillObject}
-      />
+      {/* Arka Plan Dekoratif Halkalar (Splash ile Aynı) */}
+      <View style={styles.bgCircleLg} pointerEvents="none" />
+      <View style={styles.bgCircleSm} pointerEvents="none" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -211,16 +208,20 @@ export const LoginScreen = () => {
           ]}>
             {/* Tema Butonu (Sağ Üst) */}
             <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
-              <Ionicons name={theme === 'light' ? 'moon' : 'sunny'} size={18} color={colors.text} />
+              <Ionicons name={theme === 'light' ? 'moon-outline' : 'sunny-outline'} size={20} color="#ffffff" />
             </TouchableOpacity>
 
-            {/* Logo */}
+            {/* Logo İkon + Yazı Ayrılmış (Splash ile Aynı) */}
             <View style={styles.logoContainer}>
               <Image
-                source={require('../../../../assets/oyemcore.png')}
+                source={require('../../../../assets/icon.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
+              <Text style={styles.brandText}>
+                <Text style={styles.brandOyem}>Oyem</Text>
+                <Text style={styles.brandCore}>Core</Text>
+              </Text>
             </View>
 
             {/* Başlık Grubu */}
@@ -236,13 +237,13 @@ export const LoginScreen = () => {
             {/* Hata/Başarı Mesajları */}
             {!!successMessage && (
               <View style={[styles.alert, styles.successAlert]}>
-                <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
+                <Ionicons name="checkmark-circle-outline" size={18} color="#34D399" />
                 <Text style={styles.successAlertText}>{successMessage}</Text>
               </View>
             )}
             {!!(localError || error) && (
               <View style={[styles.alert, styles.errorAlert]}>
-                <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                <Ionicons name="alert-circle-outline" size={18} color="#FCA5A5" />
                 <Text style={styles.errorAlertText}>{localError || error}</Text>
               </View>
             )}
@@ -254,11 +255,11 @@ export const LoginScreen = () => {
                 styles.inputWrapper,
                 focusField === 'company' && styles.inputWrapperFocused
               ]}>
-                <Ionicons name="business" size={18} color={focusField === 'company' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
+                <Ionicons name="business" size={18} color={focusField === 'company' ? '#F5A623' : 'rgba(255,255,255,0.5)'} style={styles.fieldIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Şirket Kodunu Girin"
-                  placeholderTextColor={colors.placeholder}
+                  placeholderTextColor="rgba(255,255,255,0.4)"
                   value={companyCode}
                   onChangeText={(val) => {
                     setCompanyCode(val);
@@ -273,7 +274,7 @@ export const LoginScreen = () => {
                   autoCorrect={false}
                 />
                 {isTenantsLoading && (
-                  <ActivityIndicator size="small" color={colors.primary} style={styles.inputSpinner} />
+                  <ActivityIndicator size="small" color="#F5A623" style={styles.inputSpinner} />
                 )}
               </View>
             </View>
@@ -281,7 +282,7 @@ export const LoginScreen = () => {
             {/* Doğrulandı Label */}
             {verifiedCompany && (
               <View style={styles.verifiedContainer}>
-                <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                <Ionicons name="shield-checkmark" size={16} color="#34D399" />
                 <Text style={styles.verifiedText} numberOfLines={1}>{verifiedCompany.unvan}</Text>
               </View>
             )}
@@ -293,11 +294,11 @@ export const LoginScreen = () => {
                 styles.inputWrapper,
                 focusField === 'username' && styles.inputWrapperFocused
               ]}>
-                <Ionicons name="person" size={18} color={focusField === 'username' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
+                <Ionicons name="person" size={18} color={focusField === 'username' ? '#F5A623' : 'rgba(255,255,255,0.5)'} style={styles.fieldIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="kullanici.adi"
-                  placeholderTextColor={colors.placeholder}
+                  placeholderTextColor="rgba(255,255,255,0.4)"
                   autoCapitalize="none"
                   autoCorrect={false}
                   value={username}
@@ -316,11 +317,11 @@ export const LoginScreen = () => {
                   styles.inputWrapper,
                   focusField === 'password' && styles.inputWrapperFocused
                 ]}>
-                  <Ionicons name="lock-closed" size={18} color={focusField === 'password' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
+                  <Ionicons name="lock-closed" size={18} color={focusField === 'password' ? '#F5A623' : 'rgba(255,255,255,0.5)'} style={styles.fieldIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="••••••••"
-                    placeholderTextColor={colors.placeholder}
+                    placeholderTextColor="rgba(255,255,255,0.4)"
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
@@ -336,11 +337,11 @@ export const LoginScreen = () => {
                   styles.inputWrapper,
                   focusField === 'sicilNo' && styles.inputWrapperFocused
                 ]}>
-                  <Ionicons name="card" size={18} color={focusField === 'sicilNo' ? colors.primary : colors.placeholder} style={styles.fieldIcon} />
+                  <Ionicons name="card" size={18} color={focusField === 'sicilNo' ? '#F5A623' : 'rgba(255,255,255,0.5)'} style={styles.fieldIcon} />
                   <TextInput
                     style={styles.input}
                     placeholder="Örn: 12345"
-                    placeholderTextColor={colors.placeholder}
+                    placeholderTextColor="rgba(255,255,255,0.4)"
                     value={sicilNo}
                     onChangeText={setSicilNo}
                     onFocus={() => setFocusField('sicilNo')}
@@ -364,7 +365,7 @@ export const LoginScreen = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* Giriş Butonu (Vurucu Glow Efektli Solid Buton) */}
+            {/* Giriş Yap Butonu */}
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleLogin}
@@ -386,44 +387,32 @@ export const LoginScreen = () => {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </LinearGradient>
   );
 };
-
-const { width, height } = Dimensions.get('window');
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'light' ? '#f4f6fa' : '#07070d',
     overflow: 'hidden',
   },
-  orb1: {
+  bgCircleLg: {
     position: 'absolute',
-    top: -height * 0.1,
-    left: -width * 0.2,
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: (width * 0.8) / 2,
-    backgroundColor: theme === 'light' ? 'rgba(59, 130, 246, 0.22)' : 'rgba(59, 130, 246, 0.14)',
+    width: 460,
+    height: 460,
+    borderRadius: 230,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    top: -140,
+    right: -150,
   },
-  orb2: {
+  bgCircleSm: {
     position: 'absolute',
-    top: height * 0.4,
-    right: -width * 0.3,
-    width: width * 0.9,
-    height: width * 0.9,
-    borderRadius: (width * 0.9) / 2,
-    backgroundColor: theme === 'light' ? 'rgba(168, 85, 247, 0.22)' : 'rgba(139, 92, 246, 0.12)',
-  },
-  orb3: {
-    position: 'absolute',
-    bottom: -height * 0.1,
-    left: -width * 0.1,
-    width: width * 0.6,
-    height: width * 0.6,
-    borderRadius: (width * 0.6) / 2,
-    backgroundColor: theme === 'light' ? 'rgba(45, 212, 191, 0.18)' : 'rgba(20, 184, 166, 0.1)',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    bottom: -80,
+    left: -110,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -433,53 +422,53 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   animatedWrapper: {
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 420,
     alignSelf: 'center',
-    borderRadius: 24,
-    padding: 24,
-    backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.82)' : 'rgba(20, 20, 35, 0.82)',
-    borderWidth: 1.5,
-    borderColor: theme === 'light' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: theme === 'light' ? 0.05 : 0.25,
-    shadowRadius: 20,
-    elevation: 8,
+    paddingVertical: 12,
   },
   themeToggle: {
     alignSelf: 'flex-end',
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 8,
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 14,
+    marginVertical: 16,
   },
   logo: {
-    width: '80%',
-    height: 70,
+    width: 100,
+    height: 100,
+    marginBottom: 10,
   },
+  brandText: {
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  brandOyem: { color: '#ffffff' },
+  brandCore: { color: '#F5A623' },
   titleContainer: {
     marginBottom: 24,
     alignItems: 'center',
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-    color: colors.text,
+    color: '#ffffff',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.65)',
     textAlign: 'center',
   },
   alert: {
@@ -492,25 +481,25 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: '100%',
   },
   successAlert: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(52, 211, 153, 0.3)',
   },
-  successAlertText: { color: theme === 'light' ? '#065F46' : '#34D399', fontSize: 13, fontWeight: '600', flex: 1 },
+  successAlertText: { color: '#34D399', fontSize: 13, fontWeight: '600', flex: 1 },
   errorAlert: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
-  errorAlertText: { color: theme === 'light' ? '#991B1B' : '#FCA5A5', fontSize: 13, fontWeight: '600', flex: 1 },
+  errorAlertText: { color: '#FCA5A5', fontSize: 13, fontWeight: '600', flex: 1 },
   inputContainer: {
     marginBottom: 16,
     width: '100%',
   },
   label: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.75)',
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -518,27 +507,23 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 14,
     height: 50,
   },
   inputWrapperFocused: {
-    borderColor: colors.primary,
-    backgroundColor: theme === 'light' ? '#ffffff' : 'rgba(255,255,255,0.08)',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+    borderColor: '#F5A623',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   fieldIcon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
-    color: colors.inputText,
+    color: '#ffffff',
     fontSize: 14.5,
     height: '100%',
   },
@@ -550,17 +535,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginTop: -8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(52, 211, 153, 0.3)',
   },
   verifiedText: {
-    color: '#10B981',
+    color: '#34D399',
     fontSize: 12.5,
     fontWeight: '700',
     flex: 1,
@@ -570,18 +555,18 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     marginBottom: 22,
   },
   forgotBtnText: {
-    color: colors.primary,
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
     fontWeight: '700',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#3B82F6',
     borderRadius: 14,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    shadowColor: colors.primary,
+    shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
