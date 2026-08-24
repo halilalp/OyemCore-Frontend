@@ -28,7 +28,7 @@ const withPodfilePostInstall = (config) => {
     end
   end`;
 
-      if (contents.includes(targetString) && !contents.includes("CODE_SIGNING_ALLOWED")) {
+      if (contents.includes(targetString) && !contents.includes("resource_bundle_targets")) {
         contents = contents.replace(targetString, replacementString);
         fs.writeFileSync(podfilePath, contents, 'utf-8');
         console.log('Successfully injected CODE_SIGNING_ALLOWED = NO workaround into Podfile');
