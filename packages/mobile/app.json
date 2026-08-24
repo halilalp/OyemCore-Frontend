@@ -61,7 +61,7 @@
       [
         "@daily-co/config-plugin-rn-daily-js",
         {
-          "enableScreenShare": true
+          "enableScreenShare": false
         }
       ],
       [

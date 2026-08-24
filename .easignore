@@ -42,6 +42,7 @@ Thumbs.db
 
 # Temporary / Scratch Files
 *.patch
+!patches/*.patch
 *.patch2
 *.txt
 repair_bakim.js
@@ -49,3 +50,6 @@ apply_bakim_ui_pieces.js
 temp_frontend_diff*
 test.cs
 b/
+
+# Ignore local android native folder to force EAS Build to run prebuild
+packages/mobile/android/
