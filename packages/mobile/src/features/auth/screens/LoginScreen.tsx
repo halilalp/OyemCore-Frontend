@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-  Image, Dimensions, Animated, StatusBar
+  Image, Animated, StatusBar
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -224,15 +224,13 @@ export const LoginScreen = () => {
               </Text>
             </View>
 
-            {/* Başlık Grubu */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>
-                {isResetMode ? 'ŞİFRE SIFIRLAMA' : 'HOŞGELDİNİZ'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {isResetMode ? 'Sıfırlama bilgilerinizi giriniz.' : 'OyemCore sistemine güvenle giriş yapın.'}
-              </Text>
-            </View>
+            {/* Şifre Sıfırlama Modunda Başlık Göster */}
+            {isResetMode && (
+              <View style={styles.titleContainer}>
+                <Text style={styles.title}>ŞİFRE SIFIRLAMA</Text>
+                <Text style={styles.subtitle}>Sıfırlama bilgilerinizi giriniz.</Text>
+              </View>
+            )}
 
             {/* Hata/Başarı Mesajları */}
             {!!successMessage && (
@@ -497,12 +495,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: '100%',
   },
   label: {
-    fontSize: 11.5,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.85)',
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -566,11 +563,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 6 },
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonInner: {
     flexDirection: 'row',
