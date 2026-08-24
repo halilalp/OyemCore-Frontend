@@ -23,8 +23,13 @@
           "NSAllowsLocalNetworking": true
         },
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Demirbaş sayımında barkod/kod okutmak ve taleplerinize belge/fotoğraf eklemek için kamera kullanılır.",
-        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir."
+        "NSCameraUsageDescription": "Demirbaş sayımında barkod/kod okutmak, taleplerinize belge/fotoğraf eklemek ve görüntülü görüşme yapmak için kamera kullanılır.",
+        "NSMicrophoneUsageDescription": "Sohbet üzerinden görüntülü/sesli görüşme yapabilmek için mikrofon kullanılır.",
+        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir.",
+        "UIBackgroundModes": [
+          "voip",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -33,7 +38,10 @@
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": false,
       "permissions": [
-        "VIBRATE"
+        "VIBRATE",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -49,7 +57,29 @@
       }
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@daily-co/config-plugin-rn-daily-js",
+        {
+          "enableScreenShare": true
+        }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Demirbaş sayımında barkod/kod okutmak, taleplerinize belge/fotoğraf eklemek ve görüntülü görüşme yapmak için kamera kullanılır.",
+          "microphonePermission": "Sohbet üzerinden görüntülü/sesli görüşme yapabilmek için mikrofon kullanılır."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ],
+      "./plugins/withPodfilePostInstall"
     ]
   }
 }
