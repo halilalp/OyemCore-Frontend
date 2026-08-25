@@ -18,6 +18,8 @@
     "patch-package": "^8.0.1"
   },
   "overrides": {
-    "expo-build-properties": "~56.0.26"
+    "expo-build-properties": "~56.0.26",
+    "expo-modules-core": "~56.0.24",
+    "expo-av": "^16.0.8"
   }
 }
