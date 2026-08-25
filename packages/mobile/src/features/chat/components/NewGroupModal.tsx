@@ -60,9 +60,10 @@ export const NewGroupModal: React.FC<Props> = ({ visible, onClose, onCreated, ed
         ]);
       } else {
         const res = await api.createChatGroup(groupName.trim(), members);
-        if (res?.GroupCode) {
+        const code = (res as any)?.GroupCode ?? (res as any)?.groupCode;
+        if (code) {
           Alert.alert('Başarılı', 'Grup başarıyla oluşturuldu.', [
-            { text: 'Tamam', onPress: () => onCreated(res.GroupCode, groupName.trim()) }
+            { text: 'Tamam', onPress: () => onCreated(code, groupName.trim()) }
           ]);
         } else {
           Alert.alert('Hata', 'Grup oluşturulamadı.');

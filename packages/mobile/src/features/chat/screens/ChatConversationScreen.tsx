@@ -79,6 +79,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);       // başlık "..." menüsü (1:1 ve grup)
   const [groupClosed, setGroupClosed] = useState(false); // grup kurucu tarafından kapatıldı mı
+  const [headerHeight, setHeaderHeight] = useState(90);
   const listRef = useRef<FlatList>(null);
 
   const belongsHere = useCallback((m: ChatMessage): boolean => {
@@ -414,6 +415,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: Math.max(insets.top, StatusBar.currentHeight || 12) + 8 }]}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
         <View style={styles.bgCircleLarge} pointerEvents="none" />
         <View style={styles.bgCircleSmall} pointerEvents="none" />
@@ -448,7 +450,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         </TouchableOpacity>
       </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
         ) : (
