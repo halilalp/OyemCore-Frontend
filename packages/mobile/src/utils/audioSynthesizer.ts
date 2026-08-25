@@ -1,8 +1,8 @@
-let Audio: any = null;
+let createAudioPlayer: any = null;
 try {
-  Audio = require('expo-av').Audio;
+  createAudioPlayer = require('expo-audio').createAudioPlayer;
 } catch (e) {
-  console.warn('expo-av native module not available, audio disabled:', e);
+  console.warn('expo-audio native module not available, audio disabled:', e);
 }
 
 let ringSound: any = null;
@@ -159,20 +159,18 @@ export function generateRingtoneWavBase64(): string {
 
 // Zil sesini çal
 export async function startRingtone() {
-  if (!Audio) return;
+  if (!createAudioPlayer) return;
   try {
     if (ringSound) {
-      try { await ringSound.stopAsync(); } catch (_) {}
-      try { await ringSound.unloadAsync(); } catch (_) {}
+      try { ringSound.stop(); } catch (_) {}
       ringSound = null;
     }
     const base64 = generateRingtoneWavBase64();
     const uri = `data:audio/wav;base64,${base64}`;
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true, isLooping: true, volume: 0.8 }
-    );
-    ringSound = sound;
+    ringSound = createAudioPlayer({ uri });
+    ringSound.volume = 0.8;
+    ringSound.loop = true;
+    ringSound.play();
   } catch (e) {
     console.warn('Error starting ringtone:', e);
   }
@@ -180,11 +178,10 @@ export async function startRingtone() {
 
 // Zil sesini durdur
 export async function stopRingtone() {
-  if (!Audio) return;
+  if (!createAudioPlayer) return;
   try {
     if (ringSound) {
-      try { await ringSound.stopAsync(); } catch (_) {}
-      try { await ringSound.unloadAsync(); } catch (_) {}
+      try { ringSound.stop(); } catch (_) {}
       ringSound = null;
     }
   } catch (e) {
@@ -194,20 +191,17 @@ export async function stopRingtone() {
 
 // Mesaj chime sesini çal
 export async function playNotificationChime() {
-  if (!Audio) return;
+  if (!createAudioPlayer) return;
   try {
     if (chimeSound) {
-      try { await chimeSound.stopAsync(); } catch (_) {}
-      try { await chimeSound.unloadAsync(); } catch (_) {}
+      try { chimeSound.stop(); } catch (_) {}
       chimeSound = null;
     }
     const base64 = generateNotificationWavBase64();
     const uri = `data:audio/wav;base64,${base64}`;
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true, isLooping: false, volume: 0.5 }
-    );
-    chimeSound = sound;
+    chimeSound = createAudioPlayer({ uri });
+    chimeSound.volume = 0.5;
+    chimeSound.play();
   } catch (e) {
     console.warn('Error playing chime:', e);
   }

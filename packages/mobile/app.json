@@ -92,7 +92,8 @@
           }
         }
       ],
-      "./plugins/withPodfilePostInstall"
+      "./plugins/withPodfilePostInstall",
+      "expo-audio"
     ],
     "owner": "halilalp"
   }
