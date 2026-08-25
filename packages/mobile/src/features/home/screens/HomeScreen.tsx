@@ -28,6 +28,8 @@ import { BottomNavBar, BottomNavBarHandle } from '../../../components/BottomNavB
 import { LogoLoader } from '../../../components/LogoLoader';
 import EventMonthCalendar from '../../../components/EventMonthCalendar';
 import { getEventDayRange } from '../../../utils/calendarEvents';
+import { setAppIconBadge } from '../../../utils/badge';
+import { buildMalzemeStokMobilePages } from '../../malzeme/malzemeStokMenu';
 
 
 const stripHtml = (html: string | null | undefined): string => {
@@ -115,6 +117,7 @@ export const HomeScreen = () => {
   const [zimmetSayisi, setZimmetSayisi] = useState<number | null>(null);
   // Panolar bölümü açık/kapalı (varsayılan kapalı)
   const [panolarAcik, setPanolarAcik] = useState(false);
+  const [activeSurveys, setActiveSurveys] = useState<any[]>([]);
   // Header (gradient) yüksekliği içeriğe göre ölçülür → gövde ovalinde boşluk kalmaz
   const [headerH, setHeaderH] = useState(0);
 
@@ -148,21 +151,13 @@ export const HomeScreen = () => {
         api.getUserActions()
           .then(r => {
             setNotifications(r?.details || []);
-            // Uygulama ikonu rozeti = aksiyon bekleyen sayısı (iOS + OEM Android).
-            try {
-              const dev = require('expo-device');
-              const Constants = require('expo-constants').default || require('expo-constants');
-              const isExpoGo = Constants.appOwnership === 'expo';
-              if (dev.isDevice && !isExpoGo) {
-                require('expo-notifications').setBadgeCountAsync(r?.totalCount ?? (r?.details?.length || 0));
-              }
-            } catch (_) {}
           })
           .catch(() => setNotifications([]));
 
-        // Yenilenen bildirim merkezi okunmamış sayısı (zil rozeti).
+        // Bildirim merkezi okunmamış sayısı (zil rozeti). Uygulama ikonu rozeti de
+        // (kullanıcı isteği) aynı kaynağı kullanır — ikon ile uygulama içi tutarlı olsun.
         api.getUnreadNotificationCount()
-          .then(c => setBildirimUnread(c))
+          .then(c => { setBildirimUnread(c); setAppIconBadge(c); })
           .catch(() => setBildirimUnread(0));
 
         // Chat okunmamış mesaj sayısı (sohbet ikonu rozeti).
@@ -265,6 +260,11 @@ export const HomeScreen = () => {
       api.getUnreadNotificationCount()
         .then(c => setBildirimUnread(c))
         .catch(() => setBildirimUnread(0));
+
+      // Aktif + katılınmamış anketler (varsa ana ekranda banner gösterilir).
+      api.getActiveSurveys()
+        .then(list => setActiveSurveys(Array.isArray(list) ? list : []))
+        .catch(() => setActiveSurveys([]));
     }
   }, [isFocused]);
 
@@ -292,9 +292,17 @@ export const HomeScreen = () => {
   );
 
   // Case-insensitive & mobilGoster-agnostic yetki kontrolü
-  const isExecutive = menuItems.some(m => 
+  const isExecutive = menuItems.some(m =>
     m.mobilUrl && m.mobilUrl.toLowerCase() === 'yonetimkontrolmerkezi'
   );
+
+  // Malzeme & Stok modulu (mobil gecis) — web menusunde mobilGoster kapali oldugu
+  // icin allowedMobilUrls'e girmez; yetkiyi ham menuItems'ten proje/sayfa adina gore denetliyoruz.
+  const hasMalzemeStok = menuItems.some(m => {
+    const p = (m.projeAdi || '').toLowerCase();
+    const s = (m.sayfaAdi || '').toLowerCase();
+    return p.includes('malzeme') || p.includes('stok') || s.includes('malzeme') || s.includes('stok');
+  });
 
   const allDashboards = [
     ...(isExecutive ? [{ title: 'Yönetim Kontrol Merkezi', icon: 'business-outline', color: '#7C3AED', bg: '#f3e8ff', screen: 'PatronDashboard', params: undefined, requires: [] }] : []),
@@ -307,12 +315,25 @@ export const HomeScreen = () => {
     { title: 'İK / İzin', icon: 'people-outline', color: '#14b8a6', bg: '#f0fdfa', screen: 'IzinDashboard', params: undefined, requires: ['Izin'] },
     { title: 'Demirbaş', icon: 'cube-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ZimmetDashboard', params: undefined, requires: ['DemirbasYonetim', 'Zimmetlerim'] },
     { title: 'Tedarikçi', icon: 'clipboard-outline', color: '#ef4444', bg: '#fef2f2', screen: 'TedarikciDashboard', params: undefined, requires: ['Tedarikci'] },
+    { title: 'Malzeme & Stok', icon: 'cube-outline', color: '#0d9488', bg: '#f0fdfa', screen: 'MalzemeStokHub', params: undefined, requires: [] },
+    { title: 'Kelime Oyunu', icon: 'game-controller-outline', color: '#a855f7', bg: '#faf5ff', screen: 'Game', params: undefined, requires: [] },
+    { title: 'Anket', icon: 'clipboard-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'AnketList', params: undefined, requires: [] },
   ];
   // Avans & Masraf artık panolarda değil; Yetkili Projeler menüsünde (BottomNavBar).
-  const allowedDashboards = allDashboards.filter(d => 
-    d.screen === 'PatronDashboard' ? isExecutive : d.requires.some(r => allowedMobilUrls.has(r))
+  const allowedDashboards = allDashboards.filter(d =>
+    d.screen === 'PatronDashboard' ? isExecutive
+      : d.screen === 'MalzemeStokHub' ? hasMalzemeStok
+      : d.screen === 'Game' ? true   // Kelime Oyunu herkese açık
+      : d.screen === 'AnketList' ? true   // Anket herkese açık
+      : d.requires.some(r => allowedMobilUrls.has(r))
   );
   
+  // Malzeme Yönetimi ve Stok & Depo Yönetimi — referanstaki gibi İKİ AYRI PROJE,
+  // her biri kendi alt sayfalarıyla. DB menüsünde mobilGoster kapalı olduğu için statik eklenir.
+  if (hasMalzemeStok && !mobilePages.some(m => m.projeAdi === 'Malzeme Yönetimi' || m.projeAdi === 'Stok & Depo Yönetimi')) {
+    buildMalzemeStokMobilePages().forEach(p => mobilePages.push(p as any));
+  }
+
   // Modulleri Projeye gore grupla (Modal icin)
   const groupedModules = mobilePages.reduce((acc, m) => {
     const proj = m.projeAdi || 'Diğer';
@@ -507,6 +528,26 @@ export const HomeScreen = () => {
               <View style={styles.patronBannerRight}>
                 <Ionicons name="chevron-forward" size={18} color="#fff" />
               </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Aktif Anket — katılınmamış aktif anket varsa oylama daveti göster */}
+          {activeSurveys.length > 0 && (
+            <TouchableOpacity
+              style={styles.surveyBanner}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('AnketVote', { anketID: activeSurveys[0].anketID ?? activeSurveys[0].AnketID, konu: activeSurveys[0].konu ?? activeSurveys[0].Konu })}
+            >
+              <View style={styles.surveyIcon}>
+                <Ionicons name="clipboard" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.surveyTitle} numberOfLines={1}>Aktif Anket: {activeSurveys[0].konu ?? activeSurveys[0].Konu}</Text>
+                <Text style={styles.surveySub} numberOfLines={1}>
+                  Görüşünüzü paylaşın · Oylamak için dokunun{activeSurveys.length > 1 ? `  (+${activeSurveys.length - 1})` : ''}
+                </Text>
+              </View>
+              <View style={styles.surveyCta}><Text style={styles.surveyCtaText}>Oyla</Text></View>
             </TouchableOpacity>
           )}
 
@@ -1311,6 +1352,25 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       shadowOpacity: 0.25,
       shadowRadius: 6,
     },
+    surveyBanner: {
+      backgroundColor: '#0EA5E9',
+      borderRadius: 16,
+      padding: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 16,
+      elevation: 3,
+      shadowColor: '#0EA5E9',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+    },
+    surveyIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+    surveyTitle: { fontSize: 14.5, fontWeight: '800', color: '#fff' },
+    surveySub: { fontSize: 11.5, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+    surveyCta: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+    surveyCtaText: { fontSize: 13, fontWeight: '800', color: '#0369A1' },
     patronBannerLeft: {
       flex: 1,
       paddingRight: 8,

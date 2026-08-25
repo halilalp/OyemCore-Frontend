@@ -150,6 +150,42 @@ export const api = {
     const response = await apiClient.get<{ success: boolean; totalUnread: number }>('/Chat/unread-count');
     return response.data?.totalUnread ?? 0;
   },
+  // Sohbeti temizle (tek taraflı / soft-delete). referans: WebServiceChat.ClearConversation
+  clearChatConversation: async (targetSicilNo: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>('/Chat/clear-conversation', { targetSicilNo });
+    return response.data;
+  },
+  // Grubu sil / kapat (kurucu kapatır, üye kendi listesinden siler). referans: WebServiceChat.DeleteGroup
+  deleteChatGroup: async (groupCode: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.delete<{ success: boolean }>(`/Chat/group/${groupCode}`);
+    return response.data;
+  },
+  // ── Kelime Oyunu (referans: WebServiceGames — oyna + liderlik) ──
+  getGameState: async (): Promise<any> => {
+    const response = await apiClient.get<any>('/Games/state');
+    return response.data;
+  },
+  submitGameGuess: async (guess: string): Promise<any> => {
+    const response = await apiClient.post<any>('/Games/guess', { guess });
+    return response.data;
+  },
+  getGameLeaderboards: async (): Promise<any> => {
+    const response = await apiClient.get<any>('/Games/leaderboards');
+    return response.data;
+  },
+  // ── Anket (referans: WebServiceAnket — sadece oylama) ──
+  getActiveSurveys: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Anket/active');
+    return response.data || [];
+  },
+  getSurveyDetail: async (anketID: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/Anket/${anketID}/detail`);
+    return response.data;
+  },
+  submitSurveyVote: async (anketID: number, answers: { soruID: number; secenekID?: number | null; cevap?: string }[]): Promise<any> => {
+    const response = await apiClient.post<any>('/Anket/vote', { anketID, answers });
+    return response.data;
+  },
   // SignalR hub URL (baseUrl'den /api atılıp /hubs/chat eklenir).
   getChatHubUrl: (sicilNo: string): string => {
     const root = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -'/api'.length) : apiBaseUrl;
@@ -1263,5 +1299,235 @@ export const api = {
   saveBordroAction: async (bordroID: number, aksiyon: 'OKUDU' | 'ONAYLADI'): Promise<any> => {
     const response = await apiClient.post(`/bordro/action?bordroID=${bordroID}&aksiyon=${aksiyon}`);
     return response.data;
+  },
+
+  // ===================== MALZEME & STOK YONETIMI (mobil gecis) =====================
+  // Referans: webportal2026 WebServiceMalzeme (.asmx). Mobil OyemCore-Backend MalzemeController.
+  getMalzemeList: async (params: {
+    hizli?: string;
+    durum?: string;
+    grupKodu?: string;
+    stokTakip?: string;
+    urunTipKodu?: string;
+    skuDahil?: boolean;
+    orderBy?: string;
+    orderDir?: string;
+    PageIndex?: number;
+    PageSize?: number;
+  }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Malzeme/list', { params });
+    return response.data;
+  },
+  // QR / barkod ile malzeme bulma (MalzemeKodu veya Barkod)
+  findMalzemeByCode: async (code: string): Promise<{ found: boolean, malzeme?: any }> => {
+    const response = await apiClient.get('/Malzeme/find', { params: { code } });
+    return response.data as any;
+  },
+  getMalzemeDropdowns: async (): Promise<{ Bolumler: any[], Gruplar: any[], Birimler: any[], Tipler: any[], Koleksiyonlar: any[] }> => {
+    const response = await apiClient.get('/Malzeme/dropdowns');
+    return response.data as any;
+  },
+  // MaterialSettings (dinamik alan görünürlük/zorunluluk + Lot terimi + Fiziksel Analiz)
+  saveMalzeme: async (payload: {
+    MalzemeKodu?: string;
+    MalzemeAdi: string;
+    MalzemeGrupKodu?: string;
+    BirimKodu?: string;
+    MalzemeTipKodu?: string;
+    Marka?: string;
+    Model?: string;
+    Barkod?: string;
+    KoleksiyonKodu?: string;
+    Ek1?: string;
+    Ek2?: string;
+    Ek3?: string;
+    Ek4?: string;
+    StokTakip?: boolean;
+    LotTakibi?: boolean;
+    SatinAlinabilir?: boolean;
+    Satilabilir?: boolean;
+    Uretilebilir?: boolean;
+    Aktif?: boolean;
+  }): Promise<{ success: boolean, message: string, malzemeKodu: string }> => {
+    const response = await apiClient.post('/Malzeme/save', payload);
+    return response.data as any;
+  },
+  deleteMalzeme: async (kodu: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Malzeme/${encodeURIComponent(kodu)}`);
+    return response.data as any;
+  },
+
+  // Malzeme Grubu
+  getMalzemeGruplar: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Malzeme/gruplar');
+    return response.data;
+  },
+  saveMalzemeGrup: async (payload: { Kodu: string; Adi: string; UstGrupKodu?: string; Aktif?: boolean }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Malzeme/gruplar', payload);
+    return response.data as any;
+  },
+
+  // Malzeme Tedarikci Kodlari
+  getMalzemeTedarikciKodlari: async (malzemeKodu: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Malzeme/${encodeURIComponent(malzemeKodu)}/tedarikci-kodlari`);
+    return response.data;
+  },
+  saveMalzemeTedarikciKodu: async (payload: { MalzemeKodu: string; TedarikciKodu: string; TedarikciStokKodu: string }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Malzeme/tedarikci-kodu', payload);
+    return response.data as any;
+  },
+  deleteMalzemeTedarikciKodu: async (id: number): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Malzeme/tedarikci-kodu/${id}`);
+    return response.data as any;
+  },
+
+  // Fiziksel Analiz Tanimlari
+  getFizikselAnalizTanimlari: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Malzeme/fiziksel-analiz');
+    return response.data;
+  },
+  saveFizikselAnalizTanim: async (payload: { ID?: number; AnalizAdi: string; VeriTipi: string; Aktif?: boolean }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Malzeme/fiziksel-analiz', payload);
+    return response.data as any;
+  },
+  deleteFizikselAnalizTanim: async (id: number): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Malzeme/fiziksel-analiz/${id}`);
+    return response.data as any;
+  },
+
+  // ===================== OZELLIK (ATTRIBUTE) + SKU / VARYANT =====================
+  getOzellikTanimlar: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Malzeme/ozellik-tanimlar');
+    return response.data;
+  },
+  saveOzellikTanim: async (payload: { ID?: number; Tanim: string; Kod?: string }): Promise<{ success: boolean, message: string, id: number }> => {
+    const response = await apiClient.post('/Malzeme/ozellik-tanim', payload);
+    return response.data as any;
+  },
+  deleteOzellikTanim: async (id: number): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Malzeme/ozellik-tanim/${id}`);
+    return response.data as any;
+  },
+  getOzellikDegerler: async (ozellikID: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Malzeme/ozellik/${ozellikID}/degerler`);
+    return response.data;
+  },
+  saveOzellikDeger: async (payload: { ID?: number; OzellikID: number; Deger: string; Kod?: string; Sira?: number }): Promise<{ success: boolean, message: string, id: number }> => {
+    const response = await apiClient.post('/Malzeme/ozellik-deger', payload);
+    return response.data as any;
+  },
+  deleteOzellikDeger: async (id: number): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Malzeme/ozellik-deger/${id}`);
+    return response.data as any;
+  },
+  getMalzemeOzellikler: async (malzemeKodu: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Malzeme/${encodeURIComponent(malzemeKodu)}/ozellikler`);
+    return response.data;
+  },
+  addMalzemeOzellik: async (payload: { MalzemeKodu: string; OzellikID: number; Zorunlu?: boolean; Sira?: number }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Malzeme/ozellik', payload);
+    return response.data as any;
+  },
+  getMalzemeVaryantlar: async (parentKodu: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Malzeme/${encodeURIComponent(parentKodu)}/varyantlar`);
+    return response.data;
+  },
+  createSku: async (payload: { ParentKodu: string; Secimler: { OzellikID: number; DegerID: number }[] }): Promise<{ success: boolean, message: string, skuKodu: string }> => {
+    const response = await apiClient.post('/Malzeme/sku', payload);
+    return response.data as any;
+  },
+
+  // ===================== STOK YONETIMI (mobil gecis - Faz 2) =====================
+  // Referans: webportal2026 WebServiceStok (.asmx). Mobil OyemCore-Backend Stok/Depo Controller.
+  // Depo kartlari
+  getDepoList: async (sadeceAktif = false): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Depo/list', { params: { sadeceAktif } });
+    return response.data;
+  },
+  saveDepo: async (payload: { Kodu: string; Adi: string; Tipi?: string; Aktif?: boolean }): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Depo/save', payload);
+    return response.data as any;
+  },
+  deleteDepo: async (kodu: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Depo/${encodeURIComponent(kodu)}`);
+    return response.data as any;
+  },
+
+  // Stok durum raporu
+  getStokDurum: async (params: { depoKodu?: string; arama?: string; page?: number; count?: number }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Stok/durum', { params });
+    return response.data;
+  },
+  // Stok hareketleri
+  getStokHareketler: async (params: { f_malzemekodu?: string; f_depokodu?: string; f_tip?: string; f_status?: string; page?: number; count?: number }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Stok/hareketler', { params });
+    return response.data;
+  },
+  getStokHareketTipleri: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Stok/hareket-tipleri');
+    return response.data;
+  },
+
+  // Stok fisleri
+  getStokFisler: async (params: { depoKodu?: string; tip?: string; arama?: string; PageIndex?: number; PageSize?: number }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Stok/fisler', { params });
+    return response.data;
+  },
+  getStokFis: async (fisNo: string): Promise<any> => {
+    const response = await apiClient.get(`/Stok/fis/${encodeURIComponent(fisNo)}`);
+    return response.data;
+  },
+  saveStokFis: async (payload: {
+    Tip: string; DepoKodu: string; HedefDepoKodu?: string; Aciklama?: string; BelgeNo?: string; CariKodu?: string;
+    Kalemler: { MalzemeKodu: string; Miktar: number; Aciklama?: string; LotNo?: string }[];
+  }): Promise<{ success: boolean, message: string, fisNo: string }> => {
+    const response = await apiClient.post('/Stok/fis', payload);
+    return response.data as any;
+  },
+  // Cikis/lot-takipli fiste kalan bakiyeli lot secimi
+  getStokLotAra: async (params: { malzemeKodu: string; depoKodu?: string; q?: string }): Promise<{ success: boolean, data: any[] }> => {
+    const response = await apiClient.get('/Stok/lot-ara', { params });
+    return response.data as any;
+  },
+
+  // Stok dashboard
+  getStokDashboard: async (): Promise<any> => {
+    const response = await apiClient.get('/Stok/dashboard');
+    return response.data;
+  },
+
+  // Fiziksel analiz girisi (lot)
+  getStokLotlar: async (params: { arama?: string; analizDurumu?: string; page?: number; size?: number }): Promise<{ totalCount: number, data: any[] }> => {
+    const response = await apiClient.get<{ totalCount: number, data: any[] }>('/Stok/lotlar', { params });
+    return response.data;
+  },
+  getLotAnaliz: async (lotNo: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Stok/lot/${encodeURIComponent(lotNo)}/analiz`);
+    return response.data;
+  },
+  saveLotAnaliz: async (lotNo: string, analizler: { AnalizID: number; Deger: string }[]): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post(`/Stok/lot/${encodeURIComponent(lotNo)}/analiz`, analizler);
+    return response.data as any;
+  },
+
+  // ===================== MALZEME & STOK ADMIN (mobil gecis - Faz 3) =====================
+  // Malzeme Yonetimi Ayarlari (tb_SistemAyarlari / MaterialSettings)
+  getMalzemeSettings: async (): Promise<{ success: boolean, settings: any }> => {
+    const response = await apiClient.get('/Malzeme/settings');
+    return response.data as any;
+  },
+  saveMalzemeSettings: async (settings: any): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Malzeme/settings', settings);
+    return response.data as any;
+  },
+
+  // Depo Sorumlulari (kullanici <-> depo)
+  getDepoSorumlulari: async (kullaniciID: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Admin/depo-sorumlulari', { params: { kullaniciID } });
+    return response.data;
+  },
+  saveDepoSorumlulari: async (kullaniciID: number, depoKodlari: string[]): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Admin/depo-sorumlulari', { KullaniciID: kullaniciID, DepoKodlari: depoKodlari });
+    return response.data as any;
   }
 };

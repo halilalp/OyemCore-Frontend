@@ -20,10 +20,17 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+
+// Aktif ikon marka mavisi, pasif gri. Bar düz beyaz + yumuşak gölge ile çizilir;
+// native buzlu-cam (expo-blur) bağımlılığı KALDIRILDI → her ortamda (emülatör /
+// Expo Go / build) aynı görünür ve BlurView'ün New Architecture çökme riski yok.
+const NAV_ICON_ACTIVE = slateTokens.brandPrimary;
+const NAV_ICON_MUTED = slateTokens.textMuted;
 import { useNavigation } from '@react-navigation/native';
 import { useThemeStore } from '../store/useThemeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { slateTokens, api } from '@oyemcore/shared';
+import { buildMalzemeStokMobilePages } from '../features/malzeme/malzemeStokMenu';
 
 // ─── Tip Tanımları ────────────────────────────────────────────────────────────
 
@@ -34,11 +41,15 @@ type ScreenName =
 
 interface BottomNavBarProps {
   currentScreen?: ScreenName;
+  // Ortadaki FAB'ı modüle özel bir aksiyona bağlar. Verilirse "+" yerine bu ikon
+  // gösterilir ve basınca hızlı-kayıt menüsü yerine bu onPress çalışır.
   customAction?: {
     icon: string;
     label: string;
     onPress: () => void;
   };
+  // Ortadaki FAB'ı tamamen gizler (ör. salt-okunur detay ekranlarında "+" istenmez).
+  showFab?: boolean;
 }
 
 // Dışarıdan (ör. anasayfadaki "Tümünü Gör") projeler menüsünü açmak için.
@@ -57,6 +68,9 @@ const REGISTERED_SCREENS = new Set<string>([
   'Profil', 'Zimmetlerim', 'DemirbasYonetim', 'DemirbasSayim', 'Tedarikci', 'AdminAyarlar',
   'AdminKullanici', 'AdminHelpDesk', 'AdminHiyerarsi', 'AdminLogs', 'AdminTarihce', 'Calendar',
   'Training', 'Announcement', 'SatSas', 'SatDetail', 'SasDetail', 'Bordro',
+  'MalzemeStokHub', 'MalzemeListesi', 'MalzemeGrubu', 'MalzemeTedarikciKodlari', 'FizikselAnalizTanimlari',
+  'StokDashboard', 'StokDurumRaporu', 'StokHareketleri', 'StokFisleri', 'FizikselAnalizGirisi', 'DepoKartlari',
+  'AdminMalzemeAyarlari', 'AdminDepoSorumlulari', 'OzellikTanimlari', 'Varyant', 'Game',
 ]);
 
 // DB'deki eski/farklı MobilUrl değerlerini geçerli rotaya çevir (#60'ta 'Bakim'
@@ -88,25 +102,33 @@ const resolveBakimRoute = (s: string): { screen: string; params?: any } | null =
 };
 
 // FAB'ın iki yanındaki özelleştirilebilir kısayol butonları — kullanıcı uzun basıp seçer.
-const NAV_SLOT_OPTIONS: { key: string; label: string; icon: any; action?: 'projects' }[] = [
-  { key: 'Home', label: 'Ana Sayfa', icon: 'home-outline' },
-  { key: 'Projeler', label: 'Yetkili Projeler', icon: 'grid-outline', action: 'projects' },
+// `label` seçici menüde (uzun ad); `short` bottom nav'da ikon altında gösterilir
+// (dar pill'e sığsın, kesilmesin). short yoksa label kullanılır.
+// `navScreen`/`navParams`: key'den farklı bir ekrana/parametreyle gitmek için (ör. hub + bölüm).
+const NAV_SLOT_OPTIONS: { key: string; label: string; short?: string; icon: any; action?: 'projects'; navScreen?: string; navParams?: any }[] = [
+  { key: 'Home', label: 'Ana Sayfa', short: 'Anasayfa', icon: 'home-outline' },
+  { key: 'Projeler', label: 'Yetkili Projeler', short: 'Projeler', icon: 'grid-outline', action: 'projects' },
   { key: 'Calendar', label: 'Takvim', icon: 'calendar-outline' },
   { key: 'ChatList', label: 'Sohbet', icon: 'chatbubbles-outline' },
   // Panolar (params'sız dashboard ekranları)
-  { key: 'TicketDashboard', label: 'Ticket Panosu', icon: 'albums-outline' },
-  { key: 'IzinDashboard', label: 'İzin Panosu', icon: 'people-outline' },
-  { key: 'BakimDashboard', label: 'Bakım Panosu', icon: 'bar-chart-outline' },
-  { key: 'ZimmetDashboard', label: 'Demirbaş Panosu', icon: 'cube-outline' },
-  { key: 'TedarikciDashboard', label: 'Tedarikçi Panosu', icon: 'clipboard-outline' },
+  { key: 'TicketDashboard', label: 'Ticket Panosu', short: 'Ticket', icon: 'albums-outline' },
+  { key: 'IzinDashboard', label: 'İzin Panosu', short: 'İzin', icon: 'people-outline' },
+  { key: 'BakimDashboard', label: 'Bakım Panosu', short: 'Bakım', icon: 'bar-chart-outline' },
+  { key: 'ZimmetDashboard', label: 'Demirbaş Panosu', short: 'Demirbaş', icon: 'cube-outline' },
+  { key: 'TedarikciDashboard', label: 'Tedarikçi Panosu', short: 'Tedarikçi', icon: 'clipboard-outline' },
   // Modüller
   { key: 'Ticket', label: 'Ticket', icon: 'ticket-outline' },
   { key: 'Izin', label: 'İzin', icon: 'airplane-outline' },
-  { key: 'AvansMasraf', label: 'Avans/Masraf', icon: 'wallet-outline' },
+  { key: 'AvansMasraf', label: 'Avans/Masraf', short: 'Avans', icon: 'wallet-outline' },
   { key: 'Bordro', label: 'Bordro', icon: 'document-text-outline' },
+  { key: 'MalzemeHub', label: 'Malzeme İşlemleri', short: 'Malzeme', icon: 'cube-outline', navScreen: 'MalzemeStokHub', navParams: { section: 'malzeme' } },
+  { key: 'StokHub', label: 'Stok İşlemleri', short: 'Stok', icon: 'file-tray-stacked-outline', navScreen: 'MalzemeStokHub', navParams: { section: 'stok' } },
+  { key: 'Game', label: 'Kelime Oyunu', short: 'Oyun', icon: 'game-controller-outline' },
+  { key: 'Profil', label: 'Ayarlar', short: 'Ayarlar', icon: 'settings-outline' },
 ];
 const NAV_SLOT_LEFT_KEY = 'navSlotLeft';
 const NAV_SLOT_RIGHT_KEY = 'navSlotRight';
+const NAV_SLOT_FAR_RIGHT_KEY = 'navSlotFarRight';
 
 // ─── Hızlı Kayıt Seçenekleri ─────────────────────────────────────────────────
 
@@ -162,11 +184,15 @@ const QUICK_ACTIONS = [
   },
 ];
 
+// Module-level menu cache to ensure instant layout rendering without loading delay.
+let cachedMenuData: any[] | null = null;
+
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
 
 export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   currentScreen,
   customAction,
+  showFab = true,
 }, ref) => {
   const navigation = useNavigation<any>();
   const { colors, theme } = useThemeStore();
@@ -174,37 +200,43 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProjectsMenuVisible, setIsProjectsMenuVisible] = useState(false);
-  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>(cachedMenuData || []);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
-  // FAB'ın iki yanındaki özelleştirilebilir kısayollar (cihazda kayıtlı).
+  // FAB'ın iki yanındaki ve en sağdaki özelleştirilebilir kısayollar (cihazda kayıtlı).
   const [slotLeft, setSlotLeft] = useState('Home');
   const [slotRight, setSlotRight] = useState('Calendar');
-  const [slotPickerFor, setSlotPickerFor] = useState<'left' | 'right' | null>(null);
+  const [slotFarRight, setSlotFarRight] = useState('Profil');
+  const [slotPickerFor, setSlotPickerFor] = useState<'left' | 'right' | 'farRight' | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(NAV_SLOT_LEFT_KEY).then(v => { if (v) setSlotLeft(v); }).catch(() => {});
     AsyncStorage.getItem(NAV_SLOT_RIGHT_KEY).then(v => { if (v) setSlotRight(v); }).catch(() => {});
+    AsyncStorage.getItem(NAV_SLOT_FAR_RIGHT_KEY).then(v => { if (v) setSlotFarRight(v); }).catch(() => {});
   }, []);
 
-  const selectSlot = (side: 'left' | 'right', key: string) => {
+  const selectSlot = (side: 'left' | 'right' | 'farRight', key: string) => {
     if (side === 'left') { setSlotLeft(key); AsyncStorage.setItem(NAV_SLOT_LEFT_KEY, key).catch(() => {}); }
-    else { setSlotRight(key); AsyncStorage.setItem(NAV_SLOT_RIGHT_KEY, key).catch(() => {}); }
+    else if (side === 'right') { setSlotRight(key); AsyncStorage.setItem(NAV_SLOT_RIGHT_KEY, key).catch(() => {}); }
+    else { setSlotFarRight(key); AsyncStorage.setItem(NAV_SLOT_FAR_RIGHT_KEY, key).catch(() => {}); }
     setSlotPickerFor(null);
   };
 
-  const renderSlot = (side: 'left' | 'right') => {
-    const key = side === 'left' ? slotLeft : slotRight;
+  const renderSlot = (side: 'left' | 'right' | 'farRight') => {
+    const key = side === 'left' ? slotLeft : (side === 'right' ? slotRight : slotFarRight);
     const opt = NAV_SLOT_OPTIONS.find(o => o.key === key) || NAV_SLOT_OPTIONS[0];
-    const active = currentScreen === (opt.key as any);
+    const active = currentScreen === (opt.key as any) || (opt.key === 'Profil' && currentScreen === 'Profil');
     return (
       <TouchableOpacity
         style={styles.navTab}
         activeOpacity={0.7}
-        onPress={() => { if (opt.action === 'projects') setIsProjectsMenuVisible(true); else navigateToModule(opt.key, opt.label); }}
+        onPress={() => { if (opt.action === 'projects') setIsProjectsMenuVisible(true); else navigateToModule(opt.navScreen || opt.key, opt.label, opt.navParams); }}
         onLongPress={() => { try { Vibration.vibrate(20); } catch (_) {} setSlotPickerFor(side); }}
         delayLongPress={250}
       >
-        <Ionicons name={opt.icon} size={26} color={active ? '#3445C5' : slateTokens.textMuted} />
+        <View style={[styles.tabInner, active && styles.tabInnerActive]}>
+          <Ionicons name={opt.icon} size={27} color={active ? NAV_ICON_ACTIVE : colors.text} />
+          <Text style={[styles.tabLabel, active && styles.tabLabelActive]} numberOfLines={1}>{opt.short || opt.label}</Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -216,10 +248,17 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const rawMobilePages = menuItems.filter(m => m.mobilGoster === true);
   const mobilePages: typeof rawMobilePages = [];
   rawMobilePages.forEach(m => {
-    // Malzeme Yönetimi projesini ve Malzeme & Tedarikçi sayfasını mobilde göstermiyoruz.
+    // Malzeme Yönetimi ve Stok & Depo Yönetimi sayfalarını veritabanından gelen haliyle listelemiyoruz; mobilde temiz statik yapıya çekiyoruz.
     const pName = (m.projeAdi || '').toLowerCase();
     const sName = (m.sayfaAdi || '').toLowerCase();
-    if (pName.includes('malzeme') || sName.includes('malzeme&tedarik') || sName.includes('malzeme & tedarik')) {
+    if (
+      pName.includes('malzeme') || 
+      pName.includes('stok') || 
+      sName.includes('malzeme') || 
+      sName.includes('stok') || 
+      sName.includes('malzeme&tedarik') || 
+      sName.includes('malzeme & tedarik')
+    ) {
       return;
     }
 
@@ -250,6 +289,22 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
       projeAdi: 'İnsan Kaynakları', ikon: 'document-text-outline', mobilIcon: 'document-text-outline',
       mobilGoster: true,
     } as any);
+  }
+
+  // Malzeme Yönetimi ve Stok & Depo Yönetimi — referanstaki gibi iki ayrı proje (alt sayfalarıyla).
+  // DB menüsünde malzeme mobilde gizlendiği için statik eklenir (yetki: menüde malzeme/stok projesi olan kullanıcı).
+  const hasMalzemeStok = menuItems.some(m => {
+    const p = (m.projeAdi || '').toLowerCase();
+    const s = (m.sayfaAdi || '').toLowerCase();
+    return p.includes('malzeme') || p.includes('stok') || s.includes('malzeme') || s.includes('stok');
+  });
+  if (hasMalzemeStok) {
+    if (!mobilePages.some(m => m.projeAdi === 'Malzeme Yönetimi')) {
+      buildMalzemeStokMobilePages().filter(p => p.projeAdi === 'Malzeme Yönetimi').forEach(p => mobilePages.push(p as any));
+    }
+    if (!mobilePages.some(m => m.projeAdi === 'Stok & Depo Yönetimi')) {
+      buildMalzemeStokMobilePages().filter(p => p.projeAdi === 'Stok & Depo Yönetimi').forEach(p => mobilePages.push(p as any));
+    }
   }
 
   const groupedModules = mobilePages.reduce((acc, m) => {
@@ -293,7 +348,10 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     const fetchMenu = async () => {
       try {
         const res = await api.getDashboardMenu().catch(() => []);
-        setMenuItems(res || []);
+        if (res && res.length > 0) {
+          cachedMenuData = res;
+          setMenuItems(res);
+        }
       } catch (e) {
         console.error("BottomNavBar menu fetch error:", e);
       }
@@ -316,7 +374,7 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   };
 
   // Menü modülüne git. mobilUrl DB'den gelir; alias uygula, kayıtlı değilse uyar.
-  const navigateToModule = (mobilUrl?: string, sayfaAdi?: string) => {
+  const navigateToModule = (mobilUrl?: string, sayfaAdi?: string, navParams?: any) => {
     let hedef = (mobilUrl || '').trim();
     if (ROUTE_ALIASES[hedef]) hedef = ROUTE_ALIASES[hedef];
 
@@ -351,7 +409,7 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
       return;
     }
     setIsProjectsMenuVisible(false);
-    setTimeout(() => navigation.navigate(hedef as any), 150);
+    setTimeout(() => navigation.navigate(hedef as any, navParams), 150);
   };
 
   return (
@@ -363,40 +421,37 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
           onPress={() => setIsProjectsMenuVisible(true)}
           activeOpacity={0.7}
         >
-          <Ionicons name="grid-outline" size={26} color={slateTokens.textMuted} />
+          <View style={styles.tabInner}>
+            <Ionicons name="grid-outline" size={27} color={colors.text} />
+            <Text style={styles.tabLabel} numberOfLines={1}>Projeler</Text>
+          </View>
         </TouchableOpacity>
 
         {/* Sol 2: Özelleştirilebilir kısayol (uzun bas → seç) */}
         {renderSlot('left')}
 
-        {/* Orta: FAB */}
+        {/* Orta: FAB (customAction varsa modüle özel ikon+aksiyon; showFab=false ise gizli) */}
         <View style={styles.centerTab}>
-          <TouchableOpacity
-            style={styles.fabWrapper}
-            onPress={handlePlusPress}
-            activeOpacity={0.85}
-          >
-            <View style={styles.fab}>
-              <Ionicons name="add" size={32} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
+          {showFab && (
+            <TouchableOpacity
+              style={styles.fabWrapper}
+              onPress={handlePlusPress}
+              activeOpacity={0.85}
+            >
+              {/* Mavi ışıma (glow) — FAB'ın arkasında yumuşak hale */}
+              <View style={styles.fabGlow} />
+              <View style={styles.fab}>
+                <Ionicons name={(customAction?.icon as any) || 'add'} size={26} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Sağ 1: Özelleştirilebilir kısayol (uzun bas → seç) */}
         {renderSlot('right')}
 
-        {/* Sağ 2: Ayarlar */}
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => navigation.navigate('Profil')}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isSettingsActive ? "settings" : "settings-outline"}
-            size={26}
-            color={isSettingsActive ? '#3445C5' : slateTokens.textMuted}
-          />
-        </TouchableOpacity>
+        {/* Sağ 2: Özelleştirilebilir kısayol (default: Ayarlar) */}
+        {renderSlot('farRight')}
       </View>
 
       {/* ── KISAYOL SEÇİCİ (uzun bas) ─────────────────────── */}
@@ -409,7 +464,10 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
                 <Text style={styles.menuTitle}>Kısayol Seç</Text>
                 <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
                   {NAV_SLOT_OPTIONS.map(o => {
-                    const cur = (slotPickerFor === 'left' ? slotLeft : slotRight) === o.key;
+                    const cur = (
+                      slotPickerFor === 'left' ? slotLeft : 
+                      slotPickerFor === 'right' ? slotRight : slotFarRight
+                    ) === o.key;
                     return (
                       <TouchableOpacity key={o.key} style={styles.slotOptionRow} onPress={() => slotPickerFor && selectSlot(slotPickerFor, o.key)} activeOpacity={0.7}>
                         <Ionicons name={o.icon} size={22} color={cur ? colors.primary : colors.text} />
@@ -622,24 +680,24 @@ BottomNavBar.displayName = 'BottomNavBar';
 
 const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors']) =>
   StyleSheet.create({
-    // ── NAV BAR ──
+    // ── NAV BAR (düz beyaz, havada duran pill) ──
     container: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: '#FFFFFF',
-      borderRadius: 30, // Oval / Rounded all sides
-      height: 66, // Slightly shorter since there is no text
+      backgroundColor: colors.card, // Düz beyaz zemin (koyu temada koyu yüzey)
+      borderRadius: 36, // Tam yuvarlak pill
+      height: 66,
       marginHorizontal: 16,
       marginBottom: Platform.OS === 'ios' ? 24 : 14,
-      paddingHorizontal: 16,
-      elevation: 16,
-      shadowColor: '#000',
+      paddingHorizontal: 8,
+      elevation: 12,
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 16,
+      shadowOpacity: 0.12,
+      shadowRadius: 20,
       position: 'relative',
-      overflow: 'visible', // Essential for overlapping FAB
+      overflow: 'visible', // FAB'ın taşması için şart
     },
     navTab: {
       flex: 1,
@@ -647,11 +705,28 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       justifyContent: 'center',
       height: '100%',
     },
+    // İkon + etiketi saran iç kapsül; aktifken açık gri vurgu (referanstaki gibi).
+    tabInner: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+    },
+    tabInnerActive: {
+      backgroundColor: 'transparent',
+    },
     tabLabel: {
-      display: 'none',
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.text,
+      maxWidth: 70,
+      textAlign: 'center',
     },
     tabLabelActive: {
-      display: 'none',
+      color: colors.text, // Aktif yazı siyah (mavi değil), sadece kalın
+      fontWeight: '700',
     },
     activeDot: {
       display: 'none',
@@ -663,37 +738,37 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       justifyContent: 'center',
       height: '100%',
     },
-    centerLabel: {
-      display: 'none',
-    },
-    // ── FAB ──
+    // ── FAB (ortada üste çıkan, içi dolu mavi + beyaz artı, mavi glow) ──
     fabWrapper: {
       position: 'absolute',
-      top: -18, // Hafif dışa taşma (önceki -34 fazla yukarıdaydı)
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: '#F8FAFC', // Physical notch cutout (matches page background)
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      elevation: 4,
-    },
-    fab: {
+      top: -8,
       width: 52,
       height: 52,
       borderRadius: 26,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: slateTokens.brandPrimary, // Reverted to Blue FAB
+      shadowColor: slateTokens.brandPrimary, // Mavi ışıma (iOS)
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.5,
+      shadowRadius: 12,
       elevation: 8,
-      shadowColor: slateTokens.brandPrimary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
+    },
+    // FAB'ın arkasındaki ince mavi hale halkası (her platformda görünür).
+    fabGlow: {
+      position: 'absolute',
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: slateTokens.brandPrimary,
+      opacity: 0.16,
+    },
+    fab: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: slateTokens.brandPrimary, // İçi dolu mavi
+      justifyContent: 'center',
+      alignItems: 'center',
     },
 
     // ── MODAL ──

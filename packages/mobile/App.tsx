@@ -46,7 +46,7 @@ const DummyScreen = (title: string, targetScreen?: string, targetLabel?: string)
   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff', padding: 20 }}>
     <Text style={{ fontSize: 18, color: '#333333', fontWeight: '700' }}>{title}</Text>
     <Text style={{ fontSize: 13, color: '#666666', marginTop: 8, textAlign: 'center', marginBottom: 20 }}>
-      Emülatör Modu - Grafik gösterimi için native SVG desteği gereklidir.
+      Bu ekran mobil uygulama için yakında aktif edilecektir.
     </Text>
     {targetScreen && (
       <TouchableOpacity
@@ -280,14 +280,18 @@ export default function App() {
           const data = content.data || {};
 
           // Görüntülü/sesli arama ise doğrudan arama ekranını tetikle, banner gösterme!
-          if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+          const isCall = data.roomUrl || data.RoomUrl || 
+                         data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' || 
+                         data.screen === 'Call' || data.Screen === 'Call' || 
+                         data.type === 'call' || data.Type === 'call';
+          if (isCall) {
             if ((globalThis as any).triggerIncomingCallNotification) {
               (globalThis as any).triggerIncomingCallNotification({
-                callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
-                callerName: data.callerName || data.targetName || 'Arayan',
-                roomUrl: data.roomUrl,
-                callType: data.callType || 'video',
-                callerImage: data.callerImage || '',
+                callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+                callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+                roomUrl: data.roomUrl || data.RoomUrl,
+                callType: data.callType || data.CallType || 'video',
+                callerImage: data.callerImage || data.CallerImage || '',
               });
             }
             return;
@@ -312,14 +316,18 @@ export default function App() {
           const data = content.data || {};
 
           // Görüntülü/sesli arama ise doğrudan arama ekranını tetikle, banner gösterme!
-          if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+          const isCall = data.roomUrl || data.RoomUrl || 
+                         data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' || 
+                         data.screen === 'Call' || data.Screen === 'Call' || 
+                         data.type === 'call' || data.Type === 'call';
+          if (isCall) {
             if ((globalThis as any).triggerIncomingCallNotification) {
               (globalThis as any).triggerIncomingCallNotification({
-                callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
-                callerName: data.callerName || data.targetName || 'Arayan',
-                roomUrl: data.roomUrl,
-                callType: data.callType || 'video',
-                callerImage: data.callerImage || '',
+                callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+                callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+                roomUrl: data.roomUrl || data.RoomUrl,
+                callType: data.callType || data.CallType || 'video',
+                callerImage: data.callerImage || data.CallerImage || '',
               });
             }
             return;
@@ -344,14 +352,18 @@ export default function App() {
             if (content) {
               const data = content.data || {};
               setTimeout(() => {
-                if (data.roomUrl || data.screen === 'IncomingCall' || data.screen === 'Call') {
+                const isCall = data.roomUrl || data.RoomUrl || 
+                               data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' || 
+                               data.screen === 'Call' || data.Screen === 'Call' || 
+                               data.type === 'call' || data.Type === 'call';
+                if (isCall) {
                   if ((globalThis as any).triggerIncomingCallNotification) {
                     (globalThis as any).triggerIncomingCallNotification({
-                      callerSicilNo: data.callerSicilNo || data.targetSicilNo || '',
-                      callerName: data.callerName || data.targetName || 'Arayan',
-                      roomUrl: data.roomUrl,
-                      callType: data.callType || 'video',
-                      callerImage: data.callerImage || '',
+                      callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+                      callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+                      roomUrl: data.roomUrl || data.RoomUrl,
+                      callType: data.callType || data.CallType || 'video',
+                      callerImage: data.callerImage || data.CallerImage || '',
                     });
                   }
                   return;

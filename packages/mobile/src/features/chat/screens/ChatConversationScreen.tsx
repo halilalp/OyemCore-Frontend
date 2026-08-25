@@ -13,6 +13,9 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { chatSignalR } from '../chatSignalR';
 import { NewGroupModal } from '../components/NewGroupModal';
 import { UserAvatar } from '../../../components/UserAvatar';
+import { useCall } from '../call/CallProvider';
+import { playNotificationChime } from '../../../utils/audioSynthesizer';
+
 
 // Kendi mesaj balonu — açık zemin (2. ekteki gibi), koyu metin.
 const MY_BUBBLE = '#E8EEFB';
@@ -55,6 +58,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
   const user = useAuthStore(s => s.user);
   const mySicil = (user?.sicilNo || '').trim();
   const insets = useSafeAreaInsets();
+  const { startCall } = useCall();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +77,8 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
   const [actionMsg, setActionMsg] = useState<ChatMessage | null>(null);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);       // başlık "..." menüsü (1:1 ve grup)
+  const [groupClosed, setGroupClosed] = useState(false); // grup kurucu tarafından kapatıldı mı
   const listRef = useRef<FlatList>(null);
 
   const belongsHere = useCallback((m: ChatMessage): boolean => {
@@ -126,7 +132,10 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         }
         return [...prev, m];
       });
-      if ((m.gonderenSicilNo || '').trim() !== mySicil) api.markChatConversationRead(targetSicilNo).catch(() => {});
+      if ((m.gonderenSicilNo || '').trim() !== mySicil) {
+        api.markChatConversationRead(targetSicilNo).catch(() => {});
+        playNotificationChime();
+      }
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
     });
     // Çevrimiçi durumu (1:1) — SignalR userStatusChanged.
@@ -265,6 +274,52 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
     ]);
   };
 
+  // Grup açılışında kapalı olup olmadığını sidebar verisinden tespit et (kapalıysa mesaj girişi kapatılır).
+  useEffect(() => {
+    if (!isGroup) return;
+    api.getChatUsers(true).then(list => {
+      const g = list.find(x => (x.sicilNo || '').trim().toUpperCase() === (targetSicilNo || '').trim().toUpperCase());
+      if (g && (g as any).isGroupDeleted) setGroupClosed(true);
+    }).catch(() => {});
+  }, [isGroup, targetSicilNo]);
+
+  // Sohbeti temizle (1:1) — tek taraflı soft-delete. referans: ClearConversation
+  const clearConversation = () => {
+    setMenuOpen(false);
+    Alert.alert('Sohbeti Temizle', 'Bu sohbetteki tüm mesajlar sizin tarafınızdan silinecek. Devam edilsin mi?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Temizle', style: 'destructive', onPress: async () => {
+        try { await api.clearChatConversation(targetSicilNo); setMessages([]); Alert.alert('Bilgi', 'Sohbet temizlendi.'); }
+        catch (_) { Alert.alert('Hata', 'Sohbet temizlenemedi.'); }
+      } },
+    ]);
+  };
+
+  // Grubu sil/kapat — kurucu kapatır, üye kendi listesinden siler. referans: DeleteGroup
+  const deleteGroup = () => {
+    setMenuOpen(false);
+    const amCreator = (olusturanSicilNo || '').trim().toLowerCase() === mySicil.toLowerCase();
+    Alert.alert(
+      amCreator ? 'Grubu Kapat' : 'Grubu Sil',
+      amCreator
+        ? 'Grup kapatılacak ve üyeler artık mesaj yazamayacak. Devam edilsin mi?'
+        : 'Bu grup sizin listenizden silinecek. Devam edilsin mi?',
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: amCreator ? 'Kapat' : 'Sil', style: 'destructive', onPress: async () => {
+          try { await api.deleteChatGroup(targetSicilNo); navigation.goBack(); }
+          catch (_) { Alert.alert('Hata', 'İşlem başarısız.'); }
+        } },
+      ]
+    );
+  };
+
+  // Görüntülü arama başlat (1:1).
+  const onStartCall = () => {
+    if (isGroup) return;
+    startCall(targetSicilNo, targetName, 'video');
+  };
+
   // Mesaja basılı tut → hafif titreşim + aksiyon menüsü (Yanıtla / Bilgi)
   const openActions = (item: ChatMessage) => {
     try { Vibration.vibrate(20); } catch (_) {}
@@ -383,14 +438,17 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
             <Text style={styles.headerSub}>{targetOnline ? 'Çevrimiçi' : 'Çevrimdışı'}</Text>
           )}
         </View>
-        {isGroup && (
-          <TouchableOpacity onPress={openManage} style={styles.iconBtn}>
-            <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
+        {!isGroup && (
+          <TouchableOpacity onPress={onStartCall} style={styles.iconBtn}>
+            <Ionicons name="videocam" size={22} color="#fff" />
           </TouchableOpacity>
         )}
+        <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.iconBtn}>
+          <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
+        </TouchableOpacity>
       </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 60 : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
         ) : (
@@ -400,6 +458,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
             keyExtractor={(m, i) => `${m.id}-${i}`}
             renderItem={renderItem}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             contentContainerStyle={{ padding: 12, paddingBottom: 16 }}
             onEndReachedThreshold={0.1}
             onScroll={(e) => { if (e.nativeEvent.contentOffset.y < 40) onLoadMore(); }}
@@ -419,22 +478,29 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
           </View>
         )}
 
-        <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 10) }]}>
-          <TouchableOpacity style={styles.attachBtn} onPress={onAttach} disabled={uploading}>
-            {uploading ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="add" size={26} color={colors.primary} />}
-          </TouchableOpacity>
-          <TextInput
-            style={styles.input}
-            placeholder="Mesaj yazın..."
-            placeholderTextColor={colors.textMuted}
-            value={text}
-            onChangeText={setText}
-            multiline
-          />
-          <TouchableOpacity style={[styles.sendBtn, (!text.trim() || sending) && { opacity: 0.5 }]} onPress={send} disabled={!text.trim() || sending}>
-            <Ionicons name="send" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
+        {groupClosed ? (
+          <View style={[styles.closedBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <Ionicons name="lock-closed" size={16} color={colors.textMuted} />
+            <Text style={styles.closedText}>Bu grup kapatıldı. Yeni mesaj gönderemezsiniz.</Text>
+          </View>
+        ) : (
+          <View style={[styles.inputBar, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 10) }]}>
+            <TouchableOpacity style={styles.attachBtn} onPress={onAttach} disabled={uploading}>
+              {uploading ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="add" size={26} color={colors.primary} />}
+            </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              placeholder="Mesaj yazın..."
+              placeholderTextColor={colors.textMuted}
+              value={text}
+              onChangeText={setText}
+              multiline
+            />
+            <TouchableOpacity style={[styles.sendBtn, (!text.trim() || sending) && { opacity: 0.5 }]} onPress={send} disabled={!text.trim() || sending}>
+              <Ionicons name="send" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       {isGroup && (
@@ -447,6 +513,41 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
           onCreated={() => setManageOpen(false)}
         />
       )}
+
+      {/* Başlık "..." menüsü — 1:1: Sohbeti Temizle | Grup: Yönet + Grubu Sil/Kapat */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity style={styles.menuBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)}>
+          <View style={[styles.menuSheet, { top: insets.top + 54 }]}>
+            {isGroup ? (
+              <>
+                <TouchableOpacity style={styles.actionItem} onPress={() => { setMenuOpen(false); openManage(); }}>
+                  <Ionicons name="people-outline" size={20} color={colors.text} />
+                  <Text style={styles.actionLabel}>Grubu Yönet</Text>
+                </TouchableOpacity>
+                <View style={styles.actionDivider} />
+                <TouchableOpacity style={styles.actionItem} onPress={deleteGroup}>
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <Text style={[styles.actionLabel, { color: '#EF4444' }]}>
+                    {(olusturanSicilNo || '').trim().toLowerCase() === mySicil.toLowerCase() ? 'Grubu Kapat' : 'Grubu Sil'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.actionItem} onPress={onStartCall}>
+                  <Ionicons name="videocam-outline" size={20} color={colors.text} />
+                  <Text style={styles.actionLabel}>Görüntülü Ara</Text>
+                </TouchableOpacity>
+                <View style={styles.actionDivider} />
+                <TouchableOpacity style={styles.actionItem} onPress={clearConversation}>
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Sohbeti Temizle</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Mesaja basılı tut → aksiyon menüsü (Yanıtla / Bilgi) */}
       <Modal visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
@@ -535,7 +636,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         </View>
       </Modal>
 
-      <KeyboardDismissBar />
+      <KeyboardDismissBar extraBottom={60} />
     </View>
   );
 };
@@ -606,4 +707,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border },
   input: { flex: 1, maxHeight: 110, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 10 : 6, color: colors.text, fontSize: 14.5 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  closedBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 14, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
+  closedText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' },
+  menuSheet: { position: 'absolute', right: 10, backgroundColor: colors.card, borderRadius: 14, minWidth: 190, paddingVertical: 4, elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
 });

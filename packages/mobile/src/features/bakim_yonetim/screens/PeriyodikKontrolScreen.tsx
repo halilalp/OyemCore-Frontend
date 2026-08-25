@@ -223,6 +223,10 @@ export const PeriyodikKontrolScreen = () => {
 
   const handleUpdateCtrlStatus = async (status: string) => {
     if (!selectedCtrl) return;
+    if (status === 'TAMAMLANDI' && selectedCtrl.durum === 'BEKLEMEDE') {
+      Alert.alert('Uyarı', 'Periyodik kontrol işlemini tamamlamadan önce "Başlat" seçeneği ile başlatmalısınız.');
+      return;
+    }
     try {
       await api.updatePeriyodikStatus(selectedCtrl.kontrolKodu, {
         durum: status,
@@ -452,7 +456,7 @@ export const PeriyodikKontrolScreen = () => {
       <Modal visible={selectedCtrl !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedCtrl(null)}>
         {selectedCtrl && (
           <View style={{ flex: 1, backgroundColor: colors.background }}>
-            <CreateModalHeader title="Kontrol Detayı" onClose={() => setSelectedCtrl(null)} colorTheme="purple" />
+            <CreateModalHeader title={mode === 'uygula' ? "Periyodik Kontrol İşlem Detayı" : "Periyodik Kontrol Detayı"} onClose={() => setSelectedCtrl(null)} colorTheme="purple" />
             <View style={styles.modalContentWrapper}>
               <ScrollView contentContainerStyle={styles.modalScroll}>
                 <View style={styles.detailCard}>
@@ -670,20 +674,98 @@ export const PeriyodikKontrolScreen = () => {
 
             {/* Standart İşlem Alt Barı (Sadece Uygulama/İşlem sayfasında görünür) */}
             {mode === 'uygula' && selectedCtrl.durum !== 'TAMAMLANDI' && selectedCtrl.durum !== 'IPTAL' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#FFFFFF', borderRadius: 30, height: 66, marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, paddingHorizontal: 16, elevation: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, overflow: 'visible' }}>
-                <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} onPress={() => setCtrlNotModalOpen(true)}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.primary} />
-                </TouchableOpacity>
-                <View style={{ flex: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                  <TouchableOpacity style={{ position: 'absolute', top: -18, width: 64, height: 64, borderRadius: 32, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }} onPress={() => setCtrlActionsOpen(true)}>
-                    <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10 }}>
-                      <Ionicons name="ellipsis-horizontal" size={26} color="#fff" />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} onPress={() => handleUpdateCtrlStatus('TAMAMLANDI')}>
-                  <Ionicons name="checkmark-circle-outline" size={30} color={colors.success} />
-                </TouchableOpacity>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'space-around', 
+                backgroundColor: colors.card, 
+                borderRadius: 20, 
+                height: 68, 
+                marginHorizontal: 16, 
+                marginBottom: Platform.OS === 'ios' ? 24 : 14, 
+                paddingHorizontal: 8, 
+                elevation: 8, 
+                shadowColor: '#000', 
+                shadowOffset: { width: 0, height: 4 }, 
+                shadowOpacity: 0.1, 
+                shadowRadius: 8, 
+                borderWidth: 1, 
+                borderColor: colors.border 
+              }}>
+                {selectedCtrl.durum === 'BEKLEMEDE' ? (
+                  <>
+                    {/* İptal Butonu */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
+                      onPress={() => {
+                        Alert.alert('Kontrolü İptal Et', 'Bu periyodik kontrolü iptal etmek istediğinize emin misiniz?', [
+                          { text: 'Vazgeç', style: 'cancel' },
+                          { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdateCtrlStatus('IPTAL') }
+                        ]);
+                      }}
+                    >
+                      <Ionicons name="close-circle-outline" size={28} color={colors.danger} />
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.danger, marginTop: 3 }}>İptal</Text>
+                    </TouchableOpacity>
+
+                    {/* Başla Butonu */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
+                      onPress={() => handleUpdateCtrlStatus('DEVAM')}
+                    >
+                      <Ionicons name="play-circle-outline" size={28} color={colors.info} />
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.info, marginTop: 3 }}>Başla</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    {/* Gelişme (Not) Butonu */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
+                      onPress={() => setCtrlNotModalOpen(true)}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.primary} />
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.primary, marginTop: 3 }}>Gelişme</Text>
+                    </TouchableOpacity>
+
+                    {/* Sarfiyat Butonu */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
+                      onPress={() => setCtrlSarfModalOpen(true)}
+                    >
+                      <Ionicons name="cube-outline" size={28} color={colors.primary} />
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.primary, marginTop: 3 }}>Sarfiyat</Text>
+                    </TouchableOpacity>
+
+                    {/* İptal Butonu */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
+                      onPress={() => {
+                        Alert.alert('Kontrolü İptal Et', 'Bu periyodik kontrolü iptal etmek istediğinize emin misiniz?', [
+                          { text: 'Vazgeç', style: 'cancel' },
+                          { text: 'İptal Et', style: 'destructive', onPress: () => handleUpdateCtrlStatus('IPTAL') }
+                        ]);
+                      }}
+                    >
+                      <Ionicons name="close-circle-outline" size={28} color={colors.danger} />
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.danger, marginTop: 3 }}>İptal</Text>
+                    </TouchableOpacity>
+
+                    {/* Tamamla Butonu */}
+                    <TouchableOpacity 
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
+                      onPress={() => {
+                        Alert.alert('Kontrolü Tamamla', 'Bu periyodik kontrol işlemini tamamlamak istediğinize emin misiniz?', [
+                          { text: 'Vazgeç', style: 'cancel' },
+                          { text: 'Tamamla', style: 'default', onPress: () => handleUpdateCtrlStatus('TAMAMLANDI') }
+                        ]);
+                      }}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={28} color={colors.success} />
+                      <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.success, marginTop: 3 }}>Tamamla</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             )}
 
@@ -776,6 +858,46 @@ export const PeriyodikKontrolScreen = () => {
           </View>
         )}
         <KeyboardDismissBar />
+
+        {/* Malzeme arama ve makine seçici modalları (z-index / overlay hatasını çözmek için detay modalı içinde render edilir) */}
+        <SearchableSelectorModal
+          visible={isMaterialSearchOpen}
+          onClose={() => {
+            setIsMaterialSearchOpen(false);
+            setMaterialsList([]);
+            setCtrlSarfModalOpen(true);
+          }}
+          onSelect={(item) => {
+            setSelectedMaterial(item);
+            setMaterialSearch(`${item.malzemeAdi} (${item.malzemeKodu})`);
+            setIsMaterialSearchOpen(false);
+            setMaterialsList([]);
+            setCtrlSarfModalOpen(true);
+          }}
+          data={materialsList}
+          keyExtractor={(item) => item.malzemeKodu}
+          labelExtractor={(item) => `${item.malzemeAdi} (${item.malzemeKodu})`}
+          title="Malzeme Seçin"
+          onSearch={handleMaterialSearch}
+          loading={materialLoading}
+        />
+
+        <SearchableSelectorModal
+          visible={isSarfMachineOpen}
+          onClose={() => {
+            setIsSarfMachineOpen(false);
+            setCtrlSarfModalOpen(true);
+          }}
+          onSelect={(item) => {
+            setSelectedMachineKodu(item.makineKodu);
+            setIsSarfMachineOpen(false);
+            setCtrlSarfModalOpen(true);
+          }}
+          data={dropdowns?.makines || []}
+          keyExtractor={(item) => item.makineKodu}
+          labelExtractor={(item) => item.makineAdi}
+          title="Makine Seçin"
+        />
       </Modal>
 
       {/* NEW PERIODIC CONTROL MODAL */}
@@ -950,46 +1072,6 @@ export const PeriyodikKontrolScreen = () => {
         keyExtractor={(item) => item.code}
         labelExtractor={(item) => item.label}
         title="Durum Filtresi"
-      />
-
-      {/* Malzeme arama ve makine seçici modalları (Sibling modal olarak z-index hatasını çözmek için) */}
-      <SearchableSelectorModal
-        visible={isMaterialSearchOpen}
-        onClose={() => {
-          setIsMaterialSearchOpen(false);
-          setMaterialsList([]);
-          setCtrlSarfModalOpen(true);
-        }}
-        onSelect={(item) => {
-          setSelectedMaterial(item);
-          setMaterialSearch(`${item.malzemeAdi} (${item.malzemeKodu})`);
-          setIsMaterialSearchOpen(false);
-          setMaterialsList([]);
-          setCtrlSarfModalOpen(true);
-        }}
-        data={materialsList}
-        keyExtractor={(item) => item.malzemeKodu}
-        labelExtractor={(item) => `${item.malzemeAdi} (${item.malzemeKodu})`}
-        title="Malzeme Seçin"
-        onSearch={handleMaterialSearch}
-        loading={materialLoading}
-      />
-
-      <SearchableSelectorModal
-        visible={isSarfMachineOpen}
-        onClose={() => {
-          setIsSarfMachineOpen(false);
-          setCtrlSarfModalOpen(true);
-        }}
-        onSelect={(item) => {
-          setSelectedMachineKodu(item.makineKodu);
-          setIsSarfMachineOpen(false);
-          setCtrlSarfModalOpen(true);
-        }}
-        data={(dropdowns?.makines || []).filter((m: any) => selectedCtrl && m.bolumKodu === selectedCtrl.bolumKodu)}
-        keyExtractor={(item) => item.makineKodu}
-        labelExtractor={(item) => item.makineAdi}
-        title="Makine Seçin"
       />
 
       <BottomNavBar

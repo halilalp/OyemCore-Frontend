@@ -382,18 +382,23 @@ const createStyles = (colors: any) => StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 12,
+    gap: 12,
   },
   detailLabel: {
     fontSize: 14,
     color: '#64748b',
     fontWeight: '500',
+    flexShrink: 0,
   },
   detailValue: {
     fontSize: 14,
     color: '#1e293b',
     fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+    flexWrap: 'wrap',
   },
   divider: {
     height: 1,
@@ -566,15 +571,20 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingVertical: 12,
+    gap: 12,
   },
   detailLabel: {
     fontSize: 14,
     color: '#64748b',
+    flexShrink: 0,
   },
   detailValue: {
     fontSize: 14,
     color: '#1e293b',
     fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
   },
 });

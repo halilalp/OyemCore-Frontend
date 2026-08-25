@@ -15,6 +15,7 @@ const g = (o: any, ...keys: string[]) => {
   for (const k of keys) if (o && o[k] !== undefined && o[k] !== null) return o[k];
   return undefined;
 };
+const fmt = (n: any) => (Number(n) || 0).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
 
 export const PatronDashboardScreen = () => {
   const { colors } = useThemeStore();
@@ -39,6 +40,11 @@ export const PatronDashboardScreen = () => {
   const hasIk = allowedMobilUrls.has('Izin');
   const hasDemirbas = allowedMobilUrls.has('DemirbasYonetim') || allowedMobilUrls.has('Zimmetlerim');
   const hasTedarikci = allowedMobilUrls.has('Tedarikci');
+  const hasMalzemeStok = menuItems.some((m: any) => {
+    const p = (m.projeAdi || '').toLowerCase();
+    const s = (m.sayfaAdi || '').toLowerCase();
+    return p.includes('malzeme') || p.includes('stok') || s.includes('malzeme') || s.includes('stok');
+  });
 
   // Modül Verileri
   const [satSasData, setSatSasData] = useState<any>(null);
@@ -50,6 +56,7 @@ export const PatronDashboardScreen = () => {
   const [ikData, setIkData] = useState<any>(null);
   const [assetCounts, setAssetCounts] = useState({ toplam: 0, bosta: 0, zimmetli: 0 });
   const [tedarikciData, setTedarikciData] = useState<any>(null);
+  const [stokData, setStokData] = useState<any>(null);
 
   useEffect(() => {
     api.getCompanies()
@@ -80,6 +87,7 @@ export const PatronDashboardScreen = () => {
         hasTedarikci ? api.getTedarikciDashboardStats(0).catch(() => null) : Promise.resolve(null),
         hasIT ? api.getHelpDeskPerformans({ yil: yearStr, talepTur: 'IT', sirket: sirketFilter }).catch(() => null) : Promise.resolve(null),
         hasERP ? api.getHelpDeskPerformans({ yil: yearStr, talepTur: 'ERP', sirket: sirketFilter }).catch(() => null) : Promise.resolve(null),
+        hasMalzemeStok ? api.getStokDashboard().catch(() => null) : Promise.resolve(null),
       ];
 
       const [
@@ -94,6 +102,7 @@ export const PatronDashboardScreen = () => {
         tedarikci,
         itHD,
         erpHD,
+        stokDashboard,
       ] = await Promise.all(promises);
 
       setSatSasData(satSas);
@@ -109,6 +118,7 @@ export const PatronDashboardScreen = () => {
       setTedarikciData(tedarikci);
       setItData(itHD);
       setErpData(erpHD);
+      setStokData(stokDashboard);
     } catch (e) {
       console.error('Yönetim dashboard yükleme hatası:', e);
     } finally {
@@ -208,7 +218,7 @@ export const PatronDashboardScreen = () => {
     <View style={styles.container}>
       <ListHeader
         title="Yönetim Kontrol Merkezi"
-        subtitle="Genel Operasyonel Durum ve İş Gücü Analizi"
+        titleCaption="Genel Operasyonel Durum ve İş Gücü Analizi"
       />
 
       <View style={styles.filterContainer}>
@@ -406,6 +416,29 @@ export const PatronDashboardScreen = () => {
                 <View style={styles.detailCard}>
                   <Text style={[styles.detailValue, { color: '#10B981' }]}>{num(tedarikciData, 'avgScore').toFixed(1)}</Text>
                   <Text style={styles.detailLabel}>Ortalama Değer. Puanı</Text>
+                </View>
+              </View>
+            </ChartCard>
+          )}
+          {/* Bölüm 9: Malzeme ve Stok - Depo Yönetimi - Sadece Yetki Varsa */}
+          {hasMalzemeStok && (
+            <ChartCard title="Malzeme ve Stok - Depo Yönetimi" subtitle="Stok Durumu, Kritik Envanter ve Depolar">
+              <View style={styles.detailGrid}>
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailValue}>{fmt(stokData?.toplamMiktar)}</Text>
+                  <Text style={styles.detailLabel}>Toplam Stok</Text>
+                </View>
+                <View style={styles.detailCard}>
+                  <Text style={[styles.detailValue, { color: '#3B82F6' }]}>{stokData?.aktifUrunSayisi ?? 0}</Text>
+                  <Text style={styles.detailLabel}>Aktif Ürün</Text>
+                </View>
+                <View style={styles.detailCard}>
+                  <Text style={[styles.detailValue, { color: '#EF4444' }]}>{stokData?.kritikStokSayisi ?? 0}</Text>
+                  <Text style={styles.detailLabel}>Kritik Stok</Text>
+                </View>
+                <View style={styles.detailCard}>
+                  <Text style={[styles.detailValue, { color: '#7C3AED' }]}>{stokData?.toplamDepoSayisi ?? 0}</Text>
+                  <Text style={styles.detailLabel}>Toplam Depo</Text>
                 </View>
               </View>
             </ChartCard>

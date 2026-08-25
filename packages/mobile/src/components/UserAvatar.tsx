@@ -17,6 +17,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ sicilNo, name, size = 32
   const [loadState, setLoadState] = useState<'primary' | 'fallback' | 'initials'>('primary');
   const avatarRefreshKey = useAuthStore(state => state.avatarRefreshKey);
 
+  console.log('UserAvatar props:', { sicilNo, name, size, loadState });
+
   // Reset load state if sicilNo or avatarRefreshKey changes
   useEffect(() => {
     if (sicilNo && typeof sicilNo === 'string' && sicilNo.trim() !== '' && sicilNo !== '0') {
@@ -76,9 +78,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ sicilNo, name, size = 32
   // Bu yüzden noktadan sonrasını alarak temiz bir sicil no elde ediyoruz.
   const cleanSicilNo = sicilNo?.includes('.') ? sicilNo.substring(sicilNo.indexOf('.') + 1) : sicilNo;
 
+  const baseWebUrl = baseUrl.replace(/\/api$/, '');
   const imageUri = loadState === 'primary'
-    ? buildFileDownloadUrl({ module: 'AVATAR', fileName: `${cleanSicilNo}.jpg` }, { inline: true, cacheBust: avatarRefreshKey || true })
-    : `${baseUrl}/theme/src/media/avatars/blank.png?cb=${Date.now()}`;
+    ? `${baseWebUrl}/theme/src/media/avatars/${cleanSicilNo}.jpg?cb=${avatarRefreshKey || Date.now()}`
+    : `${baseWebUrl}/theme/src/media/avatars/blank.png?cb=${Date.now()}`;
 
   return (
     <View style={[

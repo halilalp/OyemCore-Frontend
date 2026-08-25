@@ -8,13 +8,38 @@ import { UserAvatar } from '../../../components/UserAvatar';
 import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@oyemcore/shared';
+import { useNavigation } from '@react-navigation/native';
 
 export const ProfilScreen = () => {
+  const navigation = useNavigation<any>();
   const { user, logout, setAvatarRefreshKey } = useAuthStore();
   const { colors, theme, toggleTheme } = useThemeStore();
   const styles = createStyles(colors);
   const [sirketAdi, setSirketAdi] = React.useState<string>('');
   const [avatarUploading, setAvatarUploading] = React.useState(false);
+  const [hasAdminMalzeme, setHasAdminMalzeme] = React.useState(false);
+  const [hasAdminDepo, setHasAdminDepo] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkPermissions = async () => {
+      try {
+        const menu = await api.getDashboardMenu().catch(() => []);
+        const hasMalzemeAyar = menu.some((m: any) => 
+          (m.mobilUrl || '').toLowerCase().includes('adminmalzeme') || 
+          (m.sayfaAdi || '').toLowerCase().includes('malzeme ayar')
+        );
+        const hasDepoSorumlu = menu.some((m: any) => 
+          (m.mobilUrl || '').toLowerCase().includes('admindepo') || 
+          (m.sayfaAdi || '').toLowerCase().includes('depo sorumlu')
+        );
+        setHasAdminMalzeme(hasMalzemeAyar);
+        setHasAdminDepo(hasDepoSorumlu);
+      } catch (e) {
+        console.error("ProfilScreen checkPermissions error:", e);
+      }
+    };
+    checkPermissions();
+  }, []);
 
   // Profil resmini değiştir: kamera/galeri → kare kırp → base64 → yükle → avatar'ı yenile.
   const handleChangeAvatar = () => {
@@ -175,6 +200,33 @@ export const ProfilScreen = () => {
             <Text style={styles.statValue}>{(user as any)?.yillikIzin || '9'} GÜN</Text>
           </View>
         </View>
+
+        {/* Yönetimsel Ayarlar (Sadece Yetkili Kullanıcılara) */}
+        {(hasAdminMalzeme || hasAdminDepo) && (
+          <View style={styles.settingsSection}>
+            <Text style={styles.sectionTitle}>Yönetimsel Ayarlar</Text>
+            
+            {hasAdminMalzeme && (
+              <TouchableOpacity style={styles.settingItem} onPress={() => navigation.navigate('AdminMalzemeAyarlari')} activeOpacity={0.8}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="settings-outline" size={20} color={colors.primary} />
+                  <Text style={styles.settingLabelText}>Malzeme Yönetim Ayarları</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+
+            {hasAdminDepo && (
+              <TouchableOpacity style={styles.settingItem} onPress={() => navigation.navigate('AdminDepoSorumlulari')} activeOpacity={0.8}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="people-outline" size={20} color={colors.primary} />
+                  <Text style={styles.settingLabelText}>Depo Sorumluları</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Settings / Actions */}
         <View style={styles.settingsSection}>

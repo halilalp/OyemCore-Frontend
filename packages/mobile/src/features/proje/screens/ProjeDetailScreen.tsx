@@ -480,12 +480,14 @@ export const ProjeDetailScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Sabit alt işlem barı (etiketsiz, üst border) — yalnız açık & yönetilebilir kayıt */}
+      {/* Detay işlem barı (modüle ait butonlar): Yeni Görev / İşlemler(FAB) / Tamamla.
+          Yalnız yönetilebilir kayıtta gösterilir. */}
       {showBar && (
         <View style={styles.fixedBarWrapper}>
           <View style={styles.bottomTabBar}>
             <TouchableOpacity style={styles.tabItem} onPress={() => setGorevModal(true)}>
-              <Ionicons name="add-circle-outline" size={36} color={slateTokens.brandPrimary} />
+              <Ionicons name="add-circle-outline" size={30} color={slateTokens.brandPrimary} />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: slateTokens.brandPrimary, marginTop: 3 }}>Görev</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.centerTabItem} onPress={() => setActionsMenu(true)}>
@@ -497,7 +499,8 @@ export const ProjeDetailScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.tabItem} onPress={tamamlaKayit}>
-              <Ionicons name="checkmark-done-outline" size={36} color={colors.success} />
+              <Ionicons name="checkmark-done-outline" size={30} color={colors.success} />
+              <Text style={{ fontSize: 10, fontWeight: '600', color: colors.success, marginTop: 3 }}>Tamamla</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -772,14 +775,14 @@ const createStyles = (colors: any) => StyleSheet.create({
   tabItem: { alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%' },
   centerTabItem: { flex: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', height: '100%' },
   centerFabWrapper: {
-    position: 'absolute', top: -18, width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 4,
+    // Yeni tasarım: küçük FAB'ın arkasında ince mavi hale halkası (anasayfa nav ile aynı).
+    position: 'absolute', top: -8, width: 52, height: 52, borderRadius: 26,
+    backgroundColor: slateTokens.brandPrimary + '29', justifyContent: 'center', alignItems: 'center',
   },
   centerFab: {
-    width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center',
+    width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center',
     backgroundColor: slateTokens.brandPrimary, elevation: 8, shadowColor: slateTokens.brandPrimary,
-    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8,
   },
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheetContent: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 24 },

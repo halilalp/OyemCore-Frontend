@@ -5,7 +5,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 // Klavye açıkken sağ üstünde beliren "klavyeyi kapat" butonu.
 // RN Modal'ları iOS'ta ayrı bir pencerede açıldığı için kök seviyeye koymak yetmez;
 // bu bileşen her form Modal'ının içine (container'ın son çocuğu olarak) mount edilir.
-export const KeyboardDismissBar: React.FC = () => {
+interface KeyboardDismissBarProps {
+  extraBottom?: number;
+}
+
+export const KeyboardDismissBar: React.FC<KeyboardDismissBarProps> = ({ extraBottom = 0 }) => {
   const [visible, setVisible] = useState(false);
   const [kbHeight, setKbHeight] = useState(0);
 
@@ -24,7 +28,7 @@ export const KeyboardDismissBar: React.FC = () => {
 
   // iOS'ta görünüm klavyeyle küçülmez → klavye yüksekliği kadar yukarı al.
   // Android'de (adjustResize) görünüm zaten küçüldüğü için tabana yakın dursun.
-  const bottom = Platform.OS === 'ios' ? kbHeight + 6 : 6;
+  const bottom = Platform.OS === 'ios' ? kbHeight + 6 + extraBottom : 6 + extraBottom;
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom }]}>

@@ -269,6 +269,7 @@ export interface ChatUser {
   unreadCount: number;
   isOnline: boolean;
   olusturanSicilNo?: string;
+  isGroupDeleted?: boolean;   // grup kurucu tarafından kapatıldı mı
 }
 
 // Chat mesajı. referans: GetChatHistory çıktısı

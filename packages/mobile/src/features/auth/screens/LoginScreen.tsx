@@ -79,7 +79,7 @@ export const LoginScreen = () => {
       setApiBaseUrl(centralUrl);
       
       const list = await api.getTenantsList();
-      const match = list.find((t: any) => t.tenantId.toLowerCase().trim() === code.toLowerCase().trim());
+      const match = list.find((t: any) => t.tenantId.toLowerCase().trim() === code.toLowerCase().trim()) as any;
       
       if (match) {
         setVerifiedCompany(match);

@@ -194,3 +194,4 @@ if (!codegenJniPath.exists()) {
         cmakeFile.text = "# Dummy CMakeLists.txt to satisfy autolinking\n"
     }
 }
+android.packagingOptions.jniLibs.useLegacyPackaging = true

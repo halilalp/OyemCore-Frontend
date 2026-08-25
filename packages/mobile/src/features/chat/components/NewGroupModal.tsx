@@ -55,10 +55,18 @@ export const NewGroupModal: React.FC<Props> = ({ visible, onClose, onCreated, ed
       const members = Array.from(selected);
       if (editGroupCode) {
         await api.updateChatGroupMembers(editGroupCode, members);
-        onCreated(editGroupCode, groupName.trim());
+        Alert.alert('Başarılı', 'Grup üyeleri başarıyla güncellendi.', [
+          { text: 'Tamam', onPress: () => onCreated(editGroupCode, groupName.trim()) }
+        ]);
       } else {
         const res = await api.createChatGroup(groupName.trim(), members);
-        if (res?.GroupCode) onCreated(res.GroupCode, groupName.trim());
+        if (res?.GroupCode) {
+          Alert.alert('Başarılı', 'Grup başarıyla oluşturuldu.', [
+            { text: 'Tamam', onPress: () => onCreated(res.GroupCode, groupName.trim()) }
+          ]);
+        } else {
+          Alert.alert('Hata', 'Grup oluşturulamadı.');
+        }
       }
     } catch (_) {
       Alert.alert('Hata', 'İşlem tamamlanamadı.');

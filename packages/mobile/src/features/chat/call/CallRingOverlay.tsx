@@ -2,19 +2,23 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Vibration } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { UserAvatar } from '../../../components/UserAvatar';
 
 interface Props {
   mode: 'incoming' | 'outgoing';
   peerName: string;
+  peerSicil?: string;
   callType: string;                 // 'video' | 'audio'
   onAccept?: () => void;            // yalnizca incoming
   onReject: () => void;            // reddet (incoming) / iptal (outgoing)
 }
 
 // Gelen/giden arama calma ekrani (tam ekran). Kabul/Reddet/Iptal kontrolleri.
-export const CallRingOverlay: React.FC<Props> = ({ mode, peerName, callType, onAccept, onReject }) => {
+export const CallRingOverlay: React.FC<Props> = ({ mode, peerName, peerSicil, callType, onAccept, onReject }) => {
   const insets = useSafeAreaInsets();
   const pulse = useRef(new Animated.Value(0)).current;
+
+  console.log('CallRingOverlay props:', { mode, peerName, peerSicil, callType });
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -42,9 +46,14 @@ export const CallRingOverlay: React.FC<Props> = ({ mode, peerName, callType, onA
         <Text style={styles.hint}>{mode === 'incoming' ? 'Gelen Goruntulu Arama' : 'Araniyor...'}</Text>
         <View style={styles.avatarZone}>
           <Animated.View style={[styles.pulseRing, { transform: [{ scale }], opacity }]} />
-          <View style={styles.avatar}><Text style={styles.avatarText}>{(peerName || '?').charAt(0).toUpperCase()}</Text></View>
+          {peerSicil ? (
+            <UserAvatar sicilNo={peerSicil} name={peerName} size={120} style={{ borderWidth: 0 }} />
+          ) : (
+            <View style={styles.avatar}><Text style={styles.avatarText}>{(peerName || '?').charAt(0).toUpperCase()}</Text></View>
+          )}
         </View>
         <Text style={styles.name}>{peerName}</Text>
+
         <View style={styles.typeRow}>
           <Ionicons name={callType === 'audio' ? 'call' : 'videocam'} size={16} color="rgba(255,255,255,0.8)" />
           <Text style={styles.typeText}>{callType === 'audio' ? 'Sesli gorusme' : 'Goruntulu gorusme'}</Text>

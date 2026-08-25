@@ -3,6 +3,7 @@ import { Modal, View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndi
 import { Ionicons } from '@expo/vector-icons';
 import { api, AppNotification } from '@oyemcore/shared';
 import { useThemeStore } from '../store/useThemeStore';
+import { setAppIconBadge } from '../utils/badge';
 
 interface Props {
   visible: boolean;
@@ -48,7 +49,9 @@ export const NotificationCenter: React.FC<Props> = ({ visible, onClose, onNaviga
   const [loadingMore, setLoadingMore] = useState(false);
 
   const emitUnread = useCallback(() => {
-    api.getUnreadNotificationCount().then(c => onUnreadChange?.(c)).catch(() => {});
+    // Okunmamış sayısı değişince hem zil rozetini (onUnreadChange) hem uygulama
+    // ikonu rozetini güncelle — ikon ile uygulama içi tutarlı kalsın.
+    api.getUnreadNotificationCount().then(c => { onUnreadChange?.(c); setAppIconBadge(c); }).catch(() => {});
   }, [onUnreadChange]);
 
   const load = useCallback(async (page: number, mode: 'replace' | 'append') => {

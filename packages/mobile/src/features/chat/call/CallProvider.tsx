@@ -6,6 +6,8 @@ import { CallRingOverlay } from './CallRingOverlay';
 import { ActiveCallScreen } from './ActiveCallScreen';
 import { isCallAvailable, getCallLoadError } from './dailyClient';
 import { api } from '@oyemcore/shared';
+import { startRingtone, stopRingtone } from '../../../utils/audioSynthesizer';
+
 
 interface OutgoingState { sicil: string; name: string; type: string; }
 interface ActiveState { roomUrl: string; peerName: string; peerSicil: string; type: string; role: 'caller' | 'callee'; }
@@ -33,7 +35,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeRef = useRef<ActiveState | null>(null);
   const incomingRef = useRef<IncomingCallInfo | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
-  const callTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callTimeoutRef = useRef<any>(null);
 
   useEffect(() => { outgoingRef.current = outgoing; }, [outgoing]);
   useEffect(() => { activeRef.current = active; }, [active]);
@@ -47,6 +49,19 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       callStartTimeRef.current = null;
     }
   }, [active]);
+
+  // Zil sesini arama durumlarına göre başlat/durdur
+  useEffect(() => {
+    if (incoming || outgoing) {
+      startRingtone();
+    } else {
+      stopRingtone();
+    }
+    return () => {
+      stopRingtone();
+    };
+  }, [incoming, outgoing]);
+
 
   const clearCallTimeout = () => {
     if (callTimeoutRef.current) {
@@ -220,9 +235,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {active ? (
         <ActiveCallScreen roomUrl={active.roomUrl} peerName={active.peerName} callType={active.type} onHangup={hangupActive} />
       ) : incoming ? (
-        <CallRingOverlay mode="incoming" peerName={incoming.callerName} callType={incoming.callType} onAccept={acceptIncoming} onReject={rejectIncoming} />
+        <CallRingOverlay mode="incoming" peerName={incoming.callerName} peerSicil={incoming.callerSicilNo} callType={incoming.callType} onAccept={acceptIncoming} onReject={rejectIncoming} />
       ) : outgoing ? (
-        <CallRingOverlay mode="outgoing" peerName={outgoing.name} callType={outgoing.type} onReject={cancelOutgoing} />
+        <CallRingOverlay mode="outgoing" peerName={outgoing.name} peerSicil={outgoing.sicil} callType={outgoing.type} onReject={cancelOutgoing} />
       ) : null}
     </CallContext.Provider>
   );

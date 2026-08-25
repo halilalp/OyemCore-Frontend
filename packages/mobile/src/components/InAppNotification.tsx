@@ -13,6 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useThemeStore } from '../store/useThemeStore';
 import { navigateFromNotificationData } from '../navigation/navigationRef';
+import { api } from '@oyemcore/shared';
+import { chatSignalR } from '../features/chat/chatSignalR';
+
 
 // Ön planda (uygulama açıkken) gelen push bildirimlerini ekranın üstünde
 // kayan bir kart olarak gösterir. Karta dokunulunca ilgili işleme yönlendirir,
@@ -123,12 +126,55 @@ export const InAppNotification = () => {
           </TouchableOpacity>
         </View>
 
-        {!!(data && data.screen) && (
-          <TouchableOpacity style={styles.goButton} activeOpacity={0.85} onPress={handlePress}>
-            <Ionicons name="open-outline" size={16} color="#ffffff" />
-            <Text style={styles.goButtonText}>Detayları Gör</Text>
-            <Ionicons name="arrow-forward" size={15} color="#ffffff" />
-          </TouchableOpacity>
+        {data && (data.roomUrl || data.RoomUrl || data.type === 'call' || data.Type === 'call' || data.screen === 'IncomingCall' || data.Screen === 'IncomingCall') ? (
+          <View style={styles.callButtonsRow}>
+            <TouchableOpacity 
+              style={[styles.callBtn, styles.declineBtn]} 
+              activeOpacity={0.85} 
+              onPress={() => {
+                const callerSicil = data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo;
+                if (callerSicil) {
+                  chatSignalR.rejectCall(callerSicil, 'Meşgul').catch(() => {});
+                  api.sendChatMessage({
+                    aliciSicilNo: callerSicil,
+                    mesajMetni: '❌ Görüntülü Arama Cevaplanmadı. (Meşgul)'
+                  }).catch(() => {});
+                }
+                dismiss();
+              }}
+            >
+              <Ionicons name="close-circle" size={16} color="#ffffff" />
+              <Text style={styles.callBtnText}>Meşgul</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.callBtn, styles.acceptBtn]} 
+              activeOpacity={0.85} 
+              onPress={() => {
+                dismiss();
+                if ((globalThis as any).triggerIncomingCallNotification) {
+                  (globalThis as any).triggerIncomingCallNotification({
+                    callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+                    callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+                    roomUrl: data.roomUrl || data.RoomUrl,
+                    callType: data.callType || data.CallType || 'video',
+                    callerImage: data.callerImage || data.CallerImage || '',
+                  });
+                }
+              }}
+            >
+              <Ionicons name="checkmark-circle" size={16} color="#ffffff" />
+              <Text style={styles.callBtnText}>Cevapla</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          !!(data && data.screen) && (
+            <TouchableOpacity style={styles.goButton} activeOpacity={0.85} onPress={handlePress}>
+              <Ionicons name="open-outline" size={16} color="#ffffff" />
+              <Text style={styles.goButtonText}>Detayları Gör</Text>
+              <Ionicons name="arrow-forward" size={15} color="#ffffff" />
+            </TouchableOpacity>
+          )
         )}
       </View>
       <View style={styles.grabber} />
@@ -174,6 +220,32 @@ const createStyles = (colors: any) =>
       marginTop: 12,
     },
     goButtonText: {
+      color: '#ffffff',
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    callButtonsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginTop: 12,
+    },
+    callBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      borderRadius: 12,
+      paddingVertical: 10,
+    },
+    acceptBtn: {
+      backgroundColor: '#22C55E',
+    },
+    declineBtn: {
+      backgroundColor: '#EF4444',
+    },
+    callBtnText: {
       color: '#ffffff',
       fontSize: 13,
       fontWeight: '800',

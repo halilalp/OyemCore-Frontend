@@ -76,11 +76,11 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
             </TouchableOpacity>
             {titleCaption ? (
               <View style={{ flexShrink: 1 }}>
-                <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                <Text style={styles.title} numberOfLines={2}>{title}</Text>
                 <Text style={styles.titleCaption} numberOfLines={1}>{titleCaption}</Text>
               </View>
             ) : (
-              <Text style={styles.title} numberOfLines={1}>{title}</Text>
+              <Text style={styles.title} numberOfLines={2}>{title}</Text>
             )}
           </View>
           <View style={styles.topRight}>
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   title: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: '700',
     color: '#FFF',
     flexShrink: 1,

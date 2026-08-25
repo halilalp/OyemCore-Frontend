@@ -523,7 +523,9 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       if (res.success) {
         Alert.alert('Başarılı', 'Kontrol formu kaydedildi ve talep kapatıldı.');
         setIsKontrolFormOpen(false);
-        handleCloseDetail(); // Talebin otomatik tamamlandığını göstermek için detay ekranını kapat
+        setTimeout(() => {
+          handleCloseDetail(); // Talebin otomatik tamamlandığını göstermek için detay ekranını kapat
+        }, 450);
         loadInitialData(type); // Listeyi yenile
       }
     } catch (e: any) {
@@ -1243,7 +1245,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   placeholderTextColor={colors.placeholder}
                   value={formKonu}
                   onChangeText={setFormKonu}
-                  autoFocus={true}
                 />
               </View>
 
@@ -2060,18 +2061,20 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     if (isClosed) return null;
 
 
+                    // Detay işlem barı (modüle ait butonlar): Gelişme / İşlemler(FAB) / Talebi Kapat.
                     return (
                       <View style={styles.bottomTabBar}>
-                        {/* Gelişme Tab Item (Left) */}
-                        <TouchableOpacity 
+                        {/* Gelişme Ekle (sol) */}
+                        <TouchableOpacity
                           style={styles.tabItem}
                           onPress={() => setIsAddCommentModalOpen(true)}
                         >
                           <Ionicons name="chatbubble-ellipses-outline" size={30} color={colors.primary} />
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: colors.primary, marginTop: 3 }}>Gelişme</Text>
                         </TouchableOpacity>
 
-                        {/* Center Plus Tab Item (Floating Action style) */}
-                        <TouchableOpacity 
+                        {/* İşlemler (merkez FAB) */}
+                        <TouchableOpacity
                           style={styles.centerTabItem}
                           onPress={() => setIsActionsMenuOpen(true)}
                         >
@@ -2082,17 +2085,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           </View>
                         </TouchableOpacity>
 
-                        {/* Talebi Kapat Tab Item (Right) */}
-                        <TouchableOpacity 
+                        {/* Talebi Kapat (sağ) */}
+                        <TouchableOpacity
                           style={styles.tabItem}
                           disabled={!canClose}
                           onPress={handleCloseTicket}
                         >
-                          <Ionicons 
-                            name="checkmark-circle-outline"
-                            size={30} 
-                            color={canClose ? colors.success : '#94a3b8'} 
-                          />
+                          <Ionicons name="checkmark-circle-outline" size={30} color={canClose ? colors.success : '#94a3b8'} />
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: canClose ? colors.success : '#94a3b8', marginTop: 3 }}>Kapat</Text>
                         </TouchableOpacity>
                       </View>
                     );
@@ -3857,30 +3857,28 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     height: '100%',
   },
   centerFabWrapper: {
-    // Sayfa zemini renginde halka — çubuğun beyazında çentik etkisi verir.
+    // Yeni tasarım: küçük FAB'ın arkasında ince mavi hale halkası (anasayfa nav ile aynı).
     position: 'absolute',
-    top: -18,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Android elevation halkayı kare bir gölgeyle çiziyordu; derinliği zaten
-    // mavi dairenin kendi gölgesi veriyor.
-  },
-  centerFab: {
+    top: -8,
     width: 52,
     height: 52,
     borderRadius: 26,
+    backgroundColor: colors.primary + '29',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerFab: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.primary,
     elevation: 8,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
-    shadowRadius: 10,
+    shadowRadius: 8,
   },
   centerTabLabel: {
     fontSize: 10,

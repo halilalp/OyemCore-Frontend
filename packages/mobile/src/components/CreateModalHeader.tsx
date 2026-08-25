@@ -45,7 +45,7 @@ export const CreateModalHeader: React.FC<CreateModalHeaderProps> = ({
         {/* Top Row: Title, Close */}
         <View style={styles.topRow}>
           <View style={styles.topLeft}>
-            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title} numberOfLines={2}>{title}</Text>
           </View>
           <View style={styles.topRight}>
             {!!rightIcon && !!onRightPress && (
@@ -111,11 +111,15 @@ const styles = StyleSheet.create({
   topLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+    minWidth: 0,
   },
   title: {
-    fontSize: 22,
+    fontSize: 19,
     fontWeight: '700',
     color: '#FFF',
+    flexShrink: 1,
   },
   topRight: {
     flexDirection: 'row',
