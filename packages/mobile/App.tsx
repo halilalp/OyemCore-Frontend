@@ -285,14 +285,17 @@ export default function App() {
                          data.screen === 'Call' || data.Screen === 'Call' || 
                          data.type === 'call' || data.Type === 'call';
           if (isCall) {
+            const callInfo = {
+              callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+              callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+              roomUrl: data.roomUrl || data.RoomUrl,
+              callType: data.callType || data.CallType || 'video',
+              callerImage: data.callerImage || data.CallerImage || '',
+            };
             if ((globalThis as any).triggerIncomingCallNotification) {
-              (globalThis as any).triggerIncomingCallNotification({
-                callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
-                callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
-                roomUrl: data.roomUrl || data.RoomUrl,
-                callType: data.callType || data.CallType || 'video',
-                callerImage: data.callerImage || data.CallerImage || '',
-              });
+              (globalThis as any).triggerIncomingCallNotification(callInfo);
+            } else {
+              (globalThis as any).pendingCallNotification = callInfo;
             }
             return;
           }
@@ -321,14 +324,17 @@ export default function App() {
                          data.screen === 'Call' || data.Screen === 'Call' || 
                          data.type === 'call' || data.Type === 'call';
           if (isCall) {
+            const callInfo = {
+              callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+              callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+              roomUrl: data.roomUrl || data.RoomUrl,
+              callType: data.callType || data.CallType || 'video',
+              callerImage: data.callerImage || data.CallerImage || '',
+            };
             if ((globalThis as any).triggerIncomingCallNotification) {
-              (globalThis as any).triggerIncomingCallNotification({
-                callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
-                callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
-                roomUrl: data.roomUrl || data.RoomUrl,
-                callType: data.callType || data.CallType || 'video',
-                callerImage: data.callerImage || data.CallerImage || '',
-              });
+              (globalThis as any).triggerIncomingCallNotification(callInfo);
+            } else {
+              (globalThis as any).pendingCallNotification = callInfo;
             }
             return;
           }
@@ -357,16 +363,19 @@ export default function App() {
                                data.screen === 'Call' || data.Screen === 'Call' || 
                                data.type === 'call' || data.Type === 'call';
                 if (isCall) {
-                  if ((globalThis as any).triggerIncomingCallNotification) {
-                    (globalThis as any).triggerIncomingCallNotification({
-                      callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
-                      callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
-                      roomUrl: data.roomUrl || data.RoomUrl,
-                      callType: data.callType || data.CallType || 'video',
-                      callerImage: data.callerImage || data.CallerImage || '',
-                    });
-                  }
-                  return;
+                   const callInfo = {
+                     callerSicilNo: data.callerSicilNo || data.CallerSicilNo || data.targetSicilNo || data.TargetSicilNo || '',
+                     callerName: data.callerName || data.CallerName || data.targetName || data.TargetName || 'Arayan',
+                     roomUrl: data.roomUrl || data.RoomUrl,
+                     callType: data.callType || data.CallType || 'video',
+                     callerImage: data.callerImage || data.CallerImage || '',
+                   };
+                   if ((globalThis as any).triggerIncomingCallNotification) {
+                     (globalThis as any).triggerIncomingCallNotification(callInfo);
+                   } else {
+                     (globalThis as any).pendingCallNotification = callInfo;
+                   }
+                   return;
                 }
                 useNotificationStore.getState().showNotification(
                   content.title || 'Bildirim',

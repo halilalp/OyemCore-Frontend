@@ -73,12 +73,28 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Dışarıdan (push bildirim tıklamaları) gelen aramaları tetikleyebilmek için global callback kaydet
   useEffect(() => {
     (globalThis as any).triggerIncomingCallNotification = (info: IncomingCallInfo) => {
-      if (activeRef.current || outgoingRef.current || incomingRef.current) {
+      if (activeRef.current || outgoingRef.current) {
         chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
         return;
       }
+      if (incomingRef.current) {
+        if (incomingRef.current.callerSicilNo === info.callerSicilNo) {
+          return;
+        } else {
+          chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
+          return;
+        }
+      }
       setIncoming(info);
     };
+
+    // Eğer bekleyen (cold start) bir arama bildirimi varsa hemen tetikle
+    if ((globalThis as any).pendingCallNotification) {
+      const pending = (globalThis as any).pendingCallNotification;
+      (globalThis as any).pendingCallNotification = undefined;
+      (globalThis as any).triggerIncomingCallNotification(pending);
+    }
+
     return () => {
       (globalThis as any).triggerIncomingCallNotification = undefined;
     };
@@ -91,13 +107,21 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const offIncoming = chatSignalR.onIncomingCall((info) => {
       // Zaten görüşmede/arama sürüyorsa yeni gelen aramayı meşgul reddet.
-      if (activeRef.current || outgoingRef.current || incomingRef.current) {
+      if (activeRef.current || outgoingRef.current) {
         chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
         api.sendChatMessage({
           aliciSicilNo: info.callerSicilNo,
           mesajMetni: '❌ Görüntülü Arama Cevaplanmadı. (Meşgul)'
         }).catch(() => {});
         return;
+      }
+      if (incomingRef.current) {
+        if (incomingRef.current.callerSicilNo === info.callerSicilNo) {
+          return;
+        } else {
+          chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
+          return;
+        }
       }
       setIncoming(info);
     });
