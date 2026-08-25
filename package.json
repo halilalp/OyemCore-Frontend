@@ -14,6 +14,10 @@
     "postinstall": "patch-package"
   },
   "devDependencies": {
+    "expo": "^56.0.20",
     "patch-package": "^8.0.1"
+  },
+  "overrides": {
+    "expo-build-properties": "~56.0.26"
   }
 }

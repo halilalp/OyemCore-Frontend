@@ -30,7 +30,8 @@
           "voip",
           "audio"
         ]
-      }
+      },
+      "bitcode": false
     },
     "android": {
       "package": "com.oyemsoft.oyemcore",
@@ -41,7 +42,19 @@
         "VIBRATE",
         "CAMERA",
         "RECORD_AUDIO",
-        "MODIFY_AUDIO_SETTINGS"
+        "MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.WAKE_LOCK",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.CAMERA",
+        "android.permission.FOREGROUND_SERVICE_CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.BLUETOOTH"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -53,7 +66,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "34b84bb1-9215-4902-8c3d-137be6ef5766"
+        "projectId": "fc93a513-dc4a-4b7c-a9c4-b0ba29ef21b3"
       }
     },
     "plugins": [
@@ -80,6 +93,7 @@
         }
       ],
       "./plugins/withPodfilePostInstall"
-    ]
+    ],
+    "owner": "halilalp"
   }
 }
