@@ -18,7 +18,6 @@ export const ProfilScreen = () => {
   const [sirketAdi, setSirketAdi] = React.useState<string>('');
   const [avatarUploading, setAvatarUploading] = React.useState(false);
   const [hasAdminMalzeme, setHasAdminMalzeme] = React.useState(false);
-  const [hasAdminDepo, setHasAdminDepo] = React.useState(false);
 
   React.useEffect(() => {
     const checkPermissions = async () => {
@@ -28,12 +27,7 @@ export const ProfilScreen = () => {
           (m.mobilUrl || '').toLowerCase().includes('adminmalzeme') || 
           (m.sayfaAdi || '').toLowerCase().includes('malzeme ayar')
         );
-        const hasDepoSorumlu = menu.some((m: any) => 
-          (m.mobilUrl || '').toLowerCase().includes('admindepo') || 
-          (m.sayfaAdi || '').toLowerCase().includes('depo sorumlu')
-        );
         setHasAdminMalzeme(hasMalzemeAyar);
-        setHasAdminDepo(hasDepoSorumlu);
       } catch (e) {
         console.error("ProfilScreen checkPermissions error:", e);
       }
@@ -202,29 +196,17 @@ export const ProfilScreen = () => {
         </View>
 
         {/* Yönetimsel Ayarlar (Sadece Yetkili Kullanıcılara) */}
-        {(hasAdminMalzeme || hasAdminDepo) && (
+        {hasAdminMalzeme && (
           <View style={styles.settingsSection}>
             <Text style={styles.sectionTitle}>Yönetimsel Ayarlar</Text>
             
-            {hasAdminMalzeme && (
-              <TouchableOpacity style={styles.settingItem} onPress={() => navigation.navigate('AdminMalzemeAyarlari')} activeOpacity={0.8}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="settings-outline" size={20} color={colors.primary} />
-                  <Text style={styles.settingLabelText}>Malzeme Yönetim Ayarları</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-
-            {hasAdminDepo && (
-              <TouchableOpacity style={styles.settingItem} onPress={() => navigation.navigate('AdminDepoSorumlulari')} activeOpacity={0.8}>
-                <View style={styles.settingLeft}>
-                  <Ionicons name="people-outline" size={20} color={colors.primary} />
-                  <Text style={styles.settingLabelText}>Depo Sorumluları</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.settingItem} onPress={() => navigation.navigate('AdminMalzemeAyarlari')} activeOpacity={0.8}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="settings-outline" size={20} color={colors.primary} />
+                <Text style={styles.settingLabelText}>Malzeme Yönetim Ayarları</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         )}
 
