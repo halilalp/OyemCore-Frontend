@@ -28,7 +28,6 @@ export const LoginScreen = () => {
 
   // Tenant / Şirket Doğrulama State'leri
   const [companyCode, setCompanyCode] = useState('');
-  const [verifiedCompany, setVerifiedCompany] = useState<{ tenantId: string; unvan: string; apiServer?: string } | null>(null);
   const [isTenantsLoading, setIsTenantsLoading] = useState(false);
 
   // Animasyon Değerleri
@@ -55,61 +54,14 @@ export const LoginScreen = () => {
   useEffect(() => {
     const init = async () => {
       const savedTenantId = await AsyncStorage.getItem('tenantId');
-      const savedApiUrl = await AsyncStorage.getItem('apiUrl') || 'https://api.oyemsoft.com/api';
-      
       if (savedTenantId) {
         setCompanyCode(savedTenantId);
-        // Sessiz doğrulama yap
-        await validateAndSetupTenant(savedTenantId, savedApiUrl, true);
       }
     };
     init();
   }, []);
 
-  // Şirket kodunu doğrula ve yönlendir
-  const validateAndSetupTenant = async (code: string, customUrl?: string, silent = false) => {
-    if (!code) {
-      setVerifiedCompany(null);
-      return;
-    }
-    if (!silent) setIsTenantsLoading(true);
-    setLocalError(null);
-    try {
-      const centralUrl = customUrl || 'https://api.oyemsoft.com/api';
-      setApiBaseUrl(centralUrl);
-      
-      const list = await api.getTenantsList();
-      const match = list.find((t: any) => t.tenantId.toLowerCase().trim() === code.toLowerCase().trim()) as any;
-      
-      if (match) {
-        setVerifiedCompany(match);
-        let targetUrl = centralUrl;
-        
-        if (match.apiServer) {
-          const isLocal = /^(10\.|192\.168\.|127\.|localhost)/.test(match.apiServer);
-          const protocol = isLocal ? 'http' : 'https';
-          targetUrl = match.apiServer.includes('://') 
-            ? match.apiServer 
-            : `${protocol}://${match.apiServer}/api`;
-        }
-        
-        setApiBaseUrl(targetUrl);
-        await AsyncStorage.setItem('apiUrl', targetUrl);
-        await AsyncStorage.setItem('tenantId', match.tenantId);
-      } else {
-        setVerifiedCompany(null);
-        if (!silent) setLocalError('Geçersiz şirket kodu.');
-      }
-    } catch (err: any) {
-      setVerifiedCompany(null);
-      if (!silent) {
-        console.warn("Tenant load error:", err);
-        setLocalError('Şirket kodu doğrulanamadı. Bağlantıyı kontrol edin.');
-      }
-    } finally {
-      if (!silent) setIsTenantsLoading(false);
-    }
-  };
+
 
   const getFriendlyErrorMessage = (err: any): string => {
     if (!err) return 'Bir hata oluştu.';
@@ -168,18 +120,43 @@ export const LoginScreen = () => {
         setLocalError('Şirket kodu gereklidir.');
         return;
       }
-      if (!verifiedCompany) {
-        setLocalError('Lütfen geçerli bir şirket kodu girip doğrulayın.');
-        return;
-      }
       if (!username || !password) {
         setLocalError('Kullanıcı adı ve şifre gereklidir.');
         return;
       }
       try {
-        await login(username, password, verifiedCompany.tenantId, verifiedCompany.unvan);
+        setIsTenantsLoading(true);
+        const centralUrl = 'https://api.oyemsoft.com/api';
+        setApiBaseUrl(centralUrl);
+        
+        const list = await api.getTenantsList();
+        const match = list.find((t: any) => t.tenantId.toLowerCase().trim() === companyCode.toLowerCase().trim()) as any;
+        
+        if (!match) {
+          setLocalError('Geçersiz şirket kodu.');
+          setIsTenantsLoading(false);
+          return;
+        }
+        
+        let targetUrl = centralUrl;
+        if (match.apiServer) {
+          const isLocal = /^(10\.|192\.168\.|127\.|localhost)/.test(match.apiServer);
+          const protocol = isLocal ? 'http' : 'https';
+          targetUrl = match.apiServer.includes('://') 
+            ? match.apiServer 
+            : `${protocol}://${match.apiServer}/api`;
+        }
+        
+        setApiBaseUrl(targetUrl);
+        await AsyncStorage.setItem('apiUrl', targetUrl);
+        await AsyncStorage.setItem('tenantId', match.tenantId);
+        
+        // Şimdi kullanıcı girişini doğrulayalım
+        await login(username, password, match.tenantId, match.unvan);
+        setIsTenantsLoading(false);
       } catch (err: any) {
         setLocalError(getFriendlyErrorMessage(err));
+        setIsTenantsLoading(false);
       }
     }
   };
@@ -255,31 +232,14 @@ export const LoginScreen = () => {
                   placeholder="Şirket Kodunu Girin"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={companyCode}
-                  onChangeText={(val) => {
-                    setCompanyCode(val);
-                    if (!val) setVerifiedCompany(null);
-                  }}
-                  onBlur={() => {
-                    setFocusField(null);
-                    validateAndSetupTenant(companyCode);
-                  }}
+                  onChangeText={setCompanyCode}
+                  onBlur={() => setFocusField(null)}
                   onFocus={() => setFocusField('company')}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                {isTenantsLoading && (
-                  <ActivityIndicator size="small" color="#F5A623" style={styles.inputSpinner} />
-                )}
               </View>
             </View>
-
-            {/* Doğrulandı Label */}
-            {verifiedCompany && (
-              <View style={styles.verifiedContainer}>
-                <Ionicons name="shield-checkmark" size={16} color="#34D399" />
-                <Text style={styles.verifiedText} numberOfLines={1}>{verifiedCompany.unvan}</Text>
-              </View>
-            )}
 
             {/* Kullanıcı Adı */}
             <View style={styles.inputContainer}>

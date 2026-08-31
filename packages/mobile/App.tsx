@@ -75,8 +75,8 @@ import { IzinDashboardScreen } from './src/features/izin/screens/IzinDashboardSc
 import { HelpDeskDashboardScreen } from './src/features/helpdesk/screens/HelpDeskDashboardScreen';
 import { ZimmetDashboardScreen } from './src/features/zimmet/screens/ZimmetDashboardScreen';
 import { TedarikciDashboardScreen } from './src/features/tedarikci/screens/TedarikciDashboardScreen';
+import { CalendarScreen } from './src/features/home/screens/CalendarScreen';
 import { PatronDashboardScreen } from './src/features/dashboard/screens/PatronDashboardScreen';
-const CalendarScreen = DummyScreen('Takvim');
 
 import { BakimRaporScreen } from './src/features/bakim_yonetim/screens/BakimRaporScreen';
 import { BakimPlanScreen } from './src/features/bakim_yonetim/screens/BakimPlanScreen';

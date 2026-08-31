@@ -1,5 +1,4 @@
-// Force React Native core initialization first to load standard web polyfills
-require('react-native/Libraries/Core/InitializeCore');
+// Standard polyfills for native mobile platforms
 
 declare var global: any;
 

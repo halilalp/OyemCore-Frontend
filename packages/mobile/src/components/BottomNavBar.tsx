@@ -307,6 +307,48 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     }
   }
 
+  // Normalise project names to 'Ayarlar'
+  mobilePages.forEach(m => {
+    const pName = (m.projeAdi || '').toLowerCase();
+    if (pName === 'yönetimsel' || pName === 'yönetimsel ayarlar' || pName === 'yönetim') {
+      m.projeAdi = 'Ayarlar';
+    }
+  });
+
+  // Depo Sorumluları ve Malzeme Yönetim Ayarları yetki varsa 'Ayarlar' projesinin içine eklenmeli
+  const hasAdminMalzeme = menuItems.some((m: any) => 
+    (m.mobilUrl || '').toLowerCase().includes('adminmalzeme') || 
+    (m.sayfaAdi || '').toLowerCase().includes('malzeme ayar')
+  );
+  const hasAdminDepo = menuItems.some((m: any) => 
+    (m.mobilUrl || '').toLowerCase().includes('admindepo') || 
+    (m.sayfaAdi || '').toLowerCase().includes('depo sorumlu')
+  );
+
+  if (hasAdminMalzeme && !mobilePages.some(m => m.mobilUrl === 'AdminMalzemeAyarlari')) {
+    mobilePages.push({
+      sayfaAdi: 'Malzeme Yönetim Ayarları',
+      mobilUrl: 'AdminMalzemeAyarlari',
+      sayfaUrl: 'AdminMalzemeAyarlari',
+      projeAdi: 'Ayarlar',
+      ikon: 'settings-outline',
+      mobilIcon: 'settings-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  if (hasAdminDepo && !mobilePages.some(m => m.mobilUrl === 'AdminDepoSorumlulari')) {
+    mobilePages.push({
+      sayfaAdi: 'Depo Sorumluları',
+      mobilUrl: 'AdminDepoSorumlulari',
+      sayfaUrl: 'AdminDepoSorumlulari',
+      projeAdi: 'Ayarlar',
+      ikon: 'people-outline',
+      mobilIcon: 'people-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
   const groupedModules = mobilePages.reduce((acc, m) => {
     const proj = m.projeAdi || 'Diğer';
     if (!acc[proj]) acc[proj] = [];

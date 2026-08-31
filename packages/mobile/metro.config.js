@@ -50,6 +50,22 @@ config.resolver.extraNodeModules = {
   'react-native-linear-gradient': require.resolve('expo-linear-gradient'),
 };
 
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'react-native/Libraries/vendor/emitter/EventEmitter') {
+    return {
+      filePath: path.resolve(projectRoot, 'src/EventEmitterPolyfill.js'),
+      type: 'sourceFile',
+    };
+  }
+  if (moduleName.endsWith('ReactDevToolsSettingsManager')) {
+    return {
+      filePath: path.resolve(projectRoot, 'src/ReactDevToolsSettingsManagerMock.js'),
+      type: 'sourceFile',
+    };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 console.log("METRO CONFIG DEBUG INFO:");
 console.log("projectRoot:", projectRoot);
 console.log("workspaceRoot:", workspaceRoot);
