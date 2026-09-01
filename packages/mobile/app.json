@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oyemsoft.oyemcore",
-      "buildNumber": "54",
+      "buildNumber": "56",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -25,17 +25,13 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Demirbaş sayımında barkod/kod okutmak, taleplerinize belge/fotoğraf eklemek ve görüntülü görüşme yapmak için kamera kullanılır.",
         "NSMicrophoneUsageDescription": "Sohbet üzerinden görüntülü/sesli görüşme yapabilmek için mikrofon kullanılır.",
-        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir.",
-        "UIBackgroundModes": [
-          "voip",
-          "audio"
-        ]
+        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir."
       },
       "bitcode": false
     },
     "android": {
       "package": "com.oyemsoft.oyemcore",
-      "versionCode": 2,
+      "versionCode": 14,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": false,
       "permissions": [
