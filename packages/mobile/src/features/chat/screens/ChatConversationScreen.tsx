@@ -139,6 +139,17 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
       }
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
     });
+    // Karşı taraf bu konuşmayı okuduğunda gönderdiğimiz mesajların tikini anlık günceller
+    // (WebPortal Chat.js'teki messagesRead dinleyicisiyle aynı sözleşme).
+    const offRead = chatSignalR.onMessagesRead((readerSicilNo, conversationCode) => {
+      const reader = (readerSicilNo || '').trim().toUpperCase();
+      const conv = (conversationCode || '').trim().toUpperCase();
+      const target = (targetSicilNo || '').trim().toUpperCase();
+      if (target !== reader && target !== conv) return;
+      setMessages(prev => prev.map(m => (
+        (m.gonderenSicilNo || '').trim() === mySicil && !m.okundu ? { ...m, okundu: true } : m
+      )));
+    });
     // Çevrimiçi durumu (1:1) — SignalR userStatusChanged.
     const offStatus = isGroup ? () => {} : chatSignalR.onStatus((sicil, online) => {
       if (sicil.trim().toUpperCase() === (targetSicilNo || '').trim().toUpperCase()) setTargetOnline(online);
@@ -150,7 +161,7 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         if (u) setTargetOnline(!!u.isOnline);
       }).catch(() => {});
     }
-    return () => { off(); offStatus(); };
+    return () => { off(); offRead(); offStatus(); };
   }, [user?.sicilNo, belongsHere, targetSicilNo, mySicil, isGroup]);
 
   // Polling: webportal'a dokunmadan web→mobil anlıklığı için açık sohbette
@@ -242,6 +253,15 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) { Alert.alert('İzin', 'Kamera izni gerekli.'); return; }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.6, base64: true });
+        if (!r.canceled && r.assets?.[0]) {
+          const a = r.assets[0];
+          sendFile(a.fileName || `foto_${Date.now()}.jpg`, a.uri, a.mimeType || 'image/jpeg', a.fileSize || 0, a.base64 ?? undefined);
+        }
+      } },
+      { text: 'Galeri', onPress: async () => {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) { Alert.alert('İzin', 'Galeri izni gerekli.'); return; }
+        const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6, base64: true });
         if (!r.canceled && r.assets?.[0]) {
           const a = r.assets[0];
           sendFile(a.fileName || `foto_${Date.now()}.jpg`, a.uri, a.mimeType || 'image/jpeg', a.fileSize || 0, a.base64 ?? undefined);
@@ -450,7 +470,10 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         </TouchableOpacity>
       </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}>
+      {/* Header KAV'ın DIŞINDA bir sibling; KAV'ın ölçülen çerçevesi zaten header'ın altından
+          başlar. Bu yüzden keyboardVerticalOffset 0 olmalı — headerHeight verilirse iOS'ta
+          input ile klavye arasında headerHeight kadar boşluk oluşur. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
         ) : (
@@ -638,7 +661,9 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         </View>
       </Modal>
 
-      <KeyboardDismissBar extraBottom={60} />
+      {/* Chat'te ayrı bir "klavyeyi kapat" butonu yok: input bar (send) + listeyi sürükleyince
+          klavye kapanır (keyboardDismissMode="on-drag"). Bu yüzden KeyboardDismissBar kaldırıldı;
+          eskiden send butonuyla üst üste geliyordu. (Form modallarında kullanılmaya devam eder.) */}
     </View>
   );
 };

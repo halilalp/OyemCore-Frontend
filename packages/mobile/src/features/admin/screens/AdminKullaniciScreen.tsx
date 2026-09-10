@@ -21,11 +21,16 @@ import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { Ionicons } from '@expo/vector-icons';
+import { useHasGeneralAdminAccess } from '../useAdminAccess';
+import { AdminUnauthorizedView } from '../AdminUnauthorizedView';
 
 export const AdminKullaniciScreen = () => {
   const { colors, theme } = useThemeStore();
   const navigation = useNavigation<any>();
   const styles = createStyles(colors, theme);
+  // Hub (AdminAyarlarScreen) zaten bu kontrolü yapıyor ama deep-link/eski navigation
+  // stack üzerinden hub'ı hiç görmeden buraya gelinebiliyordu — burada da tekrarlanıyor.
+  const hasAccess = useHasGeneralAdminAccess();
 
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<any[]>([]);
@@ -443,6 +448,8 @@ export const AdminKullaniciScreen = () => {
       setLoading(false);
     }
   };
+
+  if (!hasAccess) return <AdminUnauthorizedView title="Kullanıcı İşlemleri" />;
 
   return (
     <View style={styles.container}>
@@ -1011,6 +1018,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
   },
   userCard: {
     backgroundColor: colors.card,

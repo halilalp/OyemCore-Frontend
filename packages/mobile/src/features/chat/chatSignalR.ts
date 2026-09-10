@@ -7,6 +7,9 @@ import { api, ChatMessage } from '@oyemcore/shared';
 type MessageHandler = (msg: ChatMessage) => void;
 type StatusHandler = (sicilNo: string, online: boolean) => void;
 type SidebarHandler = (groupCode: string, isNew: boolean) => void;
+// readerSicilNo: konuşmayı okuyan taraf. conversationCode: grup ise grup kodu, direkt sohbette
+// okuyanın kendi sicilNo'su (WebPortal/backend ile aynı sözleşme — InternalNotifyController.ChatRead).
+type MessagesReadHandler = (readerSicilNo: string, conversationCode: string) => void;
 
 // Görüntülü/sesli arama sinyalleşmesi (Daily.co). referans: ChatHub istemci olayları.
 export interface IncomingCallInfo {
@@ -20,6 +23,9 @@ type IncomingCallHandler = (info: IncomingCallInfo) => void;
 type CallAcceptedHandler = (fromSicilNo: string, roomUrl: string) => void;
 type CallRejectedHandler = (fromSicilNo: string, reason: string) => void;
 type CallEndedHandler = (fromSicilNo: string, roomUrl: string) => void;
+// Aynı hesabın (aynı sicilNo) başka bir oturumu (farklı PC/tarayıcı/cihaz) bu aramayı zaten
+// cevapladı/reddetti — bu oturum zil ekranını kapatmalı, aynı Daily odasına ikinci kez girmemeli.
+type CallAnsweredElsewhereHandler = (callerSicilNo: string) => void;
 type NotificationHandler = (payload: any) => void;
 
 let connection: signalR.HubConnection | null = null;
@@ -32,7 +38,9 @@ const incomingCallHandlers = new Set<IncomingCallHandler>();
 const callAcceptedHandlers = new Set<CallAcceptedHandler>();
 const callRejectedHandlers = new Set<CallRejectedHandler>();
 const callEndedHandlers = new Set<CallEndedHandler>();
+const callAnsweredElsewhereHandlers = new Set<CallAnsweredElsewhereHandler>();
 const notificationHandlers = new Set<NotificationHandler>();
+const messagesReadHandlers = new Set<MessagesReadHandler>();
 
 export const chatSignalR = {
   isConnected: () => connection?.state === signalR.HubConnectionState.Connected,
@@ -98,8 +106,15 @@ export const chatSignalR = {
     connection.on('callEnded', (fromSicilNo: string, roomUrl: string) => {
       callEndedHandlers.forEach(h => { try { h(fromSicilNo, roomUrl); } catch (_) {} });
     });
+    connection.on('callAnsweredElsewhere', (callerSicilNo: string) => {
+      callAnsweredElsewhereHandlers.forEach(h => { try { h(callerSicilNo); } catch (_) {} });
+    });
     connection.on('receiveNotification', (payload: any) => {
       notificationHandlers.forEach(h => { try { h(payload); } catch (_) {} });
+    });
+    // Karşı taraf konuşmayı okuduğunda anlık tik güncellemesi (WebPortal'daki messagesRead ile aynı olay).
+    connection.on('messagesRead', (readerSicilNo: string, conversationCode: string) => {
+      messagesReadHandlers.forEach(h => { try { h(readerSicilNo, conversationCode); } catch (_) {} });
     });
 
     try {
@@ -126,7 +141,9 @@ export const chatSignalR = {
   onCallAccepted(h: CallAcceptedHandler) { callAcceptedHandlers.add(h); return () => callAcceptedHandlers.delete(h); },
   onCallRejected(h: CallRejectedHandler) { callRejectedHandlers.add(h); return () => callRejectedHandlers.delete(h); },
   onCallEnded(h: CallEndedHandler) { callEndedHandlers.add(h); return () => callEndedHandlers.delete(h); },
+  onCallAnsweredElsewhere(h: CallAnsweredElsewhereHandler) { callAnsweredElsewhereHandlers.add(h); return () => callAnsweredElsewhereHandlers.delete(h); },
   onNotification(h: NotificationHandler) { notificationHandlers.add(h); return () => notificationHandlers.delete(h); },
+  onMessagesRead(h: MessagesReadHandler) { messagesReadHandlers.add(h); return () => messagesReadHandlers.delete(h); },
 
   // ── Arama sunucu metotları (hub invoke) ──
   async startCall(targetSicilNo: string, callType: string = 'video') {

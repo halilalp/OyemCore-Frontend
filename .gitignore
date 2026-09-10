@@ -9,6 +9,12 @@ node_modules/
 *.key
 *.mobileprovision
 
+# EAS credentials (contain keystore passwords / secrets - never commit)
+credentials.json
+**/credentials.json
+credentials/
+**/credentials/
+
 # Build outputs
 dist/
 web-build/

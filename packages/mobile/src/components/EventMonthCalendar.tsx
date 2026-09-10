@@ -13,7 +13,7 @@ const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUNLER = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
-const MAX_LANE = 3;      // bir hafta satırında gösterilecek en fazla çubuk sırası
+const MAX_LANE = 30;     // "+N" gizleme istenmiyor: tüm etkinlikler görünür ve tıklanabilir olsun (hücre uzar)
 const LANE_H = 16;       // çubuk sırası yüksekliği
 const BAR_H = 14;
 

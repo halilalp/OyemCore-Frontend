@@ -857,6 +857,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   id={item.talepID}
                   code={item.talepKodu}
                   title={item.konu}
+                  gelismeAdet={item.gelismeAdet}
+                  dosyaAdet={item.dosyaAdet}
                   timeAgo={item.kayitTarStr || ''}
                   user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
                   userSicil={item.sorumluSicil}
@@ -1309,7 +1311,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 {/* Konu ve Açıklama Paneli (Stacked, minimal margins) */}
                 <View style={[styles.detailCard, { marginTop: 8, padding: 12, gap: 4 }]}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 }}>{selectedRequest.konu}</Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>{stripHtml(selectedRequest.aciklama)}</Text>
+                  <Text selectable style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>{stripHtml(selectedRequest.aciklama)}</Text>
                   
                   {(() => {
                     const htmlImages = extractImagesFromHtml(selectedRequest.aciklama);
@@ -1501,7 +1503,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                   {!isLast && <View style={styles.timelineVerticalLine} />}
                                 </View>
                                 <View style={styles.timelineRightCol}>
-                                  <Text style={styles.timelineItemTitle}>{stripHtml(g.aciklama)}</Text>
+                                  <Text selectable style={styles.timelineItemTitle}>{stripHtml(g.aciklama)}</Text>
                                   <Text style={styles.timelineItemSub}>{g.adSoyad} • {g.kayitTarStr.split(' ')[1] || g.kayitTarStr}</Text>
                                   {(() => {
                                     const chatImages = extractImagesFromHtml(g.aciklama);
@@ -1555,7 +1557,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                             </View>
                             <View style={styles.historyItemRight}>
                               <Text style={styles.historyItemSubject}>{h.konu}</Text>
-                              <Text style={styles.historyItemContent}>{stripHtml(h.aciklama)}</Text>
+                              <Text selectable style={styles.historyItemContent}>{stripHtml(h.aciklama)}</Text>
                               {(() => {
                                 const histImages = extractImagesFromHtml(h.aciklama);
                                 if (histImages.length === 0) return null;
@@ -2069,7 +2071,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       <BottomNavBar 
         currentScreen="Talepler" 
         customAction={{
-          icon: 'create-outline',
+          icon: 'add',
           label: 'Yeni Talep',
           onPress: () => setIsCreateOpen(true)
         }}        />
@@ -2223,7 +2225,7 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     paddingHorizontal: 16,
     paddingTop: 8,   // header ile arasindaki bosluk kisildi
     gap: 0,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   requestCard: {
     backgroundColor: colors.card,

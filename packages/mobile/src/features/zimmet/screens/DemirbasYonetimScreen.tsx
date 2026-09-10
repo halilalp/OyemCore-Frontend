@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar, KeyboardAvoidingView } from 'react-native';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
-import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
@@ -23,7 +22,6 @@ const showAlert = (title: string, message: string) => {
 };
 
 export const DemirbasYonetimScreen = () => {
-  const { user } = useAuthStore();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
   const { colors, theme } = useThemeStore();
@@ -79,7 +77,9 @@ export const DemirbasYonetimScreen = () => {
   const [assignUsage, setAssignUsage] = useState('ŞAHSİ'); // Changed default to 'ŞAHSİ'
   const [assignDesc, setAssignDesc] = useState('');
 
-  const isAdmin = user?.yonetici === true || user?.zimmetSorumlusu === true || user?.kullaniciAdi === 'admin';
+  // Bu ekrana zaten sadece "Demirbaş Yönetimi"/"Zimmetlerim" tb_Sayfa yetkisi olan kullanıcılar
+  // ulaşabiliyor (HomeScreen.tsx/BottomNavBar.tsx menuItems filtresi) — ekranın içindeki
+  // düzenleme/atama aksiyonları için ayrıca genel "Yönetici" rolü istemek gereksiz kısıtlamaydı.
 
   const loadDropdowns = async () => {
     try {
@@ -528,7 +528,7 @@ export const DemirbasYonetimScreen = () => {
             data={allAssets}
             keyExtractor={(item) => item.aygitID.toString()}
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.listContainer, { paddingBottom: 80 }]}
+            contentContainerStyle={[styles.listContainer, { paddingBottom: 100 }]}
             onEndReached={loadMoreAssets}
             onEndReachedThreshold={0.4}
             ListFooterComponent={
@@ -587,8 +587,8 @@ export const DemirbasYonetimScreen = () => {
         <CreateModalHeader
           title="Demirbaş Detayı"
           onClose={() => { setCurrentView('list'); setSelectedAsset(null); }}
-          rightIcon={isAdmin ? 'create-outline' : undefined}
-          onRightPress={isAdmin ? () => handleEditAsset(selectedAsset) : undefined}
+          rightIcon="create-outline"
+          onRightPress={() => handleEditAsset(selectedAsset)}
         />
 
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 100 }]} showsVerticalScrollIndicator={false}>
@@ -686,29 +686,27 @@ export const DemirbasYonetimScreen = () => {
         </ScrollView>
 
         {/* Operations Buttons at the bottom of Detail view */}
-        {isAdmin && (
-          <View style={styles.bottomActionBar}>
-            {selectedAsset.durum ? (
-              <TouchableOpacity 
-                style={styles.assignBtn} 
-                onPress={() => {
-                  setAssignPersonel(null);
-                  setAssignDesc('');
-                  setAssignUsage('ŞAHSİ');
-                  setIsAssignOpen(true);
-                }}
-              >
-                <Ionicons name="person-add-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.assignBtnText}>Personele Zimmetle</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.releaseBtn} onPress={() => handleReleaseAsset(selectedAsset.aygitID)}>
-                <Ionicons name="refresh-outline" size={18} color={colors.danger} style={{ marginRight: 6 }} />
-                <Text style={styles.releaseBtnText}>Zimmeti İade Al</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        <View style={styles.bottomActionBar}>
+          {selectedAsset.durum ? (
+            <TouchableOpacity
+              style={styles.assignBtn}
+              onPress={() => {
+                setAssignPersonel(null);
+                setAssignDesc('');
+                setAssignUsage('ŞAHSİ');
+                setIsAssignOpen(true);
+              }}
+            >
+              <Ionicons name="person-add-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.assignBtnText}>Personele Zimmetle</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.releaseBtn} onPress={() => handleReleaseAsset(selectedAsset.aygitID)}>
+              <Ionicons name="refresh-outline" size={18} color={colors.danger} style={{ marginRight: 6 }} />
+              <Text style={styles.releaseBtnText}>Zimmeti İade Al</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </>
     );
   };
@@ -923,7 +921,7 @@ export const DemirbasYonetimScreen = () => {
 
       <BottomNavBar
         currentScreen="Zimmet"
-        customAction={isAdmin ? {
+        customAction={{
           icon: 'add-outline',
           label: 'Yeni Demirbaş',
           onPress: () => {
@@ -940,7 +938,7 @@ export const DemirbasYonetimScreen = () => {
             setCreateMasrafMerkezi('');
             setCurrentView('create');
           }
-        } : undefined}
+        }}
       />
 
       {/* Filtre seçicileri (liste kökünde) */}

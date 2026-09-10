@@ -142,6 +142,15 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    // Aynı hesabın başka bir oturumu (farklı PC/tarayıcı/cihaz) bu gelen aramayı zaten
+    // cevapladı/reddetti — burada hâlâ çalıyorsa kapat. Kullanıcının aynı anda birden fazla
+    // oturumdan aynı Daily odasına girmeye çalışıp bağlantının kilitlenmesini önler.
+    const offAnsweredElsewhere = chatSignalR.onCallAnsweredElsewhere((callerSicilNo) => {
+      if (incomingRef.current && incomingRef.current.callerSicilNo === callerSicilNo) {
+        setIncoming(null);
+      }
+    });
+
     const offEnded = chatSignalR.onCallEnded(() => {
       clearCallTimeout();
       // Karşı taraf kapattı → aktif görüşmeyi veya çalan aramayı temizle.
@@ -159,7 +168,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => { offIncoming(); offAccepted(); offRejected(); offEnded(); offNotif(); clearCallTimeout(); };
+    return () => { offIncoming(); offAccepted(); offRejected(); offEnded(); offAnsweredElsewhere(); offNotif(); clearCallTimeout(); };
   }, [isAuthenticated, mySicil]);
 
   const startCall = useCallback((targetSicilNo: string, targetName: string, callType: string = 'video') => {

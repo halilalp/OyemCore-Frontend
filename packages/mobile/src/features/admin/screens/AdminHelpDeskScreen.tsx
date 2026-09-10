@@ -20,11 +20,14 @@ import { useNavigation } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { useHasGeneralAdminAccess } from '../useAdminAccess';
+import { AdminUnauthorizedView } from '../AdminUnauthorizedView';
 
 export const AdminHelpDeskScreen = () => {
   const { colors, theme } = useThemeStore();
   const navigation = useNavigation<any>();
   const styles = createStyles(colors, theme);
+  const hasAccess = useHasGeneralAdminAccess();
 
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<any[]>([]);
@@ -302,6 +305,8 @@ export const AdminHelpDeskScreen = () => {
     );
   };
 
+  if (!hasAccess) return <AdminUnauthorizedView title="HelpDesk Ayarları" />;
+
   return (
     <View style={styles.container}>
       <ListHeader
@@ -561,6 +566,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
   },
   categoryCard: {
     backgroundColor: colors.card,

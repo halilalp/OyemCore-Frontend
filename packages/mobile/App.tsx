@@ -83,6 +83,8 @@ import { BakimPlanScreen } from './src/features/bakim_yonetim/screens/BakimPlanS
 import { ProjeListScreen } from './src/features/proje/screens/ProjeListScreen';
 import { ProjeDetailScreen } from './src/features/proje/screens/ProjeDetailScreen';
 import { PeriyodikKontrolScreen } from './src/features/bakim_yonetim/screens/PeriyodikKontrolScreen';
+import { TemizlikOnayFormScreen } from './src/features/bakim_yonetim/screens/TemizlikOnayFormScreen';
+import { TemizlikOnayBekleyenlerimScreen } from './src/features/bakim_yonetim/screens/TemizlikOnayBekleyenlerimScreen';
 import { IzinScreen } from './src/features/izin/screens/IzinScreen';
 import { IzinDetailScreen } from './src/features/izin/screens/IzinDetailScreen';
 
@@ -110,6 +112,12 @@ import { AdminHelpDeskScreen } from './src/features/admin/screens/AdminHelpDeskS
 import { AdminHiyerarsiScreen } from './src/features/admin/screens/AdminHiyerarsiScreen';
 import { AdminLogsScreen } from './src/features/admin/screens/AdminLogsScreen';
 import { AdminTarihceScreen } from './src/features/admin/screens/AdminTarihceScreen';
+import { AdminEntegrasyonScreen } from './src/features/admin/screens/AdminEntegrasyonScreen';
+import { AdminOyemsoftTenantScreen } from './src/features/admin/screens/AdminOyemsoftTenantScreen';
+import { AdminProjeScreen } from './src/features/admin/screens/AdminProjeScreen';
+import { AdminSayfaScreen } from './src/features/admin/screens/AdminSayfaScreen';
+import { AdminIsiHaritasiScreen } from './src/features/admin/screens/AdminIsiHaritasiScreen';
+import { AdminMagazaParametreScreen } from './src/features/admin/screens/AdminMagazaParametreScreen';
 import { TrainingScreen } from './src/features/home/screens/TrainingScreen';
 import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScreen';
 import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
@@ -128,6 +136,7 @@ import { StokFisleriScreen } from './src/features/malzeme/screens/StokFisleriScr
 import { FizikselAnalizGirisiScreen } from './src/features/malzeme/screens/FizikselAnalizGirisiScreen';
 import { DepoKartlariScreen } from './src/features/malzeme/screens/DepoKartlariScreen';
 import { AdminMalzemeAyarlariScreen } from './src/features/admin/screens/AdminMalzemeAyarlariScreen';
+import { AdminDashboardAyarlariScreen } from './src/features/admin/screens/AdminDashboardAyarlariScreen';
 import { AdminDepoSorumlulariScreen } from './src/features/admin/screens/AdminDepoSorumlulariScreen';
 import { OzellikTanimlariScreen } from './src/features/malzeme/screens/OzellikTanimlariScreen';
 import { VaryantScreen } from './src/features/malzeme/screens/VaryantScreen';
@@ -205,10 +214,30 @@ async function registerForPushNotificationsAsync() {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#2F5FE8',
     });
+
+    // Görüntülü/sesli arama bildirimleri için ayrı kanal — WhatsApp'taki gibi
+    // sürekli çalan bir zil sesi (mesaj bildirim sesinden farklı). Android'de kanal
+    // sesi cihazda bir kere oluşturulduktan sonra DEĞİŞTİRİLEMEZ (immutable); ses
+    // dosyasını değiştirirsek kanal adını da değiştirmemiz gerekir.
+    await Notifications.setNotificationChannelAsync('incoming_call', {
+      name: 'Gelen Arama',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
+      lightColor: '#50CD89',
+      sound: 'incoming_call.wav',
+      audioAttributes: {
+        usage: Notifications.AndroidAudioUsage.NOTIFICATION_RINGTONE,
+        contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+      },
+      bypassDnd: false,
+    });
   }
 
-  // Get project ID if configured in app.json (for Expo SDK 51/52+)
-  let projectId = '34b84bb1-9215-4902-8c3d-137be6ef5766';
+  // Project ID, build'in yapıldığı EAS hesabıyla EŞLEŞMELİ. Sabit değer yerine app.json'daki
+  // extra.eas.projectId'den dinamik okunur (aksi halde yanlış hesabın projectId'si push teslimatını bozar).
+  let projectId = Constants.expoConfig?.extra?.eas?.projectId
+    ?? (Constants as any).easConfig?.projectId
+    ?? 'fc93a513-dc4a-4b7c-a9c4-b0ba29ef21b3';
 
   const tokenData = await Notifications.getExpoPushTokenAsync({
     projectId: projectId,
@@ -409,7 +438,7 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer ref={navigationRef}>
         <CallProvider>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: true }}>
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
@@ -505,6 +534,8 @@ export default function App() {
             <Stack.Screen name="ProjeList" component={ProjeListScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ProjeDetail" component={ProjeDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PeriyodikKontrol" component={PeriyodikKontrolScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TemizlikOnayForm" component={TemizlikOnayFormScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TemizlikOnayBekleyenlerim" component={TemizlikOnayBekleyenlerimScreen} options={{ headerShown: false }} />
             <Stack.Screen name="IzinDashboard" component={IzinDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="HelpDeskDashboard" component={HelpDeskDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ZimmetDashboard" component={ZimmetDashboardScreen} options={{ headerShown: false }} />
@@ -563,6 +594,13 @@ export default function App() {
             <Stack.Screen name="FizikselAnalizGirisi" component={FizikselAnalizGirisiScreen} options={{ headerShown: false }} />
             <Stack.Screen name="DepoKartlari" component={DepoKartlariScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AdminMalzemeAyarlari" component={AdminMalzemeAyarlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminDashboardAyarlari" component={AdminDashboardAyarlariScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminEntegrasyon" component={AdminEntegrasyonScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminOyemsoftTenant" component={AdminOyemsoftTenantScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminProje" component={AdminProjeScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminSayfa" component={AdminSayfaScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminIsiHaritasi" component={AdminIsiHaritasiScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AdminMagazaParametre" component={AdminMagazaParametreScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AdminDepoSorumlulari" component={AdminDepoSorumlulariScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OzellikTanimlari" component={OzellikTanimlariScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Varyant" component={VaryantScreen} options={{ headerShown: false }} />

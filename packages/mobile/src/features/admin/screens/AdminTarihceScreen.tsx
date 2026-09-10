@@ -16,11 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { useHasGeneralAdminAccess } from '../useAdminAccess';
+import { AdminUnauthorizedView } from '../AdminUnauthorizedView';
 
 export const AdminTarihceScreen = () => {
   const { colors, theme } = useThemeStore();
   const navigation = useNavigation<any>();
   const styles = createStyles(colors, theme);
+  const hasAccess = useHasGeneralAdminAccess();
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -91,6 +94,8 @@ export const AdminTarihceScreen = () => {
       return dateStr;
     }
   };
+
+  if (!hasAccess) return <AdminUnauthorizedView title="Belge Tarihçe Raporu" />;
 
   return (
     <View style={styles.container}>
@@ -203,6 +208,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
   },
   historyCard: {
     backgroundColor: colors.card,

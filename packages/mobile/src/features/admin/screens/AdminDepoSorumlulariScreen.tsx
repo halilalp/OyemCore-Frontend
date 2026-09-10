@@ -8,11 +8,14 @@ import { ListHeader } from '../../../components/ListHeader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { LogoLoader } from '../../../components/LogoLoader';
+import { useHasAdminDepoAccess } from '../useAdminAccess';
+import { AdminUnauthorizedView } from '../AdminUnauthorizedView';
 
 export const AdminDepoSorumlulariScreen = () => {
   const isFocused = useIsFocused();
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, theme);
+  const hasAccess = useHasAdminDepoAccess();
 
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ id: number; ad: string } | null>(null);
@@ -59,6 +62,8 @@ export const AdminDepoSorumlulariScreen = () => {
   };
 
   const seciliSayisi = depolar.filter(d => d.secili).length;
+
+  if (!hasAccess) return <AdminUnauthorizedView title="Depo Sorumluları" />;
 
   return (
     <View style={styles.container}>

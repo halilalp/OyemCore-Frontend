@@ -111,6 +111,12 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const isFocused = useIsFocused();
   const { user } = useAuthStore();
   const type = 'BAKIM';
+  // Referans: WebPortal Bakim/js/HelpDeskIslemleri.js CheckOnemPermission — TLPACIL yetkisi olmayan
+  // kullanıcıya Önem Seviyesi alanı hiç gösterilmez, kayıt "ACİL DEĞİL" (D) olarak geçer.
+  const hasTlpAcil = !!user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('TLPACIL');
+  // AdminBelgeTur'unda BAKIMADMIN olmayan kullanıcı Şirket'i değiştiremez — talep formu
+  // kendi (tb_Personel'e bağlı) şirketiyle sabit açılır, Bölüm listesi buna göre filtrelenir.
+  const hasBakimAdmin = !!user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('BAKIMADMIN');
 
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, type, theme);
@@ -172,6 +178,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   // Expanded description state
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isKontrolFormuExpanded, setIsKontrolFormuExpanded] = useState(true);
 
   // New workflows state
   const [isHelperSelectOpen, setIsHelperSelectOpen] = useState(false);
@@ -194,7 +201,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const [formKategori, setFormKategori] = useState('');
   const [formKonu, setFormKonu] = useState('');
   const [formAciklama, setFormAciklama] = useState('');
-  const [formOnem, setFormOnem] = useState('O'); // D: Dusuk, O: Orta, Y: Yuksek, A: Acil
+  const [formOnem, setFormOnem] = useState('D'); // Bakım: D=Acil Değil, Y=Acil (TLPACIL yetkisi yoksa hep D)
   const [formAltKategori, setFormAltKategori] = useState('');
   
   // Dropdown states for select modals
@@ -293,6 +300,14 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       navigation.setParams({ openCreate: undefined });
     }
   }, [isFocused, route.params?.openCreate]);
+
+  // BAKIMADMIN yetkisi olmayan kullanıcı için Şirket, kendi (tb_Personel'e bağlı) şirketiyle
+  // otomatik seçili gelir; Bölüm listesi mevcut formSirket filtresi sayesinde kendiliğinden daralır.
+  useEffect(() => {
+    if (isCreateOpen && !hasBakimAdmin && user?.sirketKodu) {
+      setFormSirket(user.sirketKodu);
+    }
+  }, [isCreateOpen, hasBakimAdmin, user?.sirketKodu]);
 
   // Load details when request selected
   const handleOpenDetail = async (request: Talep) => {
@@ -549,8 +564,15 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const closeTicketConfirmed = async () => {
     if (!selectedRequest) return;
     try {
-      await updateRequestStatus(selectedRequest.talepID, 'KAPATILDI');
-      Alert.alert('Başarılı', 'Talep tamamlandı.');
+      const res = await updateRequestStatus(selectedRequest.talepID, 'KAPATILDI');
+      // BAKIM talepleri gerçek anlamda kapanmaz; talebi açan kişinin onay formu
+      // doldurmasını bekler (referans: WebServiceBakim.TalepGelismeVeKapama).
+      Alert.alert(
+        'Başarılı',
+        res.pendingApproval
+          ? `Talep, ${res.pendingApprovalAdSoyad || 'talep sahibi'} onaya gönderildi.`
+          : 'Talep tamamlandı.'
+      );
       if (isDetailOpen) {
         handleCloseDetail();
       }
@@ -1045,6 +1067,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   id={item.talepID}
                   code={item.talepKodu}
                   title={item.konu}
+                  gelismeAdet={item.gelismeAdet}
+                  dosyaAdet={item.dosyaAdet}
                   timeAgo={item.kayitTarStr || ''}
                   user={item.sorumluAd ? item.sorumluAd.split(' ')[0] : 'Atanmadı'}
                   userSicil={item.sorumluSicil}
@@ -1122,17 +1146,19 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 </View>
               )}
 
-              {/* Önem Seviyesi */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Önem Seviyesi *</Text>
-                <TouchableOpacity style={styles.selectBox} onPress={() => setIsOnemSelectOpen(true)}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="flash-outline" size={18} color={slateTokens.textMuted} />
-                    <Text style={styles.selectBoxText}>{getPriorityText(formOnem)}</Text>
-                  </View>
-                  <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
-                </TouchableOpacity>
-              </View>
+              {/* Önem Seviyesi — sadece AdminBelgeTur'unda TLPACIL yetkisi olan kullanıcıya gösterilir. */}
+              {hasTlpAcil && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Önem Seviyesi *</Text>
+                  <TouchableOpacity style={styles.selectBox} onPress={() => setIsOnemSelectOpen(true)}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Ionicons name="flash-outline" size={18} color={slateTokens.textMuted} />
+                      <Text style={styles.selectBoxText}>{formOnem === 'Y' ? 'ACİL' : 'ACİL DEĞİL'}</Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Bakım Özel Alanları */}
               {type === 'BAKIM' && (
@@ -1142,17 +1168,21 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     <Text style={[styles.bakimTitle, { marginBottom: 0 }]}>Bakım Özel Detayları</Text>
                   </View>
                   
-                  {/* Şirket */}
+                  {/* Şirket — sadece AdminBelgeTur'unda BAKIMADMIN olan kullanıcı değiştirebilir. */}
                   <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Şirket *</Text>
-                    <TouchableOpacity style={styles.selectBox} onPress={() => setIsSirketSelectOpen(true)}>
+                    <TouchableOpacity
+                      style={[styles.selectBox, !hasBakimAdmin && { opacity: 0.7 }]}
+                      onPress={() => hasBakimAdmin && setIsSirketSelectOpen(true)}
+                      disabled={!hasBakimAdmin}
+                    >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Ionicons name="business-outline" size={18} color={slateTokens.textMuted} />
                         <Text style={styles.selectBoxText}>
                           {(bakimDropdowns?.sirkets || []).find((c: any) => c.sirketKodu === formSirket)?.sirketAdi || 'Şirket Seçiniz'}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
+                      <Ionicons name={hasBakimAdmin ? 'chevron-down' : 'lock-closed-outline'} size={16} color={slateTokens.textMuted} />
                     </TouchableOpacity>
                   </View>
 
@@ -1339,10 +1369,8 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           onClose={() => setIsOnemSelectOpen(false)}
           onSelect={(item) => setFormOnem(item.code)}
           data={[
-            { code: 'D', name: 'Düşük' },
-            { code: 'O', name: 'Orta' },
-            { code: 'Y', name: 'Yüksek' },
-            { code: 'A', name: 'Acil' }
+            { code: 'D', name: 'ACİL DEĞİL' },
+            { code: 'Y', name: 'ACİL' }
           ]}
           keyExtractor={(item) => item.code}
           labelExtractor={(item) => item.name}
@@ -1599,7 +1627,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                 {/* Konu ve Açıklama Paneli (Stacked, minimal margins) */}
                 <View style={[styles.detailCard, { marginTop: 8, padding: 12, gap: 4 }]}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 }}>{selectedRequest.konu}</Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>{stripHtml(selectedRequest.aciklama)}</Text>
+                  <Text selectable style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>{stripHtml(selectedRequest.aciklama)}</Text>
                   
                   {(() => {
                     const htmlImages = extractImagesFromHtml(selectedRequest.aciklama);
@@ -1927,7 +1955,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                                   {!isLast && <View style={styles.timelineVerticalLine} />}
                                 </View>
                                 <View style={styles.timelineRightCol}>
-                                  <Text style={styles.timelineItemTitle}>{stripHtml(g.aciklama)}</Text>
+                                  <Text selectable style={styles.timelineItemTitle}>{stripHtml(g.aciklama)}</Text>
                                   <Text style={styles.timelineItemSub}>{g.adSoyad} • {(g.kayitTarStr || '').split(' ')[1] || g.kayitTarStr || ''}</Text>
                                   {(() => {
                                     const chatImages = extractImagesFromHtml(g.aciklama);
@@ -1956,10 +1984,58 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   )}
                 </View>
 
+                {/* Kontrol/Temizlik Formu Sonucu — sadece talep kontrol formu doldurulup kapatıldıysa (temizlikDurum dolu geldiyse) gösterilir. */}
+                {!!detailData?.bakim?.temizlikDurum && (
+                  <View style={styles.historySection}>
+                    <TouchableOpacity
+                      style={styles.historyHeader}
+                      onPress={() => setIsKontrolFormuExpanded(!isKontrolFormuExpanded)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.historyTitle}>Kontrol Formu Sonucu</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Ionicons name="checkmark-circle-outline" size={11} color={colors.success} />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.success }}>Tamamlandı</Text>
+                        </View>
+                      </View>
+                      <Ionicons name={isKontrolFormuExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+
+                    {isKontrolFormuExpanded && (
+                      <View style={styles.historyContainer}>
+                        <View style={[styles.detailCard, { marginTop: 8 }]}>
+                          {[
+                            { key: 'eksikSomunDurum', label: 'Eksik somun, gevşek civata kontrolü yapıldı mı?' },
+                            { key: 'yagDurum', label: 'Makine yağı temizliği sağlandı mı?' },
+                            { key: 'miknatisDurum', label: 'Metal parçası/kirliliği mıknatısla kontrol edildi mi?' },
+                            { key: 'fazlaParcaDurum', label: 'Parça ve aletler çantaya konuldu mu?' },
+                            { key: 'guvRiskDurum', label: 'İş güvenliği açısından riskli durum mevcut mu?' },
+                            { key: 'makineDurum', label: 'Makine kullanıma hazır mı? (Bakım)' },
+                            { key: 'temizlikDurum', label: 'Çalışma alanı temizliği (Gıda Güv.) uygun mu?' },
+                            { key: 'gidaRiskDurum', label: 'Makine kullanıma hazır mı? (Gıda Güv.)' },
+                          ].map(item => {
+                            const cevap = (detailData!.bakim as any)?.[item.key];
+                            const uygun = cevap === 'U';
+                            return (
+                              <View key={item.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                                <Text style={{ flex: 1, fontSize: 12, color: colors.text, lineHeight: 16 }}>{item.label}</Text>
+                                <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: uygun ? colors.successLight : colors.dangerLight }}>
+                                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: uygun ? colors.success : colors.danger }}>{uygun ? 'UYGUN' : 'UYGUN DEĞİL'}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {/* Collapsible History Section */}
                 <View style={styles.historySection}>
-                  <TouchableOpacity 
-                    style={styles.historyHeader} 
+                  <TouchableOpacity
+                    style={styles.historyHeader}
                     onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
                     activeOpacity={0.7}
                   >
@@ -1981,7 +2057,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                             </View>
                             <View style={styles.historyItemRight}>
                               <Text style={styles.historyItemSubject}>{h.konu}</Text>
-                              <Text style={styles.historyItemContent}>{stripHtml(h.aciklama)}</Text>
+                              <Text selectable style={styles.historyItemContent}>{stripHtml(h.aciklama)}</Text>
                               {(() => {
                                 const histImages = extractImagesFromHtml(h.aciklama);
                                 if (histImages.length === 0) return null;
@@ -2029,35 +2105,46 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                     const isClosed = statusStyle.label === 'TAMAMLANDI';
                     const canClose = detailData?.girisTur === 'SAHIP' || detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'HAVUZ';
 
-
                     if (detailData?.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo) {
+                      // Referans: WebPortal push bildirim başlığı (case "09") ile aynı metin —
+                      // Bakım Planı/Periyodik Kontrol'deki Temizlik Onay Formu paneliyle aynı görsel dil.
                       return (
-                        <View style={[styles.footerActionRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.actionButtonDanger]}
-                            onPress={() => {
-                              setIsApproveAction(false);
-                              setIsApprovalModalOpen(true);
-                            }}
-                          >
-                            <Ionicons name="close-circle-outline" size={20} color="#FFF" />
-                            <Text style={styles.actionButtonText}>Reddet</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.actionButtonSuccess]}
-                            onPress={() => {
-                              // Formu her açılışta sıfırla
-                              setChkEksikSomun('0'); setChkYag('0'); setChkMiknatis('0'); setChkFazlaParca('0');
-                              setChkGuvenlik('0'); setChkMakine('0'); setChkTemizlik('0'); setChkGida('0');
-                              setIsKontrolFormOpen(true);
-                            }}
-                          >
-                            <Ionicons name="checkmark-done-circle-outline" size={20} color="#FFF" />
-                            <Text style={styles.actionButtonText}>Kontrol Formu Doldur</Text>
-                          </TouchableOpacity>
+                        <View style={{ marginHorizontal: 16, marginBottom: Math.max(insets.bottom, 12), backgroundColor: colors.primaryLight, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.primary }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <Ionicons name="time-outline" size={20} color={colors.primary} />
+                            <Text style={{ fontSize: 13.5, fontWeight: '800', color: colors.primary, flex: 1 }}>
+                              Temizlik ve Kontrol Formu Onay Bekliyor
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <TouchableOpacity
+                              style={{ flex: 1, backgroundColor: colors.success, height: 42, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
+                              onPress={() => {
+                                // Formu her açılışta sıfırla
+                                setChkEksikSomun('0'); setChkYag('0'); setChkMiknatis('0'); setChkFazlaParca('0');
+                                setChkGuvenlik('0'); setChkMakine('0'); setChkTemizlik('0'); setChkGida('0');
+                                setIsKontrolFormOpen(true);
+                              }}
+                            >
+                              <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12.5 }}>Onay Formu Doldur</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={{ flex: 1, backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.danger, height: 42, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
+                              onPress={() => {
+                                setIsApproveAction(false);
+                                setIsApprovalModalOpen(true);
+                              }}
+                            >
+                              <Text style={{ color: colors.danger, fontWeight: '800', fontSize: 12.5 }}>İşlem Tamamlanmadı</Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       );
                     }
+                    // Onayda (kilitli) olan talepte, onaylayacak kişi dışındaki kullanıcılara
+                    // alt işlem barı (Gelişme/İşlemler/Kapat) hiç gösterilmez — yukarıdaki panel
+                    // sadece amirSicil === user için render edilir, diğer herkes bekler.
+                    if (detailData?.onayBilgisi && detailData.onayBilgisi.durum === null) return null;
                     if (isClosed) return null;
 
 
@@ -2847,7 +2934,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
       <BottomNavBar
         currentScreen="Talepler"
         customAction={{
-          icon: 'create-outline',
+          icon: 'add',
           label: 'Yeni Talep',
           onPress: () => setIsCreateOpen(true)
         }}        />
@@ -3001,7 +3088,7 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     paddingHorizontal: 16,
     paddingTop: 8,   // header ile arasindaki bosluk kisildi
     gap: 0,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   requestCard: {
     backgroundColor: colors.card,
@@ -4225,32 +4312,6 @@ const createStyles = (colors: any, type: string, theme: string) => StyleSheet.cr
     color: colors.textSecondary,
     lineHeight: 19,
     marginTop: 4,
-  },
-  // Aksiyon butonları
-  footerActionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  actionButtonDanger: {
-    backgroundColor: colors.danger,
-  },
-  actionButtonSuccess: {
-    backgroundColor: colors.success,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   modalButtonSuccess: {
     backgroundColor: colors.success,

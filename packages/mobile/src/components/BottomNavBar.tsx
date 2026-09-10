@@ -31,6 +31,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import { Ionicons } from '@expo/vector-icons';
 import { slateTokens, api } from '@oyemcore/shared';
 import { buildMalzemeStokMobilePages } from '../features/malzeme/malzemeStokMenu';
+import { useAuthStore } from '../features/auth/store/useAuthStore';
 
 // ─── Tip Tanımları ────────────────────────────────────────────────────────────
 
@@ -50,6 +51,10 @@ interface BottomNavBarProps {
   };
   // Ortadaki FAB'ı tamamen gizler (ör. salt-okunur detay ekranlarında "+" istenmez).
   showFab?: boolean;
+  // Varsayılan true: pill, ekranın normal akışında kendi satırını kaplamak yerine
+  // içeriğin ÜZERİNDE mutlak konumla yüzer (arkasında ayrılmış/opak bir şerit kalmaz).
+  // false verilirse eski (akış içi, kendi satırını kaplayan) davranışa döner.
+  floating?: boolean;
 }
 
 // Dışarıdan (ör. anasayfadaki "Tümünü Gör") projeler menüsünü açmak için.
@@ -70,7 +75,8 @@ const REGISTERED_SCREENS = new Set<string>([
   'Training', 'Announcement', 'SatSas', 'SatDetail', 'SasDetail', 'Bordro',
   'MalzemeStokHub', 'MalzemeListesi', 'MalzemeGrubu', 'MalzemeTedarikciKodlari', 'FizikselAnalizTanimlari',
   'StokDashboard', 'StokDurumRaporu', 'StokHareketleri', 'StokFisleri', 'FizikselAnalizGirisi', 'DepoKartlari',
-  'AdminMalzemeAyarlari', 'AdminDepoSorumlulari', 'OzellikTanimlari', 'Varyant', 'Game',
+  'AdminMalzemeAyarlari', 'AdminDepoSorumlulari', 'AdminDashboardAyarlari', 'OzellikTanimlari', 'Varyant', 'Game',
+  'AdminEntegrasyon', 'AdminOyemsoftTenant', 'AdminProje', 'AdminSayfa', 'AdminIsiHaritasi', 'AdminMagazaParametre',
 ]);
 
 // DB'deki eski/farklı MobilUrl değerlerini geçerli rotaya çevir (#60'ta 'Bakim'
@@ -119,6 +125,9 @@ const NAV_SLOT_OPTIONS: { key: string; label: string; short?: string; icon: any;
   // Modüller
   { key: 'Ticket', label: 'Ticket', icon: 'ticket-outline' },
   { key: 'Izin', label: 'İzin', icon: 'airplane-outline' },
+  { key: 'ITHelpDesk', label: 'IT Helpdesk', short: 'IT', icon: 'laptop-outline' },
+  { key: 'ERPHelpDesk', label: 'ERP Helpdesk', short: 'ERP', icon: 'server-outline' },
+  { key: 'BakimHelpDesk', label: 'Bakım Helpdesk', short: 'Bakım HD', icon: 'construct-outline' },
   { key: 'AvansMasraf', label: 'Avans/Masraf', short: 'Avans', icon: 'wallet-outline' },
   { key: 'Bordro', label: 'Bordro', icon: 'document-text-outline' },
   { key: 'MalzemeHub', label: 'Malzeme İşlemleri', short: 'Malzeme', icon: 'cube-outline', navScreen: 'MalzemeStokHub', navParams: { section: 'malzeme' } },
@@ -193,9 +202,11 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   currentScreen,
   customAction,
   showFab = true,
+  floating = true,
 }, ref) => {
   const navigation = useNavigation<any>();
   const { colors, theme } = useThemeStore();
+  const { tenantId } = useAuthStore();
   const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -349,6 +360,88 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     } as any);
   }
 
+  // Dashboard Ayarları — mobile özel modül; DB menüsünde yok. WebPortal'daki gibi
+  // 'Ayarlar' grubuna erişimi olan (yönetimsel sayfası atanmış) herkese eklenir.
+  if (mobilePages.some(m => m.projeAdi === 'Ayarlar') && !mobilePages.some(m => m.mobilUrl === 'AdminDashboardAyarlari')) {
+    mobilePages.push({
+      sayfaAdi: 'Dashboard Ayarları',
+      mobilUrl: 'AdminDashboardAyarlari',
+      sayfaUrl: 'AdminDashboardAyarlari',
+      projeAdi: 'Ayarlar',
+      ikon: 'home-outline',
+      mobilIcon: 'home-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  // Entegrasyon Servisleri (izleme + tetikleme) — mobile özel modül; DB menüsünde yok.
+  if (mobilePages.some(m => m.projeAdi === 'Ayarlar') && !mobilePages.some(m => m.mobilUrl === 'AdminEntegrasyon')) {
+    mobilePages.push({
+      sayfaAdi: 'Entegrasyon Servisleri',
+      mobilUrl: 'AdminEntegrasyon',
+      sayfaUrl: 'AdminEntegrasyon',
+      projeAdi: 'Ayarlar',
+      ikon: 'git-network-outline',
+      mobilIcon: 'git-network-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  // Proje ve Sayfa Yönetimi — mobile özel modül; DB menüsünde yok. 'Ayarlar' grubuna erişimi
+  // olan herkese eklenir (WebPortal'daki gibi genel admin ayarı, ayrı bir yetki kontrolü yok).
+  if (mobilePages.some(m => m.projeAdi === 'Ayarlar') && !mobilePages.some(m => m.mobilUrl === 'AdminProje')) {
+    mobilePages.push({
+      sayfaAdi: 'Proje ve Sayfa Yönetimi',
+      mobilUrl: 'AdminProje',
+      sayfaUrl: 'AdminProje',
+      projeAdi: 'Ayarlar',
+      ikon: 'folder-outline',
+      mobilIcon: 'folder-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  // Mağaza Modül & Parametreler — mobile özel modül; DB menüsünde yok.
+  if (mobilePages.some(m => m.projeAdi === 'Ayarlar') && !mobilePages.some(m => m.mobilUrl === 'AdminMagazaParametre')) {
+    mobilePages.push({
+      sayfaAdi: 'Mağaza Modül & Parametreler',
+      mobilUrl: 'AdminMagazaParametre',
+      sayfaUrl: 'AdminMagazaParametre',
+      projeAdi: 'Ayarlar',
+      ikon: 'options-outline',
+      mobilIcon: 'options-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  // Isı Haritası — mobile özel modül; DB menüsünde yok. Log Kayıtları/Belge Tarihçe ile aynı
+  // 'Ayarlar' grubuna erişimi olan herkese eklenir (WebPortal'da da Sistem Raporları altında).
+  if (mobilePages.some(m => m.projeAdi === 'Ayarlar') && !mobilePages.some(m => m.mobilUrl === 'AdminIsiHaritasi')) {
+    mobilePages.push({
+      sayfaAdi: 'Isı Haritası',
+      mobilUrl: 'AdminIsiHaritasi',
+      sayfaUrl: 'AdminIsiHaritasi',
+      projeAdi: 'Ayarlar',
+      ikon: 'flame-outline',
+      mobilIcon: 'flame-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
+  // Oyemsoft Tenant Yönetimi — mobile özel modül; sadece "oyemsoft" tenant'ıyla giriş
+  // yapıldığında görünür (backend de aynı kısıtı 403 ile ayrıca zorunlu kılıyor).
+  if ((tenantId || '').toLowerCase() === 'oyemsoft' && mobilePages.some(m => m.projeAdi === 'Ayarlar') && !mobilePages.some(m => m.mobilUrl === 'AdminOyemsoftTenant')) {
+    mobilePages.push({
+      sayfaAdi: 'Tenant Yönetimi',
+      mobilUrl: 'AdminOyemsoftTenant',
+      sayfaUrl: 'AdminOyemsoftTenant',
+      projeAdi: 'Ayarlar',
+      ikon: 'business-outline',
+      mobilIcon: 'business-outline',
+      mobilGoster: true,
+    } as any);
+  }
+
   const groupedModules = mobilePages.reduce((acc, m) => {
     const proj = m.projeAdi || 'Diğer';
     if (!acc[proj]) acc[proj] = [];
@@ -456,7 +549,7 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, floating && styles.containerFloating]}>
         {/* Sol 1: Yetkili Projeler (yetki menüsü) — Anasayfa yerine */}
         <TouchableOpacity
           style={styles.navTab}
@@ -740,6 +833,14 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       shadowRadius: 20,
       position: 'relative',
       overflow: 'visible', // FAB'ın taşması için şart
+    },
+    // floating=true iken pill, sayfa akışından çıkıp içeriğin üzerinde mutlak konumlanır.
+    containerFloating: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      marginHorizontal: 16,
     },
     navTab: {
       flex: 1,

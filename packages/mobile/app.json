@@ -2,7 +2,7 @@
   "expo": {
     "name": "OyemCore",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oyemsoft.oyemcore",
-      "buildNumber": "56",
+      "buildNumber": "60",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "com.oyemsoft.oyemcore",
-      "versionCode": 14,
+      "versionCode": 15,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": false,
       "permissions": [
@@ -89,7 +89,13 @@
         }
       ],
       "./plugins/withPodfilePostInstall",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/sounds/incoming_call.wav"]
+        }
+      ]
     ],
     "owner": "halilalp"
   }

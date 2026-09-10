@@ -7,6 +7,8 @@ import { ListHeader } from '../../../components/ListHeader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
+import { useHasAdminMalzemeAccess } from '../useAdminAccess';
+import { AdminUnauthorizedView } from '../AdminUnauthorizedView';
 
 const FIELD_LABELS: Record<string, string> = {
   Kod: 'Malzeme Kodu', Ad: 'Malzeme Adı', Bolum: 'Bölüm', Kategori: 'Kategori/Grup', Birim: 'Birim',
@@ -31,6 +33,7 @@ export const AdminMalzemeAyarlariScreen = () => {
   const isFocused = useIsFocused();
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, theme);
+  const hasAccess = useHasAdminMalzemeAccess();
 
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +86,8 @@ export const AdminMalzemeAyarlariScreen = () => {
   };
 
   const fieldKeys = settings ? Object.keys(settings).filter(k => isFieldObj(settings[k])) : [];
+
+  if (!hasAccess) return <AdminUnauthorizedView title="Malzeme Yönetimi Ayarları" />;
 
   return (
     <View style={styles.container}>
@@ -139,7 +144,7 @@ export const AdminMalzemeAyarlariScreen = () => {
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  scroll: { padding: 16, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' },
   legendRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 8 },
   legendField: { flex: 1, fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase' },
   legendFlag: { width: 66, textAlign: 'center', fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase' },

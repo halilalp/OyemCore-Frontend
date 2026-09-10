@@ -55,6 +55,18 @@ export function navigateFromNotificationData(data: any, _retry = 0) {
     return;
   }
 
+  // Temizlik Onay Formu bildirimleri (referans WebServicePlanTemizlikOnay bildirimleri):
+  // formu dolduracak kişiye doğrudan forma, tamamlayan kişiye ise plan/kontrol işlem
+  // ekranına gider — bu iki route 'mode' parametresi ister, jenerik akış geçmiyor.
+  if (targetScreen === 'TemizlikOnayForm') {
+    (navigationRef as any).navigate('TemizlikOnayForm', { onayId: data.id });
+    return;
+  }
+  if (targetScreen === 'BakimPlan' || targetScreen === 'PeriyodikKontrol') {
+    (navigationRef as any).navigate(targetScreen, { mode: 'uygula', code: data.code });
+    return;
+  }
+
   // SVG desteği olmayan cihaz/emülatör ortamlarında panoları doğrudan işlem sayfalarına yönlendir
   const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');
   if (!isSvgSupported) {

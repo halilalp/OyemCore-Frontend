@@ -260,6 +260,7 @@ export const createBakimStyles = (colors: any, theme: string) => StyleSheet.crea
   },
   listContainer: {
     paddingVertical: 12,
+    paddingBottom: 100,
     gap: 12,
   },
   card: {
@@ -662,6 +663,7 @@ export const createBakimStyles = (colors: any, theme: string) => StyleSheet.crea
   },
   raporContainer: {
     padding: 16,
+    paddingBottom: 100,
     gap: 16,
   },
   raporFilterCard: {

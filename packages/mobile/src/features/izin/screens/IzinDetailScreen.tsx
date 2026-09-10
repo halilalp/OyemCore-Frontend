@@ -295,7 +295,7 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => {
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'transparent',
   },
   header: {
     paddingBottom: 24,

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { useAppStore } from '../../../store/useAppStore';
 import { ListHeader } from '../../../components/ListHeader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { useMalzemeSettingsStore, makeSettingsHelpers } from '../useMalzemeSettings';
@@ -61,6 +62,23 @@ export const MalzemeStokHubScreen = () => {
   const fizikselAktif = S.fizikselAnalizAktif();
   const lotTerimi = S.lotTerimi();
 
+  // "Yönetim (Admin)" kartları eskiden HERKESE (Malzeme/Stok'a erişimi olan her kullanıcıya)
+  // koşulsuz gösteriliyordu — BottomNavBar.tsx'in kendi 'Ayarlar' grubu için zaten kullandığı
+  // AYNI kontrolle (hasAdminMalzeme/hasAdminDepo) burada da filtreleniyor.
+  const { menuItems } = useAppStore();
+  const hasAdminMalzeme = menuItems.some((m: any) =>
+    (m.mobilUrl || '').toLowerCase().includes('adminmalzeme') ||
+    (m.sayfaAdi || '').toLowerCase().includes('malzeme ayar')
+  );
+  const hasAdminDepo = menuItems.some((m: any) =>
+    (m.mobilUrl || '').toLowerCase().includes('admindepo') ||
+    (m.sayfaAdi || '').toLowerCase().includes('depo sorumlu')
+  );
+  const adminCards = ADMIN_CARDS.filter(c =>
+    (c.screen === 'AdminMalzemeAyarlari' && hasAdminMalzeme) ||
+    (c.screen === 'AdminDepoSorumlulari' && hasAdminDepo)
+  );
+
   const malzemeCards = MALZEME_CARDS
     .filter(c => (c.screen !== 'FizikselAnalizTanimlari' && c.screen !== 'FizikselAnalizGirisi') || fizikselAktif)
     .map(c => c.screen === 'FizikselAnalizGirisi' ? { ...c, desc: `${lotTerimi} bazlı kalite değeri girişi` } : c);
@@ -102,8 +120,12 @@ export const MalzemeStokHubScreen = () => {
             {stokCards.map(renderCard)}
           </>
         )}
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Yönetim (Admin)</Text>
-        {ADMIN_CARDS.map(renderCard)}
+        {adminCards.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Yönetim (Admin)</Text>
+            {adminCards.map(renderCard)}
+          </>
+        )}
         <View style={{ height: 100 }} />
       </ScrollView>
       <BottomNavBar />
@@ -113,7 +135,7 @@ export const MalzemeStokHubScreen = () => {
 
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  scroll: { padding: 16, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 10, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

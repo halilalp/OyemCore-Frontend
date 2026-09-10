@@ -114,6 +114,23 @@ export const ActiveCallScreen: React.FC<Props> = ({ roomUrl, peerName, callType,
     return () => clearInterval(iv);
   }, [status]);
 
+  // Teşhis: uzak katılımcının video track durumunu logla. Android↔iOS video render sorununda
+  // (kamera açıkken görünmüyor) nedenini ayırt eder: state 'loading' mı, persistentTrack null mı,
+  // subscribed false mu, yoksa codec/decode mı. Cihaz logunda "[CALL][remote-video]" ile aranır.
+  useEffect(() => {
+    const v = remote?.tracks?.video;
+    if (remote) {
+      console.log('[CALL][remote-video]', JSON.stringify({
+        state: v?.state,
+        subscribed: v?.subscribed,
+        off: v?.off,
+        hasPersistent: !!v?.persistentTrack,
+        hasTrack: !!v?.track,
+        userName: remote?.user_name,
+      }));
+    }
+  }, [remote]);
+
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   const toggleMic = async () => {

@@ -1544,7 +1544,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   listContainer: {
     padding: 16,
     gap: 0,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   emptyContainer: {
     alignItems: 'center',

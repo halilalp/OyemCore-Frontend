@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet, View, Text, TouchableOpacity, ActivityIndicator,
@@ -143,14 +144,22 @@ export const CalendarScreen = () => {
   const [isCategorySelectorOpen, setIsCategorySelectorOpen] = useState(false);
   const [isPeriodSelectorOpen, setIsPeriodSelectorOpen] = useState(false);
 
-  useEffect(() => {
-    fetchEvents();
-    fetchCategories();
-  }, []);
+  // Ekran her odaklandığında yeniden çeker ve odaktayken 20 sn'de bir sessizce yeniler.
+  // Böylece web'den veya başka bir kullanıcıdan gelen takvim değişiklikleri, uygulamadan
+  // çıkmaya gerek kalmadan mobilde görünür.
+  useFocusEffect(
+    useCallback(() => {
+      fetchEvents();
+      fetchCategories();
+      const pollId = setInterval(() => { fetchEvents(true); }, 20000);
+      return () => clearInterval(pollId);
+    }, [])
+  );
 
   // ---------------------------------------------------------------- fetch
-  const fetchEvents = async () => {
-    setLoading(true);
+  // silent=true: arka plan polling'inde loading spinner/uyarı gösterme.
+  const fetchEvents = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const today = new Date();
       const start = new Date(today.getFullYear(), today.getMonth() - 3, 1).toISOString();
@@ -163,9 +172,9 @@ export const CalendarScreen = () => {
       });
       setEvents(sorted);
     } catch {
-      Alert.alert('Hata', 'Takvim kayıtları alınamadı.');
+      if (!silent) Alert.alert('Hata', 'Takvim kayıtları alınamadı.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

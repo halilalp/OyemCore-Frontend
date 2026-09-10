@@ -19,7 +19,7 @@ interface HelpdeskState {
   refreshRequests: () => Promise<void>;
   loadRequestDetails: (id: number) => Promise<void>;
   createRequest: (request: { talep: Partial<Talep>; bakim?: any }) => Promise<{ success: boolean; code: string; message: string }>;
-  updateRequestStatus: (id: number, status: string) => Promise<void>;
+  updateRequestStatus: (id: number, status: string) => Promise<{ pendingApproval?: boolean; pendingApprovalAdSoyad?: string }>;
   assignRequestPersonnel: (id: number, sicilNo: string) => Promise<void>;
   addRequestComment: (id: number, comment: string, dosyaUrl?: string) => Promise<void>;
   setSelectedRequest: (request: Talep | null) => void;
@@ -120,6 +120,8 @@ export const useHelpdeskStore = create<HelpdeskState>((set, get) => ({
       if (selected && selected.talepID === id) {
         set({ selectedRequest: { ...selected, durum: status } });
       }
+
+      return { pendingApproval: res.pendingApproval, pendingApprovalAdSoyad: res.pendingApprovalAdSoyad };
     } catch (err: any) {
       set({ error: err.message || 'Durum güncellenirken hata oluştu.' });
       throw err;

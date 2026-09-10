@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim, AppNotification, ChatUser, ChatMessage, MasrafKalem } from './types';
+import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay, Talep, TalepKategori, TalepGelisme, TalepDetailResponse, TalepBakim, AppNotification, ChatUser, ChatMessage, MasrafKalem, TemizlikOnayDurum, TemizlikOnayDetay, TemizlikOnayBekleyen } from './types';
 
 let token: string | null = null;
 let apiBaseUrl: string = 'https://api.oyemsoft.com/api'; // Default backend API URL (SSL aktif)
@@ -543,7 +543,7 @@ export const api = {
     return response.data;
   },
 
-  updateBakimPlanStatus: async (code: string, data: { durum: string, not?: string, dosyaUrl?: string }): Promise<{ success: boolean }> => {
+  updateBakimPlanStatus: async (code: string, data: { durum: string, not?: string, dosyaUrl?: string, secilenSicil?: string }): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(`/bakim/plan/${code}/status`, data);
     return response.data;
   },
@@ -594,8 +594,38 @@ export const api = {
     return response.data;
   },
 
-  updatePeriyodikStatus: async (code: string, data: { durum: string, aciklama: string }): Promise<{ success: boolean }> => {
+  updatePeriyodikStatus: async (code: string, data: { durum: string, aciklama: string, secilenSicil?: string }): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(`/bakim/periyodik/${code}/status`, data);
+    return response.data;
+  },
+
+  // ── Temizlik Onay Formu (Bakım Planı / Periyodik Kontrol ortak akışı) ──
+  // Referans: WebPortal WebServicePlanTemizlikOnay.asmx.
+  getTemizlikOnayDurum: async (planTuru: string, planKodu: string): Promise<TemizlikOnayDurum> => {
+    const response = await apiClient.get<TemizlikOnayDurum>('/TemizlikOnay/durum', { params: { planTuru, planKodu } });
+    return response.data;
+  },
+
+  getTemizlikOnayBekleyenlerim: async (): Promise<TemizlikOnayBekleyen[]> => {
+    const response = await apiClient.get<TemizlikOnayBekleyen[]>('/TemizlikOnay/bekleyenlerim');
+    return response.data;
+  },
+
+  getTemizlikOnayDetay: async (onayId: number): Promise<TemizlikOnayDetay> => {
+    const response = await apiClient.get<TemizlikOnayDetay>(`/TemizlikOnay/${onayId}`);
+    return response.data;
+  },
+
+  saveTemizlikOnay: async (onayId: number, data: {
+    eksikSomun: string; yag: string; miknatis: string; fazlaParca: string;
+    guvenlik: string; makine: string; temizlik: string; gida: string; aciklama?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(`/TemizlikOnay/${onayId}/kaydet`, data);
+    return response.data;
+  },
+
+  rejectTemizlikOnay: async (onayId: number, aciklama: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(`/TemizlikOnay/${onayId}/reddet`, { aciklama });
     return response.data;
   },
 
@@ -905,8 +935,8 @@ export const api = {
     return response.data;
   },
 
-  updateTalepStatus: async (id: number, status: string): Promise<{ success: boolean }> => {
-    const response = await apiClient.post<{ success: boolean }>(`/talep/${id}/status`, { status });
+  updateTalepStatus: async (id: number, status: string): Promise<{ success: boolean; pendingApproval?: boolean; pendingApprovalAdSoyad?: string }> => {
+    const response = await apiClient.post<{ success: boolean; pendingApproval?: boolean; pendingApprovalAdSoyad?: string }>(`/talep/${id}/status`, { status });
     return response.data;
   },
 
@@ -1518,6 +1548,89 @@ export const api = {
   },
   saveMalzemeSettings: async (settings: any): Promise<{ success: boolean, message: string }> => {
     const response = await apiClient.post('/Malzeme/settings', settings);
+    return response.data as any;
+  },
+
+  // Dashboard Ayarları (referans: WebPortal Admin/DashboardAyarlari.html — anasayfada hangi widget'ların gösterileceği)
+  getDashboardSettings: async (): Promise<{ success: boolean, settings: any }> => {
+    const response = await apiClient.get('/Admin/dashboard-settings');
+    return response.data as any;
+  },
+  saveDashboardSettings: async (settings: any): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Admin/dashboard-settings', settings);
+    return response.data as any;
+  },
+
+  // Entegrasyon Servisleri (referans: WebPortal Admin/EntegrasyonYonetimi.html — mobilde
+  // sadece izleme + tetikleme; kimlik bilgileri düzenleme WebPortal'da kalıyor).
+  getEntegrasyonServisleri: async (): Promise<{ success: boolean, data: any[] }> => {
+    const response = await apiClient.get('/Admin/entegrasyon-servisleri');
+    return response.data as any;
+  },
+  tetikleEntegrasyonServis: async (servisKodu: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post(`/Admin/entegrasyon-servisleri/${encodeURIComponent(servisKodu)}/tetikle`);
+    return response.data as any;
+  },
+
+  // Oyemsoft Tenant Yönetimi (referans: WebPortal Admin/OyemSoftTenantIslemleri.html) — sadece
+  // "oyemsoft" tenant'ıyla giriş yapıldığında backend 403 döndürmez, aksi halde Forbidden gelir.
+  getTenants: async (search?: string): Promise<{ success: boolean, data: any[] }> => {
+    const response = await apiClient.get('/Tenant', { params: search ? { search } : {} });
+    return response.data as any;
+  },
+  saveTenant: async (dto: any): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Tenant', dto);
+    return response.data as any;
+  },
+  deleteTenant: async (tenantId: string): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.delete(`/Tenant/${encodeURIComponent(tenantId)}`);
+    return response.data as any;
+  },
+
+  // Proje ve Sayfa Yönetimi (referans: WebPortal Admin/ProjeIslemleri.html) — mobil ve web menü
+  // yapısının kaynağı (tb_Proje/tb_Sayfa); sıralama sürükle-bırak yerine SiraNo alanı ile yapılır.
+  getProjects: async (): Promise<any[]> => {
+    const response = await apiClient.get('/Admin/projects');
+    return response.data as any;
+  },
+  saveProject: async (model: any): Promise<{ message: string }> => {
+    const response = await apiClient.post('/Admin/projects', model);
+    return response.data as any;
+  },
+  deleteProject: async (id: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete(`/Admin/projects/${id}`);
+    return response.data as any;
+  },
+  getPages: async (projectId: number = 0): Promise<any[]> => {
+    const response = await apiClient.get('/Admin/pages', { params: { projectId } });
+    return response.data as any;
+  },
+  savePage: async (model: any): Promise<{ message: string }> => {
+    const response = await apiClient.post('/Admin/pages', model);
+    return response.data as any;
+  },
+  deletePage: async (id: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete(`/Admin/pages/${id}`);
+    return response.data as any;
+  },
+
+  // Isı Haritası (referans: WebPortal Admin/IsiHaritasi.html) — tb_Log + tb_BelgeTarihce yoğunluk raporu.
+  getIsiHaritasi: async (basTar: string, bitTar: string, kaynak: string, cihaz: string): Promise<any> => {
+    const response = await apiClient.get('/Admin/isi-haritasi', { params: { basTar, bitTar, kaynak, cihaz } });
+    return response.data as any;
+  },
+  getIsiHaritasiDetay: async (params: { basTar: string, bitTar: string, kaynak: string, cihaz: string, mod: string, gun?: number, saat: number, tarih?: string }): Promise<any> => {
+    const response = await apiClient.get('/Admin/isi-haritasi-detay', { params });
+    return response.data as any;
+  },
+
+  // Mağaza Satış Ayarları — "Modül & Parametreler" sekmesi (referans: WebPortal Admin/MagazaSatisAyarlari.html).
+  getMagazaParametreler: async (): Promise<{ success: boolean, data: any[] }> => {
+    const response = await apiClient.get('/Admin/magaza-parametreler');
+    return response.data as any;
+  },
+  saveMagazaParametreler: async (parametreler: { parametreKodu: string, deger: string }[]): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post('/Admin/magaza-parametreler', parametreler);
     return response.data as any;
   },
 

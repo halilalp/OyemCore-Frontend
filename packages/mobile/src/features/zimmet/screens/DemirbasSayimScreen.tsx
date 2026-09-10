@@ -374,6 +374,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
     gap: 16,
   },
   itemCard: {

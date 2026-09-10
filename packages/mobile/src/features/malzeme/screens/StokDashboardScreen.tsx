@@ -104,7 +104,7 @@ export const StokDashboardScreen = () => {
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  scroll: { padding: 16, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' },
   premiumRow: { flexDirection: 'row', gap: 10, marginBottom: 10, width: '100%' },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
   barLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },

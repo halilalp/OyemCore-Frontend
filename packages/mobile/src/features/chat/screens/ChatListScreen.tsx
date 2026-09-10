@@ -153,7 +153,7 @@ export const ChatListScreen: React.FC<any> = ({ navigation }) => {
           keyExtractor={(u) => u.sicilNo}
           renderItem={renderItem}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
-          contentContainerStyle={{ paddingBottom: 16 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor={colors.primary} />}
         />
       )}

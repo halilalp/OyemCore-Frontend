@@ -284,7 +284,7 @@ export const TicketDashboardScreen = () => {
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  scroll: { padding: 16, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   premiumRow: { flexDirection: 'row', gap: 10, marginBottom: 10, width: '100%' },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },

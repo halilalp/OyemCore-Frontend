@@ -132,22 +132,36 @@ export function generateNotificationWavBase64(): string {
   return combineAndToBase64(header, data);
 }
 
-// 2. Arama Zil Sesi (PlayRingtoneSound / dual frequency corporate ring)
-// Frekanslar: 440Hz + 480Hz
+// 2. Arama Zil Sesi (PlayRingtoneSound / standart telefon zili)
+// Frekanslar 440Hz + 480Hz: ITU/ANSI standart çevirme/zil tonu frekansları.
+// Önceki sürüm bu tonu kesintisiz çalıyordu (tek bir vızıltı gibi duyuluyordu);
+// standart bir telefon zilini ayırt edilir kılan asıl şey "tıt...tıt...(sessizlik)"
+// kadansıdır (ABD standardı: 2sn çalma + 4sn sessizlik). Burada 2sn çalma + 3sn
+// sessizlik kullanılıyor — mobil UX için biraz daha kısa ama aynı tanıdık kadans.
+// ringSound.loop=true olduğundan tüm döngü (çalma+sessizlik) tek WAV'a gömülüp
+// kesintisiz tekrarlanıyor.
 export function generateRingtoneWavBase64(): string {
   const sampleRate = 8000;
-  const duration = 1.25;
-  const numSamples = sampleRate * duration;
+  const ringOnDuration = 2.0;
+  const ringOffDuration = 3.0;
+  const totalDuration = ringOnDuration + ringOffDuration;
+  const numSamples = Math.floor(sampleRate * totalDuration);
   const header = new Uint8Array(44);
   const data = new Int16Array(numSamples);
 
+  const fadeDuration = 0.05; // 50ms fade-in/out: çalma başı/sonunda "tık" sesini önler
+
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
-    let amp = 0.15;
-    if (t < 0.1) {
-      amp = 0.15 * (t / 0.1);
-    } else if (t > 0.9) {
-      amp = 0.15 * Math.max(0, 1 - (t - 0.9) / 0.35);
+    if (t >= ringOnDuration) {
+      data[i] = 0; // sessizlik bölümü
+      continue;
+    }
+    let amp = 0.2;
+    if (t < fadeDuration) {
+      amp = 0.2 * (t / fadeDuration);
+    } else if (t > ringOnDuration - fadeDuration) {
+      amp = 0.2 * Math.max(0, (ringOnDuration - t) / fadeDuration);
     }
     const sample = (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t)) / 2;
     data[i] = Math.floor(sample * 32767 * amp);

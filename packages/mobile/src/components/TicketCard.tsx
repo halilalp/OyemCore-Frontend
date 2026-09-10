@@ -27,6 +27,8 @@ export interface TicketCardProps {
   iconColor: string;
   iconBg: string;
   lineColor: string;
+  gelismeAdet?: number; // liste kartında gösterilecek gelişme sayısı
+  dosyaAdet?: number;   // liste kartında gösterilecek ekli dosya sayısı
   onPress?: () => void;
 }
 
@@ -52,6 +54,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   iconColor,
   iconBg,
   lineColor,
+  gelismeAdet,
+  dosyaAdet,
   onPress,
 }) => {
   return (
@@ -119,6 +123,24 @@ export const TicketCard: React.FC<TicketCardProps> = ({
               <Text style={styles.metaSeparator}>·</Text>
               <Ionicons name="time-outline" size={13} color={slateTokens.textMuted} />
               <Text style={styles.metaText} numberOfLines={1}>{timeAgo}</Text>
+            </View>
+          )}
+
+          {/* Gelişme / ekli dosya adetleri (yalnızca > 0 ise) */}
+          {((gelismeAdet ?? 0) > 0 || (dosyaAdet ?? 0) > 0) && (
+            <View style={styles.countsRow}>
+              {(gelismeAdet ?? 0) > 0 && (
+                <View style={styles.countChip}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={13} color={slateTokens.brandPrimary} />
+                  <Text style={styles.countChipText}>{gelismeAdet}</Text>
+                </View>
+              )}
+              {(dosyaAdet ?? 0) > 0 && (
+                <View style={styles.countChip}>
+                  <Ionicons name="attach-outline" size={14} color={slateTokens.brandPrimary} />
+                  <Text style={styles.countChipText}>{dosyaAdet}</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -202,6 +224,26 @@ const styles = StyleSheet.create({
     color: slateTokens.textBody,
     marginBottom: 8,
     lineHeight: 20,
+  },
+  countsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  countChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: slateTokens.pastelBlueBg || '#eff6ff',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  countChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: slateTokens.brandPrimary,
   },
   footerRow: {
     flexDirection: 'row',

@@ -9,7 +9,7 @@ import { api } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
 
 export const AdminAyarlarScreen = () => {
-  const { user } = useAuthStore();
+  const { user, tenantId } = useAuthStore();
   const { colors } = useThemeStore();
   const navigation = useNavigation<any>();
   const styles = createStyles(colors);
@@ -135,6 +135,73 @@ export const AdminAyarlarScreen = () => {
             </View>
             <Text style={styles.chevron}>➔</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminDashboardAyarlari')}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconWrapper, { backgroundColor: '#0ea5e915' }]}>
+                <Text style={[styles.menuIcon, { color: '#0ea5e9' }]}>🏠</Text>
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Dashboard Ayarları</Text>
+                <Text style={styles.menuDesc}>Anasayfada gösterilecek modülleri aç/kapat</Text>
+              </View>
+            </View>
+            <Text style={styles.chevron}>➔</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminProje')}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconWrapper, { backgroundColor: '#f59e0b15' }]}>
+                <Text style={[styles.menuIcon, { color: '#f59e0b' }]}>📁</Text>
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Proje ve Sayfa Yönetimi</Text>
+                <Text style={styles.menuDesc}>Menü yapısı, sayfa web/mobil görünürlük ayarları</Text>
+              </View>
+            </View>
+            <Text style={styles.chevron}>➔</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminEntegrasyon')}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconWrapper, { backgroundColor: '#7239ea15' }]}>
+                <Text style={[styles.menuIcon, { color: '#7239ea' }]}>🔗</Text>
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Entegrasyon Servisleri</Text>
+                <Text style={styles.menuDesc}>Windows servis & Hangfire canlı takip, manuel tetikleme</Text>
+              </View>
+            </View>
+            <Text style={styles.chevron}>➔</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminMagazaParametre')}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconWrapper, { backgroundColor: '#10b98115' }]}>
+                <Text style={[styles.menuIcon, { color: '#10b981' }]}>🛍️</Text>
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Mağaza Modül & Parametreler</Text>
+                <Text style={styles.menuDesc}>Mağaza satış modülü işleyiş ayarları</Text>
+              </View>
+            </View>
+            <Text style={styles.chevron}>➔</Text>
+          </TouchableOpacity>
+
+          {(tenantId || '').toLowerCase() === 'oyemsoft' && (
+            <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminOyemsoftTenant')}>
+              <View style={styles.menuLeft}>
+                <View style={[styles.iconWrapper, { backgroundColor: '#f1416c15' }]}>
+                  <Text style={[styles.menuIcon, { color: '#f1416c' }]}>🏢</Text>
+                </View>
+                <View style={styles.menuText}>
+                  <Text style={styles.menuTitle}>Tenant Yönetimi</Text>
+                  <Text style={styles.menuDesc}>OyemSoft platform genelinde müşteri tenant kayıtları</Text>
+                </View>
+              </View>
+              <Text style={styles.chevron}>➔</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.menuSection}>
@@ -165,6 +232,19 @@ export const AdminAyarlarScreen = () => {
             </View>
             <Text style={styles.chevron}>➔</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => navigation.navigate('AdminIsiHaritasi')}>
+            <View style={styles.menuLeft}>
+              <View style={[styles.iconWrapper, { backgroundColor: '#ef444415' }]}>
+                <Text style={[styles.menuIcon, { color: '#ef4444' }]}>🔥</Text>
+              </View>
+              <View style={styles.menuText}>
+                <Text style={styles.menuTitle}>Isı Haritası</Text>
+                <Text style={styles.menuDesc}>Kullanıcı aktivite yoğunluğu (gün/saat paterni)</Text>
+              </View>
+            </View>
+            <Text style={styles.chevron}>➔</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
       <BottomNavBar currentScreen="Admin" />
@@ -179,7 +259,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   scrollContainer: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',

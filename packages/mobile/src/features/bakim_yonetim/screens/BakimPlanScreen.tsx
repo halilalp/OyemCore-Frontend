@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
-import { useIsFocused, useRoute } from '@react-navigation/native';
-import { api, BakimPlan, BakimPlanDetay, Malzeme } from '@oyemcore/shared';
+import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
+import { api, BakimPlan, BakimPlanDetay, Malzeme, Personel, TemizlikOnayDurum, TemizlikOnayDetay } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useAppStore } from '../../../store/useAppStore';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { hasBakimSayfaYetkisi } from '../bakimYetki';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
@@ -14,6 +16,7 @@ import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { createBakimStyles } from '../shared/bakimStyles';
+import { TEMIZLIK_ONAY_SORULARI } from '../shared/temizlikOnaySorulari';
 import { apiHataMesaji } from '../../../utils/apiError';
 
 // Bakım planı türleri — referans projedeki statik değerler (BakimPlani.html ddlBakimTuru).
@@ -33,11 +36,16 @@ const bakimTurLabel = (v: string) => BAKIM_TURLERI.find(t => t.value === v)?.lab
 export const BakimPlanScreen = () => {
   const isFocused = useIsFocused();
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const { colors, theme } = useThemeStore();
   const styles = createBakimStyles(colors, theme);
 
   const mode: 'plan' | 'uygula' = route.params?.mode === 'uygula' ? 'uygula' : 'plan';
+  const { menuItems } = useAppStore();
+  // Hub'daki liste artık aynı kontrolle filtreleniyor (bkz. BakimYonetimHubScreen.tsx), ama
+  // buraya doğrudan (deep-link/eski route geçmişi vb.) gelen yetkisiz erişimi de engeller.
+  const hasAccess = hasBakimSayfaYetkisi(menuItems, mode === 'uygula' ? 'plan-islem' : 'plan');
 
   const [isLoading, setIsLoading] = useState(false);
   const [dropdowns, setDropdowns] = useState<any>(null);
@@ -94,6 +102,63 @@ export const BakimPlanScreen = () => {
   const [isSarfiyatsExpanded, setIsSarfiyatsExpanded] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
+  // Temizlik Onay Formu akışı (referans TemizlikOnayModal.js) — Durum=ONAY iken
+  // seçilen personelin dolduracağı ortak form. Web ile aynı davranış.
+  const [allPersonnel, setAllPersonnel] = useState<Personel[]>([]);
+  const [isPersonelSecOpen, setIsPersonelSecOpen] = useState(false);
+  const [temizlikOnayDurum, setTemizlikOnayDurum] = useState<TemizlikOnayDurum | null>(null);
+  const [temizlikOnayDetay, setTemizlikOnayDetay] = useState<TemizlikOnayDetay | null>(null);
+  const [isTemizlikOnayExpanded, setIsTemizlikOnayExpanded] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  useEffect(() => {
+    api.getAllPersonnel().then(setAllPersonnel).catch(() => setAllPersonnel([]));
+  }, []);
+
+  const loadTemizlikOnayDurum = async (planKodu: string) => {
+    try {
+      const res = await api.getTemizlikOnayDurum('BAKIM', planKodu);
+      setTemizlikOnayDurum(res || null);
+      // Form onaylanmışsa (plan gerçekten TAMAMLANDI ise) girilen 8 maddeyi de
+      // tarihçenin üstünde göstermek için tam detayı çekiyoruz.
+      if (res?.exists && res.onayDurumu === 'ONAYLANDI' && res.onayID) {
+        try {
+          const detay = await api.getTemizlikOnayDetay(res.onayID);
+          setTemizlikOnayDetay(detay);
+        } catch (e) {
+          setTemizlikOnayDetay(null);
+        }
+      } else {
+        setTemizlikOnayDetay(null);
+      }
+    } catch (e) {
+      setTemizlikOnayDurum(null);
+      setTemizlikOnayDetay(null);
+    }
+  };
+
+  const handleRejectTemizlikOnay = async () => {
+    if (!temizlikOnayDurum?.onayID) return;
+    if (!rejectReason.trim() || rejectReason.trim().length < 5) {
+      Alert.alert('Uyarı', 'Lütfen bir açıklama yazınız.');
+      return;
+    }
+    try {
+      await api.rejectTemizlikOnay(temizlikOnayDurum.onayID, rejectReason.trim());
+      setIsRejectModalOpen(false);
+      setRejectReason('');
+      Alert.alert('Başarılı', 'İşlem, tamamlanmadı olarak geri gönderildi.');
+      if (selectedPlan) {
+        setSelectedPlan(prev => prev ? { ...prev, durum: 'DEVAM' } : null);
+        loadTemizlikOnayDurum(selectedPlan.planKodu);
+      }
+      loadPlans();
+    } catch (err: any) {
+      Alert.alert('Hata', apiHataMesaji(err, 'İşlem gerçekleştirilemedi.'));
+    }
+  };
+
   const loadHistory = async (code: string) => {
     try {
       const res = await api.adminGetBelgeTarihcePaged({ documentCode: code, pageSize: 100 });
@@ -132,6 +197,7 @@ export const BakimPlanScreen = () => {
     switch (durum) {
       case 'TAMAMLANDI': return colors.successLight;
       case 'DEVAM': return colors.infoLight;
+      case 'ONAY': return colors.primaryLight || colors.warningLight;
       case 'IPTAL': return colors.dangerLight;
       default: return colors.warningLight;
     }
@@ -141,6 +207,7 @@ export const BakimPlanScreen = () => {
     switch (durum) {
       case 'TAMAMLANDI': return colors.success;
       case 'DEVAM': return colors.info;
+      case 'ONAY': return colors.primary || colors.warning;
       case 'IPTAL': return colors.danger;
       default: return colors.warning;
     }
@@ -185,6 +252,9 @@ export const BakimPlanScreen = () => {
     setIsNotlarExpanded(false);
     setIsSarfiyatsExpanded(false);
     setIsHistoryExpanded(false);
+    setTemizlikOnayDurum(null);
+    setTemizlikOnayDetay(null);
+    setIsTemizlikOnayExpanded(false);
     try {
       loadHistory(plan.planKodu);
       const notlar = await api.getBakimPlanNotlar(plan.planKodu);
@@ -195,6 +265,7 @@ export const BakimPlanScreen = () => {
         const mk = await api.getHatMakines(plan.hatKodu);
         setHatMakines(mk || []);
       }
+      loadTemizlikOnayDurum(plan.planKodu);
     } catch (err) {
       console.error(err);
     }
@@ -282,7 +353,7 @@ export const BakimPlanScreen = () => {
     }
   };
 
-  const handleUpdatePlanStatus = async (status: string) => {
+  const handleUpdatePlanStatus = async (status: string, secilenSicil?: string) => {
     if (!selectedPlan) return;
     if (status === 'TAMAMLANDI' && selectedPlan.durum === 'BEKLEMEDE') {
       Alert.alert('Uyarı', 'Bakım işlemini tamamlamadan önce "Başlat" seçeneği ile başlatmalısınız.');
@@ -291,11 +362,15 @@ export const BakimPlanScreen = () => {
     try {
       await api.updateBakimPlanStatus(selectedPlan.planKodu, {
         durum: status,
-        not: `Mobil arayüzden durum güncellendi: ${status}`
+        not: `Mobil arayüzden durum güncellendi: ${status}`,
+        secilenSicil
       });
-      setSelectedPlan(prev => prev ? { ...prev, durum: status } : null);
+      // Durum=TAMAMLANDI gönderildiğinde backend süreci ONAY'da bekletir (referans BakimIslemGuncelle).
+      const yeniDurum = status === 'TAMAMLANDI' ? 'ONAY' : status;
+      setSelectedPlan(prev => prev ? { ...prev, durum: yeniDurum } : null);
       loadPlans();
       loadHistory(selectedPlan.planKodu);
+      if (yeniDurum === 'ONAY') loadTemizlikOnayDurum(selectedPlan.planKodu);
       try {
         const notlar = await api.getBakimPlanNotlar(selectedPlan.planKodu);
         setPlanNotlar(notlar || []);
@@ -304,7 +379,7 @@ export const BakimPlanScreen = () => {
       } catch (e) {
         console.error('Notlar/Sarfiyat tazelenemedi:', e);
       }
-      Alert.alert('Başarılı', 'Plan durumu güncellendi.');
+      Alert.alert('Başarılı', yeniDurum === 'ONAY' ? 'İşlem tamamlandı, temizlik onay formu bekleniyor.' : 'Plan durumu güncellendi.');
     } catch (err: any) {
       Alert.alert('Hata', apiHataMesaji(err, 'Durum güncellenemedi.'));
     }
@@ -362,6 +437,22 @@ export const BakimPlanScreen = () => {
     if (!gateSirket) { Alert.alert('Şirket Seçin', 'Hat seçebilmek için önce şirket seçmelisiniz.'); return; }
     setIsFormPlanHatOpen(true);
   };
+
+  if (!hasAccess) {
+    return (
+      <View style={styles.container}>
+        <ListHeader title={mode === 'uygula' ? 'Bakım Planı İşlem' : 'Bakım Planı'} subtitle="" searchValue="" activeFilter="" filters={[]} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 }}>
+          <Ionicons name="lock-closed-outline" size={32} color={colors.textSecondary} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Bu sayfayı görüntülemek için yetkiniz bulunmamaktadır.</Text>
+          <TouchableOpacity style={{ backgroundColor: colors.primary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, marginTop: 4 }} onPress={() => navigation.goBack()}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+        <BottomNavBar />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -583,10 +674,63 @@ export const BakimPlanScreen = () => {
                   )}
                 </View>
 
+                {/* Temizlik Onay Formu Akordeon Paneli — plan gerçekten TAMAMLANDI ise
+                    (form onaylandıysa) girilen 8 madde burada salt okunur gösterilir. */}
+                {temizlikOnayDetay && (
+                  <View style={styles.historySection}>
+                    <TouchableOpacity
+                      style={styles.historyHeader}
+                      onPress={() => setIsTemizlikOnayExpanded(!isTemizlikOnayExpanded)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.historyTitle}>Temizlik Onay Formu</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successLight, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 }}>
+                          <Ionicons name="checkmark-circle-outline" size={11} color={colors.success} />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.success }}>Onaylandı</Text>
+                        </View>
+                      </View>
+                      <Ionicons name={isTemizlikOnayExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+
+                    {isTemizlikOnayExpanded && (
+                      <View style={styles.historyContainer}>
+                        <View style={[styles.detailCard, { marginTop: 8 }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <UserAvatar sicilNo={temizlikOnayDurum?.secilenSicil} name={temizlikOnayDurum?.secilenAdSoyad} size={26} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text }}>{temizlikOnayDurum?.secilenAdSoyad}</Text>
+                              <Text style={{ fontSize: 11, color: colors.textSecondary }}>{temizlikOnayDurum?.onayTarStr}</Text>
+                            </View>
+                          </View>
+                          {TEMIZLIK_ONAY_SORULARI.map(item => {
+                            const cevap = (temizlikOnayDetay as any)[item.key];
+                            const uygun = cevap === 'U';
+                            return (
+                              <View key={item.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                                <Text style={{ flex: 1, fontSize: 12, color: colors.text, lineHeight: 16 }}>{item.label}</Text>
+                                <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: uygun ? colors.successLight : colors.dangerLight }}>
+                                  <Text style={{ fontSize: 10.5, fontWeight: '800', color: uygun ? colors.success : colors.danger }}>{uygun ? 'UYGUN' : 'UYGUN DEĞİL'}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                          {!!temizlikOnayDetay.onayAciklama && (
+                            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 4 }}>Açıklama</Text>
+                              <Text style={{ fontSize: 12, color: colors.text }}>{temizlikOnayDetay.onayAciklama}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {/* Tarihçe / Geçmiş Akordeon Paneli */}
                 <View style={styles.historySection}>
-                  <TouchableOpacity 
-                    style={styles.historyHeader} 
+                  <TouchableOpacity
+                    style={styles.historyHeader}
                     onPress={() => setIsHistoryExpanded(!isHistoryExpanded)}
                     activeOpacity={0.7}
                   >
@@ -659,8 +803,36 @@ export const BakimPlanScreen = () => {
               </View>
             )}
 
+            {/* Temizlik Onay Formu bekleniyor (referans TemizlikOnayModal.js durum rozeti + aksiyonlar) */}
+            {mode === 'uygula' && selectedPlan.durum === 'ONAY' && (
+              <View style={{ marginHorizontal: 16, marginBottom: Platform.OS === 'ios' ? 24 : 14, backgroundColor: colors.primaryLight, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.primary }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Ionicons name="time-outline" size={20} color={colors.primary} />
+                  <Text style={{ fontSize: 13.5, fontWeight: '800', color: colors.primary, flex: 1 }}>
+                    Temizlik Onay Formu Bekliyor{temizlikOnayDurum?.secilenAdSoyad ? `: ${temizlikOnayDurum.secilenAdSoyad}` : ''}
+                  </Text>
+                </View>
+                {user?.sicilNo && temizlikOnayDurum?.secilenSicil === user.sicilNo && (
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                    <TouchableOpacity
+                      style={{ flex: 1, backgroundColor: colors.success, height: 42, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => navigation.navigate('TemizlikOnayForm', { onayId: temizlikOnayDurum.onayID })}
+                    >
+                      <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12.5 }}>Onay Formu Doldur</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flex: 1, backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.danger, height: 42, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => { setRejectReason(''); setIsRejectModalOpen(true); }}
+                    >
+                      <Text style={{ color: colors.danger, fontWeight: '800', fontSize: 12.5 }}>İşlem Tamamlanmadı</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Standart İşlem Alt Barı (Sadece Uygulama/İşlem sayfasında görünür) */}
-            {mode === 'uygula' && selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && (
+            {mode === 'uygula' && selectedPlan.durum !== 'TAMAMLANDI' && selectedPlan.durum !== 'IPTAL' && selectedPlan.durum !== 'ONAY' && (
               <View style={{ 
                 flexDirection: 'row', 
                 alignItems: 'center', 
@@ -742,9 +914,9 @@ export const BakimPlanScreen = () => {
                     <TouchableOpacity 
                       style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }} 
                       onPress={() => {
-                        Alert.alert('İşlemi Tamamla', 'Bu bakım işlemini tamamlamak istediğinize emin misiniz?', [
+                        Alert.alert('İşlemi Tamamla', 'Bu bakım işlemini tamamlamak istediğinize emin misiniz? Ardından işlemi kontrol edecek personeli seçmeniz istenecektir.', [
                           { text: 'Vazgeç', style: 'cancel' },
-                          { text: 'Tamamla', style: 'default', onPress: () => handleUpdatePlanStatus('TAMAMLANDI') }
+                          { text: 'Devam Et', style: 'default', onPress: () => setIsPersonelSecOpen(true) }
                         ]);
                       }}
                     >
@@ -871,6 +1043,47 @@ export const BakimPlanScreen = () => {
           labelExtractor={(item) => item.makineAdi}
           title="Makine Seçin"
         />
+
+        {/* Temizlik onay formunu dolduracak personel seçimi (referans TemizlikOnaySecAc) —
+            iOS'ta ayrı/sonraki modal olarak render edilince detay modalının arkasında kalıyordu,
+            malzeme/makine modallarıyla aynı çözüm: detay modalı içinde render edilir. */}
+        <SearchableSelectorModal
+          visible={isPersonelSecOpen}
+          onClose={() => setIsPersonelSecOpen(false)}
+          onSelect={(item) => { setIsPersonelSecOpen(false); handleUpdatePlanStatus('TAMAMLANDI', item.sicilNo); }}
+          data={allPersonnel || []}
+          keyExtractor={(item) => item.sicilNo}
+          labelExtractor={(item) => `${item.adSoyad} (${item.sicilNo})`}
+          title="Temizlik Onay Formunu Dolduracak Personeli Seçin"
+        />
+
+        {/* Temizlik onayını reddetme sebebi (referans TemizlikOnayFormuReddet) — aynı sebeple detay modalı içinde. */}
+        <Modal visible={isRejectModalOpen} transparent animationType="fade" onRequestClose={() => setIsRejectModalOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', paddingHorizontal: 22 }}>
+            <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>Tamamlanmadı Olarak Geri Gönder</Text>
+                <TouchableOpacity onPress={() => setIsRejectModalOpen(false)}><Ionicons name="close" size={22} color={colors.textSecondary} /></TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 10 }}>Bu işlem, işlemi tamamlayan kişiye geri gönderilecek ve durum tekrar DEVAM olarak işaretlenecektir. Sebebini yazınız:</Text>
+              <TextInput
+                style={{ backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, borderRadius: 10, padding: 12, minHeight: 90, color: colors.text, textAlignVertical: 'top', marginBottom: 14 }}
+                placeholder="Örn: Makine yüzeyinde temizlenmemiş yağ bulaşığı tespit edildi..."
+                placeholderTextColor={colors.placeholder}
+                multiline
+                value={rejectReason}
+                onChangeText={setRejectReason}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: colors.danger, height: 46, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                onPress={handleRejectTemizlikOnay}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>Geri Gönder</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+          <KeyboardDismissBar />
+        </Modal>
       </Modal>
 
       {/* NEW PLAN MODAL */}
@@ -1037,6 +1250,7 @@ export const BakimPlanScreen = () => {
           { code: '', label: 'Tümü' },
           { code: 'BEKLEMEDE', label: 'BEKLEMEDE' },
           { code: 'DEVAM', label: 'DEVAM' },
+          { code: 'ONAY', label: 'ONAY BEKLİYOR' },
           { code: 'TAMAMLANDI', label: 'TAMAMLANDI' },
           { code: 'IPTAL', label: 'IPTAL' }
         ]}

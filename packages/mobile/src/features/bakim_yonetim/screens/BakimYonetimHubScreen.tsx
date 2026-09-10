@@ -1,16 +1,20 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { useAppStore } from '../../../store/useAppStore';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
+import { hasBakimSayfaYetkisi, BakimSayfaKey } from '../bakimYetki';
 
 // Bakım Yönetimi menü hub'ı — webportal'daki "Bakım Yönetimi" menüsünün mobil karşılığı.
 // Her öğe kendi ekranına gider; plan/işlem öğeleri BakimScreen'e parametreyle deep-link.
 // Not: Admin talep, Risk Analiz, Rehber, Tanımlar öğeleri mobilde henüz yok — gösterilmiyor.
+// Her öğe kendi tb_Sayfa kaydına karşı ayrıca yetki kontrolünden geçiyor (bkz. bakimYetki.ts) —
+// sadece Hub'a girebilmek (BakimHelpDesk) alt sayfaların hepsine erişim anlamına gelmiyor.
 type MenuItem = {
-  key: string;
+  key: BakimSayfaKey;
   title: string;
   desc: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -26,6 +30,7 @@ const MENU: MenuItem[] = [
   { key: 'plan-islem', title: 'Bakım Planı İşlem', desc: 'Planlanan bakımı başlat, işle ve kapat', icon: 'hammer-outline', color: '#8b5cf6', screen: 'BakimPlan', params: { mode: 'uygula' } },
   { key: 'periyodik', title: 'Periyodik Kontrol Planı', desc: 'Periyodik kontrol takvimi ve planlaması', icon: 'repeat-outline', color: '#f59e0b', screen: 'PeriyodikKontrol', params: { mode: 'plan' } },
   { key: 'periyodik-islem', title: 'Periyodik Kontrol İşlem', desc: 'Periyodik kontrolü başlat, işle ve kapat', icon: 'checkmark-done-outline', color: '#f59e0b', screen: 'PeriyodikKontrol', params: { mode: 'uygula' } },
+  { key: 'temizlik-onay', title: 'Temizlik Onay Formlarım', desc: 'Onayınızı bekleyen makine temizlik/kontrol formları', icon: 'clipboard-outline', color: '#ef4444', screen: 'TemizlikOnayBekleyenlerim' },
   { key: 'rapor', title: 'Raporlar', desc: 'Bakım ve personel performans raporları', icon: 'document-text-outline', color: '#0ea5e9', screen: 'BakimRapor' },
 ];
 
@@ -33,12 +38,18 @@ export const BakimYonetimHubScreen = () => {
   const { colors } = useThemeStore();
   const navigation = useNavigation<any>();
   const styles = createStyles(colors);
+  const { menuItems } = useAppStore();
+
+  const visibleMenu = useMemo(
+    () => MENU.filter(item => hasBakimSayfaYetkisi(menuItems, item.key)),
+    [menuItems]
+  );
 
   return (
     <View style={styles.container}>
       <ListHeader
         title="Bakım Yönetimi"
-        subtitle={`${MENU.length} bölüm`}
+        subtitle={`${visibleMenu.length} bölüm`}
         searchValue=""
         onSearchChange={() => {}}
         searchPlaceholder=""
@@ -47,7 +58,7 @@ export const BakimYonetimHubScreen = () => {
         filters={[]}
       />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {MENU.map(item => (
+        {visibleMenu.map(item => (
           <TouchableOpacity
             key={item.key}
             style={styles.card}
@@ -72,7 +83,7 @@ export const BakimYonetimHubScreen = () => {
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, gap: 12, paddingBottom: 32 },
+  scroll: { padding: 16, gap: 12, paddingBottom: 100 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

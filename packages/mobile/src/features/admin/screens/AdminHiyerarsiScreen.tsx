@@ -393,7 +393,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   listContainer: {
     padding: 16,
     gap: 12,
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   card: {
     backgroundColor: colors.card,

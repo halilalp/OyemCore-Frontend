@@ -124,6 +124,42 @@ export interface PeriyodikKontrol {
   kayitYapan: string;
 }
 
+// Bakım Planı / Periyodik Kontrol Planı ortak "Temizlik Onay Formu" akışı.
+// Referans: WebPortal WebServicePlanTemizlikOnay.asmx.
+export interface TemizlikOnayDurum {
+  exists: boolean;
+  onayID?: number;
+  onayDurumu?: string; // BEKLEMEDE | ONAYLANDI | REDDEDILDI
+  secilenAdSoyad?: string;
+  secilenSicil?: string;
+  kayitTarStr?: string;
+  onayTarStr?: string;
+}
+
+export interface TemizlikOnayDetay {
+  onayID: number;
+  planTuru: string;
+  planKodu: string;
+  onayDurumu: string;
+  planAciklama?: string;
+  eksikSomunDurum?: string;
+  yagDurum?: string;
+  miknatisDurum?: string;
+  fazlaParcaDurum?: string;
+  guvRiskDurum?: string;
+  makineDurum?: string;
+  temizlikDurum?: string;
+  gidaRiskDurum?: string;
+  onayAciklama?: string;
+}
+
+export interface TemizlikOnayBekleyen {
+  onayID: number;
+  planTuru: string;
+  planKodu: string;
+  kayitTarStr: string;
+}
+
 export interface PeriyodikSarfiyat {
   id: number;
   kontrolKodu: string;
@@ -219,6 +255,8 @@ export interface Talep {
   puanRenk?: string | null;
   kilitli?: boolean;
   kilitTarStr?: string;
+  gelismeAdet?: number;
+  dosyaAdet?: number;
 }
 
 export interface TalepKategori {
@@ -376,6 +414,15 @@ export interface TalepBakim {
   uretimDurusu: string;
   gidaGuvOncelik: string;
   isGuvOncelik: string;
+  // Kontrol/Temizlik Formu cevapları ('U'=Uygun, 'UD'=Uygun Değil) — sadece talep kontrol formu doldurulup kapatıldığında dolu gelir.
+  eksikSomunDurum?: string;
+  yagDurum?: string;
+  miknatisDurum?: string;
+  fazlaParcaDurum?: string;
+  guvRiskDurum?: string;
+  makineDurum?: string;
+  temizlikDurum?: string;
+  gidaRiskDurum?: string;
 }
 
 // Mock/Bypass types for SAT/SAS module (not currently active)

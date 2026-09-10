@@ -186,9 +186,13 @@ export const HomeScreen = () => {
         });
 
         const basarisiz = sonuclar.filter(r => r.status === 'rejected').length;
+        // İkincil widget'lar (stats/haber/eğitim/talep listeleri) deger() ile boş varsayılana
+        // düşer; tekil hataları kalıcı banner ile rahatsız etmesin. Banner yalnızca TÜM çağrılar
+        // başarısızsa (bağlantı yok) veya KRİTİK içerik (menü=0, takvim=1) başarısızsa gösterilir.
+        const kritikBasarisiz = sonuclar[0].status === 'rejected' || sonuclar[1].status === 'rejected';
         if (basarisiz === sonuclar.length) {
           setLoadError('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
-        } else if (basarisiz > 0) {
+        } else if (kritikBasarisiz) {
           setLoadError('Bazı veriler yüklenemedi. Gösterilen bilgiler eksik olabilir.');
         }
 
@@ -371,6 +375,11 @@ export const HomeScreen = () => {
     let anaSayfa = anaSayfaPage?.mobilUrl || 'Home';
     if (name === 'Bakım Yönetimi' || anaSayfa === 'Bakim' || anaSayfa === 'BakimScreen') {
       anaSayfa = 'BakimYonetim';
+    }
+    // 'Ayarlar' grubunun tek bir alt sayfasına değil, tüm admin sayfalarını
+    // kart olarak listeleyen hub ekranına gitmesi gerekiyor.
+    if (name === 'Ayarlar') {
+      anaSayfa = 'AdminAyarlar';
     }
 
     return {
@@ -822,19 +831,50 @@ export const HomeScreen = () => {
         onRequestClose={() => setSelectedEvent(null)}
       >
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedEvent(null)}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            {/* Renkli başlık: ikon + konu + tür + kapat (web ile aynı) */}
             <View style={[styles.modalHeader, { backgroundColor: selectedEvent?.bgColor || selectedEvent?.BgColor || '#3445C5' }]}>
-              <Ionicons name="calendar" size={24} color="#FFF" style={{ marginRight: 8 }} />
-              <Text style={styles.modalDateText}>{formattedEventDate}</Text>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.modalTitle}>{selectedEvent?.konu || selectedEvent?.Konu}</Text>
-              <Text style={styles.modalDesc}>
-                {selectedEvent ? (selectedEvent.aciklama || selectedEvent.Aciklama || 'Açıklama bulunmuyor.').replace(/<[^>]*>/g, '').trim() : ''}
-              </Text>
-              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedEvent(null)}>
-                <Text style={styles.modalCloseText}>Kapat</Text>
+              <View style={styles.modalHeaderIcon}>
+                <Ionicons name="calendar" size={20} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalHeadTitle} numberOfLines={2}>
+                  {(selectedEvent?.konu || selectedEvent?.Konu || '')}
+                  {(selectedEvent?.kayitAdSoyad || selectedEvent?.KayitAdSoyad)
+                    ? ` (${selectedEvent?.kayitAdSoyad || selectedEvent?.KayitAdSoyad})`
+                    : ''}
+                </Text>
+                {!!(selectedEvent?.kategoriAdi || selectedEvent?.KategoriAdi) && (
+                  <Text style={styles.modalHeadType}>{selectedEvent?.kategoriAdi || selectedEvent?.KategoriAdi}</Text>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => setSelectedEvent(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={22} color="#FFF" />
               </TouchableOpacity>
+            </View>
+
+            {/* Gövde: başlangıç / bitiş / açıklama */}
+            <View style={styles.modalBody}>
+              <View style={styles.modalInfoRow}>
+                <Ionicons name="time-outline" size={18} color={colors.primary} />
+                <Text style={styles.modalInfoLabel}>BAŞLANGIÇ</Text>
+                <Text style={styles.modalInfoValue}>
+                  {(() => { const d = new Date(selectedEvent?.basTar || selectedEvent?.BasTar || ''); if (isNaN(d.getTime())) return '-'; const p = (n: number) => String(n).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; })()}
+                </Text>
+              </View>
+              <View style={styles.modalInfoRow}>
+                <Ionicons name="time-outline" size={18} color={colors.primary} />
+                <Text style={styles.modalInfoLabel}>BİTİŞ</Text>
+                <Text style={styles.modalInfoValue}>
+                  {(() => { const d = new Date(selectedEvent?.bitTar || selectedEvent?.BitTar || ''); if (isNaN(d.getTime())) return '-'; const p = (n: number) => String(n).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; })()}
+                </Text>
+              </View>
+              <View style={styles.modalDescBox}>
+                <Text style={styles.modalDescLabel}>Açıklama</Text>
+                <Text style={styles.modalDescBody}>
+                  {selectedEvent ? ((selectedEvent.aciklama || selectedEvent.Aciklama || '').replace(/<[^>]*>/g, '').trim() || 'Açıklama yok.') : ''}
+                </Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -1025,7 +1065,7 @@ export const HomeScreen = () => {
         }}
       />
 
-      <BottomNavBar ref={bottomNavRef} currentScreen="Home" />
+      <BottomNavBar ref={bottomNavRef} currentScreen="Home" floating />
     </View>
   );
 };
@@ -1036,7 +1076,10 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background || '#F8FAFC',
+      // Saydam: gerçek zemin bodyContainer'dan geliyor. Kök burada opak olursa
+      // BottomNavBar pill'inin etrafında (ScrollView bitip nav bar başlayana kadarki
+      // boşlukta) düz bir renk şeridi görünüyordu.
+      backgroundColor: 'transparent',
     },
     // HEADER BG
     headerBackground: {
@@ -1787,6 +1830,66 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       color: colors.text || '#0F172A',
       fontSize: 14,
       fontWeight: '700',
+    },
+    // Etkinlik detay popup (web görünümü)
+    modalHeaderIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalHeadTitle: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '800',
+    },
+    modalHeadType: {
+      color: 'rgba(255,255,255,0.9)',
+      fontSize: 12.5,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    modalInfoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalInfoLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary || '#64748B',
+      width: 84,
+      letterSpacing: 0.3,
+    },
+    modalInfoValue: {
+      flex: 1,
+      textAlign: 'right',
+      fontSize: 13.5,
+      fontWeight: '600',
+      color: colors.text || '#0F172A',
+    },
+    modalDescBox: {
+      marginTop: 14,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+      paddingLeft: 12,
+      paddingVertical: 4,
+    },
+    modalDescLabel: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: colors.text || '#0F172A',
+      marginBottom: 4,
+    },
+    modalDescBody: {
+      fontSize: 13.5,
+      color: colors.textSecondary || '#64748B',
+      lineHeight: 19,
     },
     // BOTTOM SHEET MODAL
     bottomSheetOverlay: {

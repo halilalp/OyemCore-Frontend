@@ -223,7 +223,7 @@ export const TedarikciDashboardScreen = () => {
 
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  scroll: { padding: 16, paddingBottom: 100, maxWidth: 800, width: '100%', alignSelf: 'center' },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   empty: { color: colors.textSecondary, fontSize: 13, paddingVertical: 20 },
   scoreRow: { flexDirection: 'row', width: '100%', gap: 8 },

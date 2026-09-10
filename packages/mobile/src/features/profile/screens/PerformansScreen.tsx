@@ -174,7 +174,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   scrollContainer: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',

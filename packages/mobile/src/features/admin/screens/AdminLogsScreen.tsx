@@ -16,11 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { useHasGeneralAdminAccess } from '../useAdminAccess';
+import { AdminUnauthorizedView } from '../AdminUnauthorizedView';
 
 export const AdminLogsScreen = () => {
   const { colors, theme } = useThemeStore();
   const navigation = useNavigation<any>();
   const styles = createStyles(colors, theme);
+  const hasAccess = useHasGeneralAdminAccess();
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -97,6 +100,8 @@ export const AdminLogsScreen = () => {
     if (!email) return 'SY';
     return email.substring(0, 2).toUpperCase();
   };
+
+  if (!hasAccess) return <AdminUnauthorizedView title="Sistem Log Kayıtları" />;
 
   return (
     <View style={styles.container}>
@@ -212,6 +217,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
   },
   logCard: {
     backgroundColor: colors.card,

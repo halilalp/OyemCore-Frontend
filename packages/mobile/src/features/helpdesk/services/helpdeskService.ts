@@ -25,7 +25,7 @@ export const helpdeskService = {
     return await api.saveTalep(request);
   },
 
-  updateStatus: async (id: number, status: string): Promise<{ success: boolean }> => {
+  updateStatus: async (id: number, status: string): Promise<{ success: boolean; pendingApproval?: boolean; pendingApprovalAdSoyad?: string }> => {
     return await api.updateTalepStatus(id, status);
   },
 
