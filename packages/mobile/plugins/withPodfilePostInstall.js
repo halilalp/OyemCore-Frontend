@@ -28,6 +28,14 @@ const withPodfilePostInstall = (config) => {
         config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       end
     end
+    # RNCallKeep/RNVoipPushNotification gibi modül tanımlamayan pod'lar, statik framework
+    # linkajında bridging header üzerinden Swift'e "cannot find X in scope" hatasıyla
+    # görünmez olabiliyor. Bu ayar, non-modular header'ların modüler framework'ler içinden
+    # import edilmesine izin vererek bunu çözüyor (withFirebaseModularHeaders.js'teki
+    # :modular_headers => true çözümüyle birlikte, aynı kök nedene karşı ikinci savunma hattı).
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    end
   end`;
 
       if (!contents.includes("product-type.bundle")) {

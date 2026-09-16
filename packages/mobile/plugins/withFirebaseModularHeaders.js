@@ -11,6 +11,12 @@ const path = require('path');
 // mesajının önerdiği çözüm). Podfile'da "post_install do |installer|" satırından hemen önce
 // (yani hâlâ target bloğunun içinde) explicit pod bildirimleri olarak ekleniyor —
 // withPodfilePostInstall.js'in kullandığı AYNI, güvenilir sabit metin çapası.
+//
+// AYNI KÖK NEDEN RNCallKeep/RNVoipPushNotification İÇİN DE GEÇERLİ: bu pod'lar modül
+// tanımlamıyor, bu yüzden withIosVoipPushDelegate.js'in oluşturduğu Objective-C bridging
+// header üzerinden import edilseler bile statik framework linkajında Swift derleyicisi
+// sembollerini göremiyor ("cannot find 'RNCallKeep' in scope" hatası). Aynı :modular_headers
+// => true çözümü buraya da uygulanıyor.
 const MODULAR_HEADER_PODS = [
   'GoogleUtilities',
   'GoogleDataTransport',
@@ -19,6 +25,8 @@ const MODULAR_HEADER_PODS = [
   'FirebaseCoreInternal',
   'FirebaseCoreExtension',
   'FirebaseInstallations',
+  'RNCallKeep',
+  'RNVoipPushNotification',
 ];
 
 const withFirebaseModularHeaders = (config) => {
