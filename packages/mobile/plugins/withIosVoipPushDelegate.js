@@ -64,9 +64,28 @@ const withIosVoipPushDelegate = (config) => {
         return config;
       }
 
-      // --- Bridging header dosyasını oluştur (AppDelegate.swift ile aynı klasöre) ---
-      const bridgingHeaderPath = path.join(iosRoot, dirName, 'OyemCoreVoip-Bridging-Header.h');
-      fs.writeFileSync(bridgingHeaderPath, BRIDGING_HEADER_CONTENT, 'utf-8');
+      // --- Bridging header: Expo şablonu her Swift AppDelegate projesi için KENDİ
+      // "<dirName>/<dirName>-Bridging-Header.h" dosyasını zaten oluşturuyor ve
+      // SWIFT_OBJC_BRIDGING_HEADER build ayarını ona işaret edecek şekilde ayarlıyor
+      // (bkz. "export SWIFT_OBJC_BRIDGING_HEADER=OyemCore/OyemCore-Bridging-Header.h" build
+      // logu). Ayrı bir "OyemCoreVoip-Bridging-Header.h" oluşturup SADECE build setting BOŞSA
+      // atamak (eski davranış) bu yüzden asla devreye girmiyordu — proje zaten kendi bridging
+      // header'ini kullaniyor, bizimkisi hic derlemeye dahil edilmiyordu ("cannot find
+      // 'RNCallKeep' in scope" hatasinin GERCEK kok nedeni buydu). Bu yuzden VAROLAN dosyaya
+      // EKLEME yapiyoruz; yoksa yeni bir tane olusturup build setting'i biz atiyoruz.
+      const defaultBridgingHeaderPath = path.join(iosRoot, dirName, `${dirName}-Bridging-Header.h`);
+      const bridgingHeaderPath = fs.existsSync(defaultBridgingHeaderPath)
+        ? defaultBridgingHeaderPath
+        : path.join(iosRoot, dirName, 'OyemCoreVoip-Bridging-Header.h');
+
+      if (bridgingHeaderPath === defaultBridgingHeaderPath) {
+        const existingHeaderContents = fs.readFileSync(bridgingHeaderPath, 'utf-8');
+        if (!existingHeaderContents.includes('RNCallKeep.h')) {
+          fs.writeFileSync(bridgingHeaderPath, `${existingHeaderContents}\n${BRIDGING_HEADER_CONTENT}`, 'utf-8');
+        }
+      } else {
+        fs.writeFileSync(bridgingHeaderPath, BRIDGING_HEADER_CONTENT, 'utf-8');
+      }
 
       // --- PKPushRegistryDelegate uyumu class bildirimine ekle ---
       const classDeclRegex = /class\s+AppDelegate\s*:\s*([^\{]+)\{/;
