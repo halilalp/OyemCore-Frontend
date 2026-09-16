@@ -3,8 +3,9 @@ import { LogoLoader } from '../../../components/LogoLoader';
 import {
   StyleSheet, Text, View, ScrollView, TouchableOpacity,
   ActivityIndicator, Modal, TextInput, SafeAreaView, Alert,
-  FlatList, Platform, StatusBar, Image, KeyboardAvoidingView
+  FlatList, Platform, StatusBar, Image, KeyboardAvoidingView, Animated
 } from 'react-native';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -331,6 +332,10 @@ export const TicketScreen = () => {
     setIsHistoryExpanded(false);
     navigation.setParams({ id: undefined, code: undefined });
   };
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(handleCloseDetail, !!selectedTicket);
 
   const reloadDetails = async (id: number) => {
     const detail = await api.getTicketDetail(id);
@@ -745,7 +750,10 @@ export const TicketScreen = () => {
         onRequestClose={handleCloseDetail}
       >
         {selectedTicket && (
-          <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
+          <Animated.View
+            {...detailSwipeHandlers}
+            style={[styles.modalContainer, { backgroundColor: '#f8fafc', transform: [{ translateX: detailSwipeX }] }]}
+          >
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               enabled={true}
@@ -1250,7 +1258,7 @@ export const TicketScreen = () => {
               <KeyboardDismissBar />
             </Modal>
 
-          </View>
+          </Animated.View>
         )}
         <KeyboardDismissBar />
       </Modal>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,7 +11,9 @@ import {
   LayoutAnimation,
   UIManager,
   Alert,
-  Vibration
+  Vibration,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -77,6 +79,7 @@ const REGISTERED_SCREENS = new Set<string>([
   'StokDashboard', 'StokDurumRaporu', 'StokHareketleri', 'StokFisleri', 'FizikselAnalizGirisi', 'DepoKartlari',
   'AdminMalzemeAyarlari', 'AdminDepoSorumlulari', 'AdminDashboardAyarlari', 'OzellikTanimlari', 'Varyant', 'Game',
   'AdminEntegrasyon', 'AdminOyemsoftTenant', 'AdminProje', 'AdminSayfa', 'AdminIsiHaritasi', 'AdminMagazaParametre',
+  'Akademi', 'AkademiDetay', 'AkademiSinav',
 ]);
 
 // DB'deki eski/farklı MobilUrl değerlerini geçerli rotaya çevir (#60'ta 'Bakim'
@@ -135,6 +138,7 @@ const NAV_SLOT_OPTIONS: { key: string; label: string; short?: string; icon: any;
   { key: 'Game', label: 'Kelime Oyunu', short: 'Oyun', icon: 'game-controller-outline' },
   { key: 'Profil', label: 'Ayarlar', short: 'Ayarlar', icon: 'settings-outline' },
 ];
+const NAV_SLOT_FAR_LEFT_KEY = 'navSlotFarLeft';
 const NAV_SLOT_LEFT_KEY = 'navSlotLeft';
 const NAV_SLOT_RIGHT_KEY = 'navSlotRight';
 const NAV_SLOT_FAR_RIGHT_KEY = 'navSlotFarRight';
@@ -213,27 +217,53 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   const [isProjectsMenuVisible, setIsProjectsMenuVisible] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>(cachedMenuData || []);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
-  // FAB'ın iki yanındaki ve en sağdaki özelleştirilebilir kısayollar (cihazda kayıtlı).
+  // FAB'ın iki yanındaki, en sağdaki VE en soldaki (eskiden sabit "Projeler") özelleştirilebilir
+  // kısayollar (cihazda kayıtlı).
+  const [slotFarLeft, setSlotFarLeft] = useState('Projeler');
   const [slotLeft, setSlotLeft] = useState('Home');
   const [slotRight, setSlotRight] = useState('Calendar');
   const [slotFarRight, setSlotFarRight] = useState('Profil');
-  const [slotPickerFor, setSlotPickerFor] = useState<'left' | 'right' | 'farRight' | null>(null);
+  const [slotPickerFor, setSlotPickerFor] = useState<'farLeft' | 'left' | 'right' | 'farRight' | null>(null);
+
+  // Yetkili Projeler paneli soldan sağa kayarak açılsın diye — Modal'ın kendi
+  // animationType'ı (slide) sadece alttan açılışı destekliyor, bu yüzden elle animasyon.
+  const projectsMenuTranslateX = useRef(new Animated.Value(-Dimensions.get('window').width)).current;
 
   useEffect(() => {
+    if (isProjectsMenuVisible) {
+      Animated.timing(projectsMenuTranslateX, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isProjectsMenuVisible]);
+
+  const closeProjectsMenu = () => {
+    Animated.timing(projectsMenuTranslateX, {
+      toValue: -Dimensions.get('window').width,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => setIsProjectsMenuVisible(false));
+  };
+
+  useEffect(() => {
+    AsyncStorage.getItem(NAV_SLOT_FAR_LEFT_KEY).then(v => { if (v) setSlotFarLeft(v); }).catch(() => {});
     AsyncStorage.getItem(NAV_SLOT_LEFT_KEY).then(v => { if (v) setSlotLeft(v); }).catch(() => {});
     AsyncStorage.getItem(NAV_SLOT_RIGHT_KEY).then(v => { if (v) setSlotRight(v); }).catch(() => {});
     AsyncStorage.getItem(NAV_SLOT_FAR_RIGHT_KEY).then(v => { if (v) setSlotFarRight(v); }).catch(() => {});
   }, []);
 
-  const selectSlot = (side: 'left' | 'right' | 'farRight', key: string) => {
-    if (side === 'left') { setSlotLeft(key); AsyncStorage.setItem(NAV_SLOT_LEFT_KEY, key).catch(() => {}); }
+  const selectSlot = (side: 'farLeft' | 'left' | 'right' | 'farRight', key: string) => {
+    if (side === 'farLeft') { setSlotFarLeft(key); AsyncStorage.setItem(NAV_SLOT_FAR_LEFT_KEY, key).catch(() => {}); }
+    else if (side === 'left') { setSlotLeft(key); AsyncStorage.setItem(NAV_SLOT_LEFT_KEY, key).catch(() => {}); }
     else if (side === 'right') { setSlotRight(key); AsyncStorage.setItem(NAV_SLOT_RIGHT_KEY, key).catch(() => {}); }
     else { setSlotFarRight(key); AsyncStorage.setItem(NAV_SLOT_FAR_RIGHT_KEY, key).catch(() => {}); }
     setSlotPickerFor(null);
   };
 
-  const renderSlot = (side: 'left' | 'right' | 'farRight') => {
-    const key = side === 'left' ? slotLeft : (side === 'right' ? slotRight : slotFarRight);
+  const renderSlot = (side: 'farLeft' | 'left' | 'right' | 'farRight') => {
+    const key = side === 'farLeft' ? slotFarLeft : side === 'left' ? slotLeft : (side === 'right' ? slotRight : slotFarRight);
     const opt = NAV_SLOT_OPTIONS.find(o => o.key === key) || NAV_SLOT_OPTIONS[0];
     const active = currentScreen === (opt.key as any) || (opt.key === 'Profil' && currentScreen === 'Profil');
     return (
@@ -274,13 +304,12 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     }
 
     if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
-      // Yetki listesinde IT-HelpDesk ve ERP-HelpDesk ayrı projeler (anasayfa ile aynı).
-      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'IT-HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'ERP-HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
-      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'Bakım-HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
-    } else {
-      mobilePages.push(m);
+      // IT/ERP/Bakım HelpDesk kayıtları artık "Yetkili Projeler" listesinde ayrı proje
+      // olarak GÖSTERİLMİYOR (kısayollar/Hızlı Kayıt üzerinden zaten erişilebiliyor) —
+      // bu blok bilerek boş bırakıldı.
+      return;
     }
+    mobilePages.push(m);
   });
 
   // Avans & Masraf — mobile özel modül; DB menüsünde yok, Yetkili Projeler'e statik eklenir
@@ -467,6 +496,25 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     return 'folder-outline';
   };
 
+  // Yetkili Projeler kartlarındaki ikon rozetinin rengi — proje türüne göre ayrışsın diye.
+  const getProjectColor = (projectName: string): string => {
+    const name = projectName.toLowerCase();
+    if (name.includes('ayar')) return '#64748b';
+    if (name.includes('demirbaş') || name.includes('zimmet') || name.includes('sayim')) return '#f59e0b';
+    if (name.includes('proje') || name.includes('görev')) return '#8b5cf6';
+    if (name.includes('data') || name.includes('veri')) return '#0ea5e9';
+    if (name.includes('performans')) return slateTokens.success;
+    if (name.includes('avans') || name.includes('masraf')) return slateTokens.brandPrimary;
+    if (name.includes('kasa') || name.includes('muhasebe') || name.includes('finans')) return '#16a34a';
+    if (name.includes('helpdesk') || name.includes('talep') || name.includes('ticket')) return slateTokens.brandAccent;
+    if (name.includes('fikir')) return slateTokens.brandGold;
+    if (name.includes('bakım') || name.includes('onarim')) return '#f97316';
+    if (name.includes('izin')) return slateTokens.danger;
+    if (name.includes('tedarik')) return '#0891b2';
+    if (name.includes('personel') || name.includes('kullanıcı')) return '#6366f1';
+    return slateTokens.brandPrimary;
+  };
+
   // Auto-expand active project containing currentScreen when drawer opens
   useEffect(() => {
     if (isProjectsMenuVisible && currentScreen) {
@@ -550,17 +598,8 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
   return (
     <>
       <View style={[styles.container, floating && styles.containerFloating]}>
-        {/* Sol 1: Yetkili Projeler (yetki menüsü) — Anasayfa yerine */}
-        <TouchableOpacity
-          style={styles.navTab}
-          onPress={() => setIsProjectsMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.tabInner}>
-            <Ionicons name="grid-outline" size={27} color={colors.text} />
-            <Text style={styles.tabLabel} numberOfLines={1}>Projeler</Text>
-          </View>
-        </TouchableOpacity>
+        {/* Sol 1: Özelleştirilebilir kısayol (uzun bas → seç) — varsayılan Yetkili Projeler */}
+        {renderSlot('farLeft')}
 
         {/* Sol 2: Özelleştirilebilir kısayol (uzun bas → seç) */}
         {renderSlot('left')}
@@ -600,7 +639,8 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
                 <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
                   {NAV_SLOT_OPTIONS.map(o => {
                     const cur = (
-                      slotPickerFor === 'left' ? slotLeft : 
+                      slotPickerFor === 'farLeft' ? slotFarLeft :
+                      slotPickerFor === 'left' ? slotLeft :
                       slotPickerFor === 'right' ? slotRight : slotFarRight
                     ) === o.key;
                     return (
@@ -665,142 +705,147 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* ── YETKİLİ PROJELER MODALI (Bottom Sheet) ── */}
+      {/* ── YETKİLİ PROJELER MODALI (Bottom Sheet) — standart mobil gradient-header şablonu ── */}
       <Modal
         visible={isProjectsMenuVisible}
         transparent
-        animationType="slide"
-        onRequestClose={() => setIsProjectsMenuVisible(false)}
+        animationType="none"
+        onRequestClose={closeProjectsMenu}
       >
-        <TouchableWithoutFeedback onPress={() => setIsProjectsMenuVisible(false)}>
+        <TouchableWithoutFeedback onPress={closeProjectsMenu}>
           <View style={styles.bottomSheetOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={[styles.bottomSheetContent, { flex: 1, maxHeight: '100%', borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingTop: insets.top + 8 }]}>
-                <View style={styles.bottomSheetHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="folder-open" size={22} color={colors.primary} />
-                    <Text style={styles.bottomSheetTitle}>Yetkili Projeler</Text>
+              <Animated.View style={[styles.bottomSheetContent, { flex: 1, maxHeight: '100%', borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingTop: 0, transform: [{ translateX: projectsMenuTranslateX }] }]}>
+                <LinearGradient
+                  colors={['#4338CA', slateTokens.brandPurple]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.projectsHeaderGradient, { paddingTop: insets.top + 14 }]}
+                >
+                  <View style={styles.projectsHeaderCircleLarge} />
+                  <View style={styles.projectsHeaderCircleSmall} />
+                  <View style={styles.projectsHeaderRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                      <View style={styles.projectsHeaderIconWrap}>
+                        <Ionicons name="grid" size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.projectsHeaderTitle}>Yetkili Projeler</Text>
+                        <Text style={styles.projectsHeaderSubtitle}>
+                          {Object.keys(groupedModules).length} modüle erişiminiz var
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={closeProjectsMenu}
+                      style={styles.projectsHeaderCloseBtn}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons name="close" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={() => setIsProjectsMenuVisible(false)} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-                    <Ionicons name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 40 }}>
+                </LinearGradient>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
                   {Object.keys(groupedModules).map((projeAdi, pIdx) => {
                     const mods = groupedModules[projeAdi];
                     const isExpanded = expandedProject === projeAdi;
                     const projIcon = getProjectIcon(projeAdi);
+                    const projColor = getProjectColor(projeAdi);
 
                     const hasActiveModule = mods.some((m: any) => m.mobilUrl === currentScreen);
                     return (
-                      <View key={projeAdi} style={{ marginBottom: 6 }}>
-                            {/* Accordion Header */}
-                            <TouchableOpacity
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                paddingVertical: 14,
-                                paddingHorizontal: 16,
-                                borderRadius: 12,
-                                borderLeftWidth: hasActiveModule ? 4 : 0,
-                                borderLeftColor: colors.primary,
-                                backgroundColor: isExpanded 
-                                  ? (theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)') 
-                                  : (hasActiveModule ? (theme === 'dark' ? 'rgba(52, 69, 197, 0.08)' : 'rgba(52, 69, 197, 0.04)') : 'transparent'),
-                              }}
-                              activeOpacity={0.7}
-                              onPress={() => {
-                                if (mods.length === 1) {
-                                  navigateToModule(mods[0].mobilUrl, mods[0].sayfaAdi);
-                                } else {
-                                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                  setExpandedProject(isExpanded ? null : projeAdi);
-                                }
-                              }}
-                            >
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                                <Ionicons
-                                  name={projIcon}
-                                  size={22}
-                                  color={isExpanded || hasActiveModule ? colors.primary : colors.text}
-                                />
-                                <Text
-                                  style={{
-                                    fontSize: 15,
-                                    fontWeight: isExpanded || hasActiveModule ? '700' : '600',
-                                    color: isExpanded || hasActiveModule ? colors.primary : colors.text,
-                                  }}
-                                >
-                                  {projeAdi}
-                                </Text>
-                              </View>
-                              {mods.length > 1 && (
-                                <Ionicons
-                                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                                  size={18}
-                                  color={colors.textSecondary}
-                                />
-                              )}
-                            </TouchableOpacity>
-
-                            {/* Accordion Content (Submodules) */}
-                            {isExpanded && (
-                              <View style={{ paddingLeft: 46, paddingTop: 4, paddingBottom: 10 }}>
-                                {mods.map((m: any, mIdx: number) => {
-                                  const isActive = currentScreen === m.mobilUrl;
-                                  return (
-                                    <TouchableOpacity
-                                      key={`${m.sayfaUrl}-${mIdx}`}
-                                      style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        paddingVertical: 10,
-                                        paddingHorizontal: 12,
-                                        borderRadius: 8,
-                                        borderLeftWidth: isActive ? 3 : 0,
-                                        borderLeftColor: theme === 'dark' ? '#FFFFFF' : '#3445C5',
-                                        backgroundColor: isActive 
-                                          ? (theme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(52, 69, 197, 0.08)') 
-                                          : 'transparent',
-                                        marginBottom: 2,
-                                      }}
-                                      activeOpacity={0.7}
-                                      onPress={() => navigateToModule(m.mobilUrl, m.sayfaAdi)}
-                                    >
-                                      <View
-                                        style={{
-                                          width: 6,
-                                          height: 6,
-                                          borderRadius: 3,
-                                          backgroundColor: isActive 
-                                            ? (theme === 'dark' ? '#FFFFFF' : '#3445C5') 
-                                            : (theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'),
-                                          marginRight: 12,
-                                        }}
-                                      />
-                                      <Text
-                                        style={{
-                                          fontSize: 14,
-                                          fontWeight: isActive ? '700' : '500',
-                                          color: isActive 
-                                            ? (theme === 'dark' ? '#FFFFFF' : '#3445C5') 
-                                            : (theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary),
-                                        }}
-                                      >
-                                        {m.sayfaAdi}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
-                              </View>
-                            )}
+                      <View
+                        key={projeAdi}
+                        style={[
+                          styles.projectCard,
+                          { backgroundColor: colors.card, borderColor: colors.border },
+                          hasActiveModule && { borderColor: projColor, borderWidth: 1.5 },
+                        ]}
+                      >
+                        {/* Card Header */}
+                        <TouchableOpacity
+                          style={styles.projectCardHeader}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            if (mods.length === 1) {
+                              navigateToModule(mods[0].mobilUrl, mods[0].sayfaAdi);
+                            } else {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              setExpandedProject(isExpanded ? null : projeAdi);
+                            }
+                          }}
+                        >
+                          <View style={[styles.projectIconBadge, { backgroundColor: projColor + '1A' }]}>
+                            <Ionicons name={projIcon} size={20} color={projColor} />
                           </View>
+                          <Text
+                            style={[
+                              styles.projectCardTitle,
+                              { color: colors.text },
+                              (isExpanded || hasActiveModule) && { color: projColor, fontWeight: '800' },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {projeAdi}
+                          </Text>
+                          {mods.length > 1 && (
+                            <View style={[styles.projectCountPill, { backgroundColor: projColor + '1A' }]}>
+                              <Text style={[styles.projectCountPillText, { color: projColor }]}>{mods.length}</Text>
+                            </View>
+                          )}
+                          {mods.length > 1 ? (
+                            <Ionicons
+                              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                              size={18}
+                              color={colors.textSecondary}
+                            />
+                          ) : (
+                            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                          )}
+                        </TouchableOpacity>
+
+                        {/* Card Content (Submodules) */}
+                        {isExpanded && (
+                          <View style={[styles.projectSubList, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+                            {mods.map((m: any, mIdx: number) => {
+                              const isActive = currentScreen === m.mobilUrl;
+                              return (
+                                <TouchableOpacity
+                                  key={`${m.sayfaUrl}-${mIdx}`}
+                                  style={[
+                                    styles.projectSubItem,
+                                    isActive && { backgroundColor: projColor + '14' },
+                                  ]}
+                                  activeOpacity={0.7}
+                                  onPress={() => navigateToModule(m.mobilUrl, m.sayfaAdi)}
+                                >
+                                  <View
+                                    style={[
+                                      styles.projectSubDot,
+                                      { backgroundColor: isActive ? projColor : colors.border },
+                                    ]}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.projectSubLabel,
+                                      { color: isActive ? projColor : colors.textSecondary },
+                                      isActive && { fontWeight: '700' },
+                                    ]}
+                                  >
+                                    {m.sayfaAdi}
+                                  </Text>
+                                  {isActive && <Ionicons name="checkmark-circle" size={16} color={projColor} />}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
                     );
                   })}
                 </ScrollView>
-              </View>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
@@ -1035,5 +1080,130 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       fontSize: 18,
       fontWeight: '800',
       color: colors.text,
+    },
+
+    // ── YETKİLİ PROJELER — gradient header + kart listesi ──
+    projectsHeaderGradient: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      overflow: 'hidden',
+    },
+    projectsHeaderCircleLarge: {
+      position: 'absolute',
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      top: -60,
+      right: -40,
+    },
+    projectsHeaderCircleSmall: {
+      position: 'absolute',
+      width: 90,
+      height: 90,
+      borderRadius: 45,
+      backgroundColor: 'rgba(255,255,255,0.07)',
+      bottom: -30,
+      left: -20,
+    },
+    projectsHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    projectsHeaderIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    projectsHeaderTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+    projectsHeaderSubtitle: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.75)',
+      marginTop: 2,
+    },
+    projectsHeaderCloseBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    projectCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      marginBottom: 10,
+      overflow: 'hidden',
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 1,
+    },
+    projectCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+    },
+    projectIconBadge: {
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    projectCardTitle: {
+      fontSize: 14.5,
+      fontWeight: '600',
+      flex: 1,
+    },
+    projectCountPill: {
+      minWidth: 22,
+      height: 22,
+      borderRadius: 11,
+      paddingHorizontal: 6,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    projectCountPillText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    projectSubList: {
+      borderTopWidth: 1,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+    },
+    projectSubItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      marginVertical: 1,
+    },
+    projectSubDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    projectSubLabel: {
+      fontSize: 13.5,
+      fontWeight: '500',
+      flex: 1,
     },
   });

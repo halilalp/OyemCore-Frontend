@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView, Animated } from 'react-native';
 import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
 import { api, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme, Personel, TemizlikOnayDurum, TemizlikOnayDetay } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import { SearchableSelectorModal } from '../../../components/SearchableSelectorM
 import { DatePickerModal } from '../../../components/DatePickerModal';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { FilePickerSheet } from '../../../components/FilePickerSheet';
 import { AttachmentPreview } from '../../../components/AttachmentPreview';
 import { createBakimStyles } from '../shared/bakimStyles';
@@ -48,6 +49,10 @@ export const PeriyodikKontrolScreen = () => {
 
   const [controls, setControls] = useState<PeriyodikKontrol[]>([]);
   const [selectedCtrl, setSelectedCtrl] = useState<PeriyodikKontrol | null>(null);
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const { panHandlers: ctrlDetailSwipeHandlers, translateX: ctrlDetailSwipeX } = useEdgeSwipeBack(() => setSelectedCtrl(null), selectedCtrl !== null);
   const [ctrlGelismeler, setCtrlGelismeler] = useState<any[]>([]);
   const [ctrlSarfiyats, setCtrlSarfiyats] = useState<PeriyodikSarfiyat[]>([]);
   const [ctrlSubTab, setCtrlSubTab] = useState<'gelisme' | 'sarfiyat'>('gelisme');
@@ -544,7 +549,7 @@ export const PeriyodikKontrolScreen = () => {
       {/* PERIODIC CONTROL DETAILS MODAL */}
       <Modal visible={selectedCtrl !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedCtrl(null)}>
         {selectedCtrl && (
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <Animated.View {...ctrlDetailSwipeHandlers} style={{ flex: 1, backgroundColor: colors.background, transform: [{ translateX: ctrlDetailSwipeX }] }}>
             <CreateModalHeader title={mode === 'uygula' ? "Periyodik Kontrol İşlem Detayı" : "Periyodik Kontrol Detayı"} onClose={() => setSelectedCtrl(null)} colorTheme="purple" />
             <View style={styles.modalContentWrapper}>
               <ScrollView contentContainerStyle={styles.modalScroll}>
@@ -827,7 +832,16 @@ export const PeriyodikKontrolScreen = () => {
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                     <TouchableOpacity
                       style={{ flex: 1, backgroundColor: colors.success, height: 42, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
-                      onPress={() => navigation.navigate('TemizlikOnayForm', { onayId: temizlikOnayDurum.onayID })}
+                      onPress={() => {
+                        // Bu detay ekranı fullScreen bir Modal — açıkken TemizlikOnayForm'a
+                        // navigate edilirse iOS'ta yeni ekran modalın ARKASINDA kalıyordu
+                        // (ayrı native katmanlar). Önce modalı kapatıp animasyonun başlaması
+                        // için kısa bir gecikmeyle sonra navigate ediyoruz (bkz. App.tsx'teki
+                        // AlertModal için alınan aynı dersin notu).
+                        const onayId = temizlikOnayDurum.onayID;
+                        setSelectedCtrl(null);
+                        setTimeout(() => navigation.navigate('TemizlikOnayForm', { onayId }), 260);
+                      }}
                     >
                       <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12.5 }}>Onay Formu Doldur</Text>
                     </TouchableOpacity>
@@ -1025,7 +1039,7 @@ export const PeriyodikKontrolScreen = () => {
                 </View>
               </KeyboardAvoidingView>
             </Modal>
-          </View>
+          </Animated.View>
         )}
         <KeyboardDismissBar />
 

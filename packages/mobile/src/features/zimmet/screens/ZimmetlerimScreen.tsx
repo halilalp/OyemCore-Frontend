@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar, KeyboardAvoidingView, Animated } from 'react-native';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -9,6 +10,9 @@ import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
+
+// Detay modalının kökü SafeAreaView — kenar-kaydırma jesti için Animated sarmalayıcısı gerekiyor.
+const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
   Alert.alert(title, message, [
@@ -38,6 +42,11 @@ export const ZimmetlerimScreen = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isObjectionOpen, setIsObjectionOpen] = useState(false);
   const [objectionText, setObjectionText] = useState('');
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(() => setIsDetailOpen(false), isDetailOpen);
 
   const fetchMyDebits = async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
@@ -160,7 +169,10 @@ export const ZimmetlerimScreen = () => {
       {/* Asset Detail Modal */}
       <Modal visible={isDetailOpen} animationType="slide" onRequestClose={() => setIsDetailOpen(false)}>
         {selectedAsset && (
-          <SafeAreaView style={styles.modalContainer}>
+          <AnimatedSafeAreaView
+            {...detailSwipeHandlers}
+            style={[styles.modalContainer, { transform: [{ translateX: detailSwipeX }] }]}
+          >
             <View style={styles.modalContentWrapper}>
               <CreateModalHeader
                 title="Zimmet Detayı"
@@ -253,7 +265,7 @@ export const ZimmetlerimScreen = () => {
               </KeyboardAvoidingView>
             </Modal>
 
-          </SafeAreaView>
+          </AnimatedSafeAreaView>
         )}
       </Modal>
 

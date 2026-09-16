@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, FlatList,
-  Platform, Modal, ScrollView, ActivityIndicator, KeyboardAvoidingView,
+  Platform, Modal, ScrollView, ActivityIndicator, KeyboardAvoidingView, Animated,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { api, slateTokens } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { ListHeader } from '../../../components/ListHeader';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
@@ -37,6 +38,11 @@ export const StokFisleriScreen = () => {
   // Detay
   const [detay, setDetay] = useState<any | null>(null);
   const [detayLoading, setDetayLoading] = useState(false);
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const { panHandlers: detaySwipeHandlers, translateX: detaySwipeX } = useEdgeSwipeBack(() => setDetay(null), !!detay);
 
   // Referanslar
   const [depolar, setDepolar] = useState<any[]>([]);
@@ -217,7 +223,7 @@ export const StokFisleriScreen = () => {
 
       {/* Detay Modal */}
       <Modal visible={!!detay} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent onRequestClose={() => setDetay(null)}>
-        <View style={styles.container}>
+        <Animated.View {...detaySwipeHandlers} style={[styles.container, { transform: [{ translateX: detaySwipeX }] }]}>
           <CreateModalHeader title="Fiş Detayı" onClose={() => setDetay(null)} />
           {detayLoading ? (
             <LogoLoader style={{ marginTop: 40 }} />
@@ -246,7 +252,7 @@ export const StokFisleriScreen = () => {
               <View style={{ height: 40 }} />
             </ScrollView>
           ) : null}
-        </View>
+        </Animated.View>
       </Modal>
 
       {/* Kayit Modal */}

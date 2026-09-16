@@ -3,6 +3,15 @@ import { AuthResponse, Company, Personel, Ticket, TicketDetailResponse, IzinOnay
 
 let token: string | null = null;
 let apiBaseUrl: string = 'https://api.oyemsoft.com/api'; // Default backend API URL (SSL aktif)
+// Dosya/medya URL'leri (video, resim) JWT taşımaz — backend bu istekler için tenant'ı
+// ApiServer host eşleşmesinden tahmin etmek zorunda kalır. Birden fazla tenant AYNI
+// ApiServer'ı paylaşıyorsa (ör. api.oyemsoft.com) bu tahmin yanlış tenant'ı seçebilir.
+// Bu yüzden giriş yapılan tenant'ı burada da tutup downloadFileUrl'e ekliyoruz.
+let currentTenantId: string | null = null;
+
+export const setCurrentTenantId = (newTenantId: string | null) => {
+  currentTenantId = newTenantId;
+};
 
 // 401 sonrası oturum-bitti akışının yalnızca bir kez çalışmasını sağlar. Home ekranındaki
 // paralel isteklerin hepsi aynı anda 401 alıp uyarıyı tekrar tekrar tetiklemesin diye.
@@ -350,6 +359,42 @@ export const api = {
     return response.data;
   },
 
+  // Akademi — tb_Egitim'den TAMAMEN AYRI, kişiye özel atanan/izlenen yeni modül.
+  getAkademiMyAssignments: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Akademi/my');
+    return response.data;
+  },
+  getAkademiAssignmentDetail: async (atamaId: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/Akademi/${atamaId}`);
+    return response.data;
+  },
+  updateAkademiProgress: async (atamaId: number, maxIzlenenSaniye: number, aktifIzlemeSaniyeArtis: number, tamamlaZorla: boolean = false): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>(`/Akademi/${atamaId}/progress`, { maxIzlenenSaniye, aktifIzlemeSaniyeArtis, tamamlaZorla });
+    return response.data;
+  },
+
+  // Akademi — Faz 2 sınav motoru (personel tarafı, web ile aynı sunucu-yetkili mantık).
+  startOrResumeAkademiExam: async (atamaId: number): Promise<any> => {
+    const response = await apiClient.post<any>(`/Akademi/${atamaId}/exam/start`);
+    return response.data;
+  },
+  submitAkademiExamAnswer: async (atamaId: number, secilenSecenek: string): Promise<any> => {
+    const response = await apiClient.post<any>(`/Akademi/${atamaId}/exam/answer`, { secilenSecenek });
+    return response.data;
+  },
+  reportAkademiExamTabSwitch: async (atamaId: number): Promise<void> => {
+    await apiClient.post(`/Akademi/${atamaId}/exam/tab-switch`);
+  },
+  getAkademiExamResult: async (atamaId: number): Promise<any | null> => {
+    try {
+      const response = await apiClient.get<any>(`/Akademi/${atamaId}/exam/result`);
+      return response.data;
+    } catch (e: any) {
+      if (e?.response?.status === 404) return null;
+      throw e;
+    }
+  },
+
   // Dosya yükleme (module bazlı)
   uploadFile: async (fileData: { fileName: string; fileBase64: string }, module: string): Promise<{ success: boolean; filePath: string; relativePath: string; fileName: string; message?: string }> => {
     const endpoint = module === 'HaberImg' ? '/Haber/upload-file' : '/Egitim/upload-file';
@@ -359,11 +404,12 @@ export const api = {
 
   // Dosya URL'i (görüntüleme için)
   downloadFileUrl: (path: string, module?: string): string => {
+    const tenantParam = currentTenantId ? `&tenantId=${encodeURIComponent(currentTenantId)}` : '';
     if (path.startsWith('/')) {
-      return `${apiBaseUrl}/Files/download?relativePath=${encodeURIComponent(path)}&clientType=mobile&inline=true`;
+      return `${apiBaseUrl}/Files/download?relativePath=${encodeURIComponent(path)}&clientType=mobile&inline=true${tenantParam}`;
     }
     const mod = module || 'HABERIMG';
-    return `${apiBaseUrl}/Files/download?module=${encodeURIComponent(mod)}&fileName=${encodeURIComponent(path)}&clientType=mobile&inline=true`;
+    return `${apiBaseUrl}/Files/download?module=${encodeURIComponent(mod)}&fileName=${encodeURIComponent(path)}&clientType=mobile&inline=true${tenantParam}`;
   },
 
   getTakvimEvents: async (startDate?: string, endDate?: string): Promise<any[]> => {
@@ -410,6 +456,12 @@ export const api = {
 
   savePushToken: async (token: string): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>('/auth/push-token', { token });
+    return response.data;
+  },
+
+  // Native tam ekran gelen arama (CallKit/ConnectionService) uyandırma token'ı — Expo push'tan ayrı.
+  saveVoipToken: async (token: string, deviceType: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>('/auth/voip-token', { token, deviceType });
     return response.data;
   },
 

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Image, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/useThemeStore';
-import { buildFileDownloadUrl, isImageFile } from '../utils/fileUtils';
+import { buildFileDownloadUrl, isImageFile, openFileInApp } from '../utils/fileUtils';
 import { ImageLightbox } from './ImageLightbox';
 
 interface AttachmentPreviewProps {
@@ -53,7 +53,7 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ dosyaUrl, 
   return (
     <TouchableOpacity
       style={[styles.fileBtn, { backgroundColor: colors.background, borderColor: colors.border }, style]}
-      onPress={() => Linking.openURL(buildUrl(false))}
+      onPress={() => openFileInApp(buildUrl(false))}
     >
       <Ionicons name="document-attach-outline" size={18} color={colors.primary} />
     </TouchableOpacity>

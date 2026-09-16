@@ -35,6 +35,7 @@ import { Platform, Alert, View, ActivityIndicator, LogBox, Text, TouchableOpacit
 LogBox.ignoreAllLogs();
 import { api, setUnauthorizedHandler } from '@oyemcore/shared';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { getAndroidVoipToken, onAndroidVoipTokenRefresh, wireIosVoipToken } from './src/features/chat/call/nativeCallBridge';
 
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useThemeStore } from './src/store/useThemeStore';
@@ -119,6 +120,9 @@ import { AdminSayfaScreen } from './src/features/admin/screens/AdminSayfaScreen'
 import { AdminIsiHaritasiScreen } from './src/features/admin/screens/AdminIsiHaritasiScreen';
 import { AdminMagazaParametreScreen } from './src/features/admin/screens/AdminMagazaParametreScreen';
 import { TrainingScreen } from './src/features/home/screens/TrainingScreen';
+import { AkademiListScreen } from './src/features/akademi/screens/AkademiListScreen';
+import { AkademiDetailScreen } from './src/features/akademi/screens/AkademiDetailScreen';
+import { AkademiSinavScreen } from './src/features/akademi/screens/AkademiSinavScreen';
 import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScreen';
 import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
 import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
@@ -218,8 +222,12 @@ async function registerForPushNotificationsAsync() {
     // Görüntülü/sesli arama bildirimleri için ayrı kanal — WhatsApp'taki gibi
     // sürekli çalan bir zil sesi (mesaj bildirim sesinden farklı). Android'de kanal
     // sesi cihazda bir kere oluşturulduktan sonra DEĞİŞTİRİLEMEZ (immutable); ses
-    // dosyasını değiştirirsek kanal adını da değiştirmemiz gerekir.
-    await Notifications.setNotificationChannelAsync('incoming_call', {
+    // dosyasını değiştirirsek kanal adını da değiştirmemiz gerekir. "incoming_call" adı,
+    // ses dosyası doğru şekilde gömülmeden önceki bir sürümde bazı cihazlarda sessiz/varsayılan
+    // sesle oluşturulmuş olabilir (sadece titreşim, ses yok şikayeti) — bu yüzden "_v2" ile
+    // cihazda GARANTİ yeni/doğru ayarlı bir kanal oluşması sağlanıyor. Backend'in gönderdiği
+    // push payload'ındaki channelId de buna uygun güncellenmeli (bkz. ChatHub.cs, InternalNotifyController.cs).
+    await Notifications.setNotificationChannelAsync('incoming_call_v2', {
       name: 'Gelen Arama',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
@@ -292,6 +300,48 @@ export default function App() {
           console.warn('Error registering for push notifications:', err);
         });
     }
+  }, [isAuthenticated]);
+
+  // Android: native tam ekran gelen arama arayüzünü uygulama kapalıyken de uyandırabilmek için
+  // ayrı bir FCM token'ı kaydet (Expo push token'dan bağımsız — bkz. nativeCallBridge.ts).
+  React.useEffect(() => {
+    if (!isAuthenticated || Platform.OS !== 'android' || !Device.isDevice) return;
+
+    let unsubscribeRefresh: (() => void) | undefined;
+
+    getAndroidVoipToken()
+      .then(token => {
+        if (token) {
+          api.saveVoipToken(token, 'FcmVoip').catch(err => {
+            console.warn('Voip token kaydedilemedi:', err);
+          });
+        }
+      })
+      .catch(err => {
+        console.warn('Android voip token alinamadi:', err);
+      });
+
+    unsubscribeRefresh = onAndroidVoipTokenRefresh((token) => {
+      api.saveVoipToken(token, 'FcmVoip').catch(() => {});
+    });
+
+    return () => {
+      if (unsubscribeRefresh) unsubscribeRefresh();
+    };
+  }, [isAuthenticated]);
+
+  // iOS: native tam ekran gelen arama arayüzünü uygulama kapalıyken de uyandırabilmek için
+  // PushKit VoIP token'ını kaydet (Expo push token'dan bağımsız — bkz. nativeCallBridge.ts).
+  React.useEffect(() => {
+    if (!isAuthenticated || Platform.OS !== 'ios' || !Device.isDevice) return;
+
+    const unsubscribe = wireIosVoipToken((token) => {
+      api.saveVoipToken(token, 'ApnsVoipProduction').catch(err => {
+        console.warn('iOS voip token kaydedilemedi:', err);
+      });
+    });
+
+    return unsubscribe;
   }, [isAuthenticated]);
 
   React.useEffect(() => {
@@ -438,7 +488,7 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer ref={navigationRef}>
         <CallProvider>
-      <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: true }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: true, animation: 'slide_from_right', animationDuration: 260 }}>
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
@@ -578,6 +628,9 @@ export default function App() {
             <Stack.Screen name="AdminTarihce" component={AdminTarihceScreen} />
             <Stack.Screen name="Calendar" component={CalendarScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Training" component={TrainingScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Akademi" component={AkademiListScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AkademiDetay" component={AkademiDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AkademiSinav" component={AkademiSinavScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Announcement" component={AnnouncementScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SatSas" component={SatSasScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SatDetail" component={SatDetailScreen} options={{ headerShown: false }} />

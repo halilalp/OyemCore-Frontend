@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView, Animated } from 'react-native';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
@@ -293,6 +294,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     // Clear navigation parameters to prevent reopening the modal
     navigation.setParams({ id: undefined, code: undefined });
   };
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(handleCloseDetail, isDetailOpen);
 
   const handleToggleLock = async () => {
     if (!selectedRequest) return;
@@ -1269,13 +1274,16 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           const canManage = isManager && !isCreator;
           const canClose = !!selectedRequest.sorumluSicil && detailData?.girisTur === 'SORUMLU';
           return (
-            <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
+            <Animated.View
+              {...detailSwipeHandlers}
+              style={[styles.modalContainer, { backgroundColor: '#f8fafc', transform: [{ translateX: detailSwipeX }] }]}
+            >
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={{ flex: 1, backgroundColor: '#f8fafc' }}
               enabled={true}
             >
-              
+
               {/* New Dark Blue Header for Detail */}
               <LinearGradient
                 colors={['#4338CA', slateTokens.brandPurple]}
@@ -2112,7 +2120,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               <KeyboardDismissBar />
             </Modal>
 
-          </View>
+          </Animated.View>
         )})()}
         <KeyboardDismissBar />
       </Modal>

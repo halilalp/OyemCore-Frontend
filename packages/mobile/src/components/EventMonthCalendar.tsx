@@ -11,7 +11,10 @@ import { getEventDayRange, toDateKey, fromDateKey } from '../utils/calendarEvent
 
 const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const GUNLER = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+// Mobil anasayfada yer kazanmak için hafta sonu (Cmt/Paz) sütunları kaldırıldı —
+// ızgara Pazartesi'den başlayıp Cuma'da bitecek şekilde 7 yerine 5 sütun.
+const GUNLER = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum'];
+const HAFTA_SUTUN = 5;
 
 const MAX_LANE = 30;     // "+N" gizleme istenmiyor: tüm etkinlikler görünür ve tıklanabilir olsun (hücre uzar)
 const LANE_H = 16;       // çubuk sırası yüksekliği
@@ -44,17 +47,19 @@ const EventMonthCalendar: React.FC<Props> = ({ events, selectedDate, onSelectDat
 
   const bugunKey = toDateKey(new Date());
 
-  // Izgara: ayın ilk gününün bulunduğu haftanın Pazar'ından başlar
+  // Izgara: ayın ilk gününün bulunduğu haftanın Pazartesi'sinden başlar, her satırda
+  // sadece Pzt-Cum (5 gün) üretilir — hafta gerçekte 7 gün ilerler, Cmt/Paz sadece görünmez.
   const haftalar = React.useMemo(() => {
     const y = gosterilenAy.getFullYear();
     const m = gosterilenAy.getMonth();
     const ayBasi = new Date(y, m, 1);
     const ayGunSayisi = new Date(y, m + 1, 0).getDate();
-    const izgaraBasi = new Date(y, m, 1 - ayBasi.getDay());
-    const satirSayisi = Math.ceil((ayBasi.getDay() + ayGunSayisi) / 7);
+    const pztOfset = (ayBasi.getDay() + 6) % 7; // getDay(): 0=Paz..6=Cmt → Pzt'ye kaç gün geri gidilir
+    const izgaraBasi = new Date(y, m, 1 - pztOfset);
+    const satirSayisi = Math.ceil((pztOfset + ayGunSayisi) / 7);
 
     return Array.from({ length: satirSayisi }, (_, hafta) =>
-      Array.from({ length: 7 }, (_, gun) => {
+      Array.from({ length: HAFTA_SUTUN }, (_, gun) => {
         const d = new Date(izgaraBasi);
         d.setDate(izgaraBasi.getDate() + hafta * 7 + gun);
         return d;
@@ -69,11 +74,13 @@ const EventMonthCalendar: React.FC<Props> = ({ events, selectedDate, onSelectDat
       .filter(x => !!x.range) as { event: any; range: { first: Date; last: Date } }[];
 
     return haftalar.map(hafta => {
-      const haftaBasi = hafta[0];
-      const haftaSonu = hafta[6];
+      const haftaBasi = hafta[0];                                    // Pazartesi
+      const haftaSonuGorunur = hafta[HAFTA_SUTUN - 1];                // Cuma (son çizilen sütun)
+      const haftaSonuGercek = new Date(haftaBasi);
+      haftaSonuGercek.setDate(haftaBasi.getDate() + 6);               // Pazar (gerçek hafta sonu, kesişim testi için)
 
       const kesisenler = araliklar
-        .filter(x => x.range.first <= haftaSonu && x.range.last >= haftaBasi)
+        .filter(x => x.range.first <= haftaSonuGercek && x.range.last >= haftaBasi)
         // Uzun ve erken başlayan etkinlikler üst sıraya
         .sort((a, b) => {
           const f = a.range.first.getTime() - b.range.first.getTime();
@@ -83,21 +90,25 @@ const EventMonthCalendar: React.FC<Props> = ({ events, selectedDate, onSelectDat
 
       const laneDolu: boolean[][] = [];
       const segments: Segment[] = [];
-      const gizliSayac = new Array(7).fill(0);
+      const gizliSayac = new Array(HAFTA_SUTUN).fill(0);
 
       kesisenler.forEach(({ event, range }) => {
+        // Cmt/Paz sütunu yok — dilim Pzt-Cum aralığına kırpılır. Etkinlik SADECE hafta
+        // sonuna denk geliyorsa (Pzt-Cum'a hiç değmiyorsa) bu haftada hiç çizilmez.
+        if (range.last < haftaBasi || range.first > haftaSonuGorunur) return;
+
         const startCol = range.first <= haftaBasi
           ? 0
           : Math.round((range.first.getTime() - haftaBasi.getTime()) / 86400000);
-        const endCol = range.last >= haftaSonu
-          ? 6
+        const endCol = range.last >= haftaSonuGorunur
+          ? HAFTA_SUTUN - 1
           : Math.round((range.last.getTime() - haftaBasi.getTime()) / 86400000);
         const span = endCol - startCol + 1;
 
         // Sütunları boş olan ilk sırayı bul
         let lane = 0;
         while (lane < MAX_LANE) {
-          if (!laneDolu[lane]) laneDolu[lane] = new Array(7).fill(false);
+          if (!laneDolu[lane]) laneDolu[lane] = new Array(HAFTA_SUTUN).fill(false);
           const uygun = laneDolu[lane].slice(startCol, endCol + 1).every(dolu => !dolu);
           if (uygun) break;
           lane++;
@@ -114,7 +125,7 @@ const EventMonthCalendar: React.FC<Props> = ({ events, selectedDate, onSelectDat
           startCol,
           span,
           lane,
-          devamEdiyor: range.last > haftaSonu,
+          devamEdiyor: range.last > haftaSonuGorunur,
           oncedenBasladi: range.first < haftaBasi,
         });
       });
@@ -196,8 +207,8 @@ const EventMonthCalendar: React.FC<Props> = ({ events, selectedDate, onSelectDat
                   style={[
                     styles.bar,
                     {
-                      left: `${(seg.startCol * 100) / 7}%`,
-                      width: `${(seg.span * 100) / 7}%`,
+                      left: `${(seg.startCol * 100) / HAFTA_SUTUN}%`,
+                      width: `${(seg.span * 100) / HAFTA_SUTUN}%`,
                       top: seg.lane * LANE_H,
                       backgroundColor: seg.event.bgColor || seg.event.BgColor || colors.primary,
                       // Kesilen uçlarda köşe yuvarlaması yok — çubuk devam ediyor izlenimi
@@ -219,7 +230,7 @@ const EventMonthCalendar: React.FC<Props> = ({ events, selectedDate, onSelectDat
                 adet > 0 ? (
                   <Text
                     key={col}
-                    style={[styles.gizliText, { left: `${(col * 100) / 7}%`, top: kullanilanLane * LANE_H }]}
+                    style={[styles.gizliText, { left: `${(col * 100) / HAFTA_SUTUN}%`, top: kullanilanLane * LANE_H }]}
                   >
                     +{adet}
                   </Text>
@@ -293,7 +304,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   gizliText: {
     position: 'absolute',
-    width: `${100 / 7}%`,
+    width: `${100 / HAFTA_SUTUN}%`,
     textAlign: 'center',
     fontSize: 9,
     fontWeight: '600',

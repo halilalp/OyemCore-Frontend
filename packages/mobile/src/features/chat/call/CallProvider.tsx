@@ -7,6 +7,7 @@ import { ActiveCallScreen } from './ActiveCallScreen';
 import { isCallAvailable, getCallLoadError } from './dailyClient';
 import { api } from '@oyemcore/shared';
 import { startRingtone, stopRingtone } from '../../../utils/audioSynthesizer';
+import { wireNativeCallEvents, reportNativeCallActive, endNativeCall, rejectNativeCall } from './nativeCallBridge';
 
 
 interface OutgoingState { sicil: string; name: string; type: string; }
@@ -36,6 +37,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const incomingRef = useRef<IncomingCallInfo | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
   const callTimeoutRef = useRef<any>(null);
+  // Arama, native CallKit/ConnectionService ekranından (uygulama kapalıyken/kilit ekranından)
+  // cevaplandıysa dolu olur — görüşme bitince native tarafın da kapanması için kullanılır.
+  const nativeCallUuidRef = useRef<string | null>(null);
 
   useEffect(() => { outgoingRef.current = outgoing; }, [outgoing]);
   useEffect(() => { activeRef.current = active; }, [active]);
@@ -50,16 +54,22 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [active]);
 
-  // Zil sesini arama durumlarına göre başlat/durdur
+  // Zil sesini arama durumlarına göre başlat/durdur. Ek güvenlik: "Meşgul" gibi bir
+  // red sonrası state temizlense de ses bir şekilde takılı kalırsa (gözlemlendi — sebep
+  // netleşmedi, muhtemelen player'ın async play/stop sırası arasında bir yarış durumu)
+  // en fazla 35sn (arama zaman aşımından biraz uzun) sonra ZORLA durdurulur; uygulamayı
+  // kapatana kadar çalmaya devam etmesin diye.
   useEffect(() => {
     if (incoming || outgoing) {
       startRingtone();
+      const safetyTimeout = setTimeout(() => { stopRingtone(); }, 35000);
+      return () => {
+        clearTimeout(safetyTimeout);
+        stopRingtone();
+      };
     } else {
       stopRingtone();
     }
-    return () => {
-      stopRingtone();
-    };
   }, [incoming, outgoing]);
 
 
@@ -130,6 +140,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const out = outgoingRef.current;
       if (!out) return;
       clearCallTimeout();
+      stopRingtone();
       setOutgoing(null);
       setActive({ roomUrl, peerName: out.name, peerSicil: out.sicil, type: out.type, role: 'caller' });
     });
@@ -137,6 +148,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const offRejected = chatSignalR.onCallRejected((_from, reason) => {
       if (outgoingRef.current) {
         clearCallTimeout();
+        stopRingtone();
         setOutgoing(null);
         Alert.alert('Arama', reason && reason !== 'Reddedildi' ? reason : 'Arama reddedildi.');
       }
@@ -153,6 +165,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const offEnded = chatSignalR.onCallEnded(() => {
       clearCallTimeout();
+      stopRingtone();
+      endNativeCall(nativeCallUuidRef.current);
+      nativeCallUuidRef.current = null;
       // Karşı taraf kapattı → aktif görüşmeyi veya çalan aramayı temizle.
       if (activeRef.current) setActive(null);
       if (incomingRef.current) setIncoming(null);
@@ -163,6 +178,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const desc = payload?.description || payload?.Description;
       if (desc) {
         clearCallTimeout();
+        stopRingtone();
         setOutgoing(null);
         Alert.alert('Arama', String(desc));
       }
@@ -170,6 +186,64 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => { offIncoming(); offAccepted(); offRejected(); offEnded(); offAnsweredElsewhere(); offNotif(); clearCallTimeout(); };
   }, [isAuthenticated, mySicil]);
+
+  // Native CallKit/ConnectionService ekranından cevapla/kapat — uygulama tamamen kapalıyken
+  // FCM/PushKit ile tetiklenen tam ekran arama arayüzünden gelen kullanıcı aksiyonları.
+  const acceptFromNative = useCallback((info: IncomingCallInfo, callUuid: string) => {
+    if (activeRef.current || outgoingRef.current) {
+      rejectNativeCall(callUuid);
+      return;
+    }
+    nativeCallUuidRef.current = callUuid;
+    (async () => {
+      // Soğuk başlangıçta oturum/SignalR henüz hazır olmayabilir — kısa süre bekle.
+      const start = Date.now();
+      let sicil = '';
+      while (Date.now() - start < 6000) {
+        sicil = (useAuthStore.getState().user?.sicilNo || '').trim();
+        if (sicil) break;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      if (!sicil || !isCallAvailable()) {
+        rejectNativeCall(callUuid);
+        nativeCallUuidRef.current = null;
+        return;
+      }
+      try {
+        await chatSignalR.connect(sicil);
+        const accepted = await chatSignalR.acceptCall(info.callerSicilNo, info.roomUrl);
+        if (accepted) {
+          reportNativeCallActive(callUuid);
+          setActive({ roomUrl: info.roomUrl, peerName: info.callerName, peerSicil: info.callerSicilNo, type: info.callType, role: 'callee' });
+        } else {
+          endNativeCall(callUuid);
+          nativeCallUuidRef.current = null;
+        }
+      } catch (_) {
+        endNativeCall(callUuid);
+        nativeCallUuidRef.current = null;
+      }
+    })();
+  }, []);
+
+  const endFromNative = useCallback((info: IncomingCallInfo | null, callUuid: string) => {
+    if (nativeCallUuidRef.current === callUuid) nativeCallUuidRef.current = null;
+    if (!info) return;
+    // Görüşme zaten "active" olduysa (kullanıcı konuşma sırasında native UI'dan kapattıysa)
+    // normal hangupActive akışı sunucuyu zaten bilgilendirir — tekrar RejectCall göndermeye gerek yok.
+    if (activeRef.current && activeRef.current.peerSicil === info.callerSicilNo) return;
+    (async () => {
+      const sicil = (useAuthStore.getState().user?.sicilNo || '').trim();
+      if (!sicil) return;
+      await chatSignalR.connect(sicil);
+      chatSignalR.rejectCall(info.callerSicilNo, 'Reddedildi').catch(() => {});
+    })();
+  }, []);
+
+  useEffect(() => {
+    const unwire = wireNativeCallEvents({ acceptFromNative, endFromNative });
+    return unwire;
+  }, [acceptFromNative, endFromNative]);
 
   const startCall = useCallback((targetSicilNo: string, targetName: string, callType: string = 'video') => {
     if (!isCallAvailable()) {
@@ -187,6 +261,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const out = outgoingRef.current;
       if (out) {
         chatSignalR.endCall(out.sicil, '').catch(() => {});
+        stopRingtone();
         setOutgoing(null);
         api.sendChatMessage({
           aliciSicilNo: out.sicil,
@@ -198,6 +273,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     chatSignalR.startCall(target, callType).catch((e) => {
       clearCallTimeout();
+      stopRingtone();
       setOutgoing(null);
       Alert.alert('Arama', 'Arama başlatılamadı. ' + (e?.message || ''));
     });
@@ -209,18 +285,34 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isCallAvailable()) {
       Alert.alert('Görüntülü Görüşme', 'Bu özellik yalnızca geliştirici derlemesinde (dev build) çalışır.');
       chatSignalR.rejectCall(info.callerSicilNo, 'Cihaz desteklemiyor').catch(() => {});
+      stopRingtone();
       setIncoming(null);
       return;
     }
-    chatSignalR.acceptCall(info.callerSicilNo, info.roomUrl).catch(() => {});
-    setActive({ roomUrl: info.roomUrl, peerName: info.callerName, peerSicil: info.callerSicilNo, type: info.callType, role: 'callee' });
-    setIncoming(null);
+    // Sunucuya AcceptCall ulaşmadan yerel ekranı açmayız — aksi halde karşı taraf (arayan) hiç
+    // katılmadığı için görüşme fiilen başlamamış olur. Sunucu artık bool dönüyor: aynı hesabın
+    // başka bir bağlantısı (web sekmesi vb.) neredeyse aynı anda kabul etmiş olabilir — false
+    // dönerse odaya hiç girmeyiz.
+    chatSignalR.acceptCall(info.callerSicilNo, info.roomUrl).then((accepted) => {
+      stopRingtone();
+      if (accepted) {
+        setActive({ roomUrl: info.roomUrl, peerName: info.callerName, peerSicil: info.callerSicilNo, type: info.callType, role: 'callee' });
+      } else {
+        Alert.alert('Arama', 'Bu arama başka bir oturumdan zaten cevaplandı.');
+      }
+      setIncoming(null);
+    }).catch(() => {
+      stopRingtone();
+      Alert.alert('Arama', 'Bağlantı sorunu nedeniyle arama kabul edilemedi. Lütfen tekrar deneyin.');
+      setIncoming(null);
+    });
   }, [incoming]);
 
   const rejectIncoming = useCallback(() => {
     const info = incoming;
     if (!info) return;
     chatSignalR.rejectCall(info.callerSicilNo, 'Reddedildi').catch(() => {});
+    stopRingtone();
     api.sendChatMessage({
       aliciSicilNo: info.callerSicilNo,
       mesajMetni: '❌ Görüntülü Arama Cevaplanmadı. (Reddedildi)'
@@ -233,6 +325,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!out) return;
     clearCallTimeout();
     chatSignalR.endCall(out.sicil, '').catch(() => {});
+    stopRingtone();
     api.sendChatMessage({
       aliciSicilNo: out.sicil,
       mesajMetni: '❌ Cevapsız Görüntülü Arama. (Arama kullanıcı tarafından iptal edildi.)'
@@ -244,7 +337,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const a = active;
     if (!a) return;
     chatSignalR.endCall(a.peerSicil, a.roomUrl).catch(() => {});
-    
+    endNativeCall(nativeCallUuidRef.current);
+    nativeCallUuidRef.current = null;
+
     let durationText = '';
     if (callStartTimeRef.current) {
       const seconds = Math.floor((Date.now() - callStartTimeRef.current) / 1000);

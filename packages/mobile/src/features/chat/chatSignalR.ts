@@ -147,22 +147,49 @@ export const chatSignalR = {
 
   // ── Arama sunucu metotları (hub invoke) ──
   async startCall(targetSicilNo: string, callType: string = 'video') {
-    if (!connection || connection.state !== signalR.HubConnectionState.Connected) throw new Error('Baglanti yok');
-    await connection.invoke('StartCall', targetSicilNo, callType);
+    await ensureConnected();
+    await connection!.invoke('StartCall', targetSicilNo, callType);
   },
-  async acceptCall(callerSicilNo: string, roomUrl: string) {
-    if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
-    await connection.invoke('AcceptCall', callerSicilNo, roomUrl);
+  // Sunucu artık bool dönüyor: aynı hesabın başka bir bağlantısı (web sekmesi vb.) neredeyse aynı
+  // anda kabul etmiş olabilir — sadece İLK kabul true alır. false dönerse Daily odasına HİÇ girme.
+  async acceptCall(callerSicilNo: string, roomUrl: string): Promise<boolean> {
+    await ensureConnected();
+    const accepted = await connection!.invoke<boolean>('AcceptCall', callerSicilNo, roomUrl);
+    return !!accepted;
   },
   async rejectCall(callerSicilNo: string, reason: string = 'Reddedildi') {
-    if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
-    await connection.invoke('RejectCall', callerSicilNo, reason);
+    await ensureConnected();
+    await connection!.invoke('RejectCall', callerSicilNo, reason);
   },
   async endCall(targetSicilNo: string, roomUrl: string) {
-    if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
-    await connection.invoke('EndCall', targetSicilNo, roomUrl);
+    await ensureConnected();
+    await connection!.invoke('EndCall', targetSicilNo, roomUrl);
   },
 };
+
+// Bağlantı "Connected" değilse (ör. uygulama arka plandan dönerken otomatik yeniden bağlanma
+// sürüyorsa) hub metotlarını sessizce yutmak yerine kısa bir süre (en fazla ~4sn) bağlantının
+// tekrar kurulmasını bekler; hâlâ bağlanamadıysa çağıran tarafın gerçek bir hata görüp kullanıcıyı
+// bilgilendirebilmesi için hata fırlatır. Daha önce sessizce hiçbir şey yapmaması, örn. "Kabul Et"e
+// basınca sunucuya AcceptCall hiç ulaşmadan yerel ekranın yine de görüşme başlamış gibi açılmasına
+// (karşı taraf hiç katılmadığı için görüşmenin fiilen başlamamasına) yol açıyordu.
+async function ensureConnected(timeoutMs = 4000): Promise<void> {
+  if (connection && connection.state === signalR.HubConnectionState.Connected) return;
+  if (!connection) throw new Error('Baglanti yok');
+
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (connection.state === signalR.HubConnectionState.Connected) return;
+    if (connection.state === signalR.HubConnectionState.Disconnected) {
+      try { await connection.start(); } catch (_) {}
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  if (connection.state !== signalR.HubConnectionState.Connected) {
+    throw new Error('Sunucu baglantisi kurulamadi');
+  }
+}
 
 // Sunucudan gelen payload'ı ChatMessage'a normalize eder (PascalCase → camelCase toleranslı).
 function normalizeMessage(p: any): ChatMessage {

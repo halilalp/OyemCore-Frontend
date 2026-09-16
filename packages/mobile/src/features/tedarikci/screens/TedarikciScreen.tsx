@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Platform, StatusBar, Animated } from 'react-native';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -160,7 +161,12 @@ export const TedarikciScreen = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
-  
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(() => setIsDetailOpen(false), isDetailOpen);
+
   // General details forms
   const [formIstenenTar, setFormIstenenTar] = useState('');
   const [formGercekTar, setFormGercekTar] = useState('');
@@ -793,7 +799,10 @@ export const TedarikciScreen = () => {
         onRequestClose={() => setIsDetailOpen(false)}
       >
         {detailData && (
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <Animated.View
+            {...detailSwipeHandlers}
+            style={{ flex: 1, backgroundColor: colors.background, transform: [{ translateX: detailSwipeX }] }}
+          >
             <CreateModalHeader
               title="Değerlendirme Detayı"
               onClose={() => setIsDetailOpen(false)}
@@ -1084,7 +1093,7 @@ export const TedarikciScreen = () => {
               onSelectDate={setFormGercekTar}
               title="Gerçekleşen Teslim Tarihi Seçin"
             />
-          </View>
+          </Animated.View>
         )}
         <KeyboardDismissBar />
       </Modal>

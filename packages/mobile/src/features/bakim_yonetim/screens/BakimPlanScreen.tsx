@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView, Animated } from 'react-native';
 import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
 import { api, BakimPlan, BakimPlanDetay, Malzeme, Personel, TemizlikOnayDurum, TemizlikOnayDetay } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import { DatePickerModal } from '../../../components/DatePickerModal';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { UserAvatar } from '../../../components/UserAvatar';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { createBakimStyles } from '../shared/bakimStyles';
 import { TEMIZLIK_ONAY_SORULARI } from '../shared/temizlikOnaySorulari';
 import { apiHataMesaji } from '../../../utils/apiError';
@@ -58,6 +59,10 @@ export const BakimPlanScreen = () => {
 
   const [plans, setPlans] = useState<BakimPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<BakimPlan | null>(null);
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const { panHandlers: planDetailSwipeHandlers, translateX: planDetailSwipeX } = useEdgeSwipeBack(() => setSelectedPlan(null), selectedPlan !== null);
   const [planNotlar, setPlanNotlar] = useState<BakimPlanDetay[]>([]);
   const [newPlanNot, setNewPlanNot] = useState('');
   // İşlem aksiyonları: orta FAB → menü (Not Ekle / Sarfiyat Ekle) → ilgili modal
@@ -546,7 +551,7 @@ export const BakimPlanScreen = () => {
       {/* PLAN DETAILS MODAL */}
       <Modal visible={selectedPlan !== null} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent={true} onRequestClose={() => setSelectedPlan(null)}>
         {selectedPlan && (
-          <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <Animated.View {...planDetailSwipeHandlers} style={{ flex: 1, backgroundColor: colors.background, transform: [{ translateX: planDetailSwipeX }] }}>
             <CreateModalHeader title={mode === 'uygula' ? "Bakım Planı İşlem Detayı" : "Bakım Planı Detayı"} onClose={() => setSelectedPlan(null)} colorTheme="purple" />
             <View style={styles.modalContentWrapper}>
               <ScrollView contentContainerStyle={styles.modalScroll}>
@@ -816,7 +821,16 @@ export const BakimPlanScreen = () => {
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                     <TouchableOpacity
                       style={{ flex: 1, backgroundColor: colors.success, height: 42, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
-                      onPress={() => navigation.navigate('TemizlikOnayForm', { onayId: temizlikOnayDurum.onayID })}
+                      onPress={() => {
+                        // Bu detay ekranı fullScreen bir Modal — açıkken TemizlikOnayForm'a
+                        // navigate edilirse iOS'ta yeni ekran modalın ARKASINDA kalıyordu
+                        // (ayrı native katmanlar). Önce modalı kapatıp animasyonun başlaması
+                        // için kısa bir gecikmeyle sonra navigate ediyoruz (bkz. App.tsx'teki
+                        // AlertModal için alınan aynı dersin notu).
+                        const onayId = temizlikOnayDurum.onayID;
+                        setSelectedPlan(null);
+                        setTimeout(() => navigation.navigate('TemizlikOnayForm', { onayId }), 260);
+                      }}
                     >
                       <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12.5 }}>Onay Formu Doldur</Text>
                     </TouchableOpacity>
@@ -1000,7 +1014,7 @@ export const BakimPlanScreen = () => {
                 </View>
               </KeyboardAvoidingView>
             </Modal>
-          </View>
+          </Animated.View>
         )}
         <KeyboardDismissBar />
 

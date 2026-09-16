@@ -165,7 +165,14 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
   }, [user?.sicilNo, belongsHere, targetSicilNo, mySicil, isGroup]);
 
   // Polling: webportal'a dokunmadan web→mobil anlıklığı için açık sohbette
-  // son sayfayı periyodik çekip yeni (id'si olmayan) mesajları ekler.
+  // son sayfayı periyodik çekip (a) yeni (id'si olmayan) mesajları ekler, (b) kendi
+  // gönderdiğimiz, hâlâ yerel olarak "okunmadı" görünen mesajların okundu durumunu
+  // günceller. (b) olmadan, karşı taraf mesajı WebPortal'dan (kendi ayrı gerçek-zamanlı
+  // sistemi üzerinden) okursa mobildeki okundu tiki hiç güncellenmiyordu — SignalR
+  // 'messagesRead' olayı sadece OyemCore-Backend'in KENDİ ChatHub'ına bağlı bağlantılara
+  // ulaşıyor, WebPortal'ın kendi tarayıcı oturumlarına ULAŞMIYOR. Bu polling, kaynak ne
+  // olursa olsun (mobil SignalR / WebPortal) en geç ~3.5sn içinde tiki senkronize eden
+  // platformlar-arası bir güvenlik ağı.
   useEffect(() => {
     const iv = setInterval(async () => {
       try {
@@ -174,8 +181,24 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
         setMessages(prev => {
           const known = new Set(prev.filter(x => x.id).map(x => x.id));
           const yeni = latest.filter(m => m.id && !known.has(m.id));
-          if (yeni.length === 0) return prev;
-          let next = [...prev];
+
+          // Kendi gönderdiğimiz, sunucuda artık okundu ama yerelde hâlâ okunmadı
+          // görünen mesajlar var mı? (WebPortal/başka bir oturum okumuş olabilir.)
+          const readUpdates = new Set<number>();
+          latest.forEach(m => {
+            if (m.id && m.okundu && (m.gonderenSicilNo || '').trim() === mySicil) {
+              readUpdates.add(m.id);
+            }
+          });
+          const hasReadUpdate = prev.some(x => x.id && readUpdates.has(x.id) && !x.okundu);
+
+          if (yeni.length === 0 && !hasReadUpdate) return prev;
+
+          let next = prev.map(m => (
+            m.id && readUpdates.has(m.id) && !m.okundu
+              ? { ...m, okundu: true }
+              : m
+          ));
           const added: ChatMessage[] = [];
           yeni.forEach(m => {
             const tempIndex = next.findIndex(x => x.id === 0 && x.mesajMetni === m.mesajMetni && (x.gonderenSicilNo || '').trim() === (m.gonderenSicilNo || '').trim());
@@ -189,7 +212,9 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
           if (yeni.some(m => (m.gonderenSicilNo || '').trim() !== mySicil)) {
             api.markChatConversationRead(targetSicilNo).catch(() => {});
           }
-          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+          if (added.length > 0) {
+            setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+          }
           return [...next, ...added];
         });
       } catch (_) {}
@@ -335,9 +360,12 @@ export const ChatConversationScreen: React.FC<any> = ({ route, navigation }) => 
     );
   };
 
-  // Görüntülü arama başlat (1:1).
+  // Görüntülü arama başlat (1:1). Klavye açıkken başlatılırsa görüşme ekranının
+  // üzerinde açık kalıp kapatılamıyordu (native call screen'in kendi input'u yok) —
+  // aramayı başlatmadan önce klavyeyi kapatıyoruz.
   const onStartCall = () => {
     if (isGroup) return;
+    Keyboard.dismiss();
     startCall(targetSicilNo, targetName, 'video');
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoLoader } from '../../../components/LogoLoader';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, SafeAreaView, Alert, FlatList, Platform, Modal, StatusBar, KeyboardAvoidingView, Animated } from 'react-native';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -51,6 +52,12 @@ export const DemirbasYonetimScreen = () => {
   const [currentView, setCurrentView] = useState<'list' | 'detail' | 'create' | 'assign'>('list');
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [assetHistory, setAssetHistory] = useState<any[]>([]);
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const handleCloseDetail = () => { setCurrentView('list'); setSelectedAsset(null); };
+  const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(handleCloseDetail, currentView === 'detail');
 
   // Searchable Selector Overlays
   const [activeSelector, setActiveSelector] = useState<'personel' | 'filterCategory' | 'filterBrand' | 'createCategory' | 'createBrand' | 'createDep' | null>(null);
@@ -586,7 +593,7 @@ export const DemirbasYonetimScreen = () => {
         {/* Standart mor detay header'ı (diğer modüllerle aynı) */}
         <CreateModalHeader
           title="Demirbaş Detayı"
-          onClose={() => { setCurrentView('list'); setSelectedAsset(null); }}
+          onClose={handleCloseDetail}
           rightIcon="create-outline"
           onRightPress={() => handleEditAsset(selectedAsset)}
         />
@@ -950,9 +957,12 @@ export const DemirbasYonetimScreen = () => {
         animationType="slide"
         presentationStyle="fullScreen"
         statusBarTranslucent={true}
-        onRequestClose={() => { setCurrentView('list'); setSelectedAsset(null); }}
+        onRequestClose={handleCloseDetail}
       >
-        <View style={styles.container}>
+        <Animated.View
+          {...detailSwipeHandlers}
+          style={[styles.container, { transform: [{ translateX: detailSwipeX }] }]}
+        >
           <View style={styles.contentWrapper}>
             {renderDetailView()}
           </View>
@@ -976,7 +986,7 @@ export const DemirbasYonetimScreen = () => {
             </KeyboardAvoidingView>
             <KeyboardDismissBar />
           </Modal>
-        </View>
+        </Animated.View>
         <KeyboardDismissBar />
       </Modal>
 

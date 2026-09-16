@@ -9,7 +9,6 @@ import {
   Modal,
   ScrollView,
   ActivityIndicator,
-  Linking,
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +18,7 @@ import { useThemeStore } from '../../../store/useThemeStore';
 import { ListHeader } from '../../../components/ListHeader';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { LogoLoader } from '../../../components/LogoLoader';
+import { openFileInApp } from '../../../utils/fileUtils';
 
 const formatDonem = (val?: string) => {
   if (!val) return '';
@@ -147,7 +147,7 @@ export const BordroScreen: React.FC<any> = ({ navigation }) => {
   const handleDownloadPdf = (path: string) => {
     const cleanPath = path.startsWith('/') ? path : '/' + path;
     const url = api.downloadFileUrl(cleanPath);
-    Linking.openURL(url).catch(err => {
+    openFileInApp(url).catch((err: any) => {
       console.error("Dosya açma hatası:", err);
       Alert.alert('Hata', 'Bordro dosyası açılamadı.');
     });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, Switch, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, SafeAreaView, Alert, FlatList, Dimensions, Platform, StatusBar, Image, KeyboardAvoidingView, Animated } from 'react-native';
+import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { LogoLoader } from '../../../components/LogoLoader';
 import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native';
@@ -345,6 +346,11 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
     // Clear navigation parameters to prevent reopening the modal
     navigation.setParams({ id: undefined, code: undefined });
   };
+
+  // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
+  // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
+  // Aynı deneyimi (sol kenardan sağa sürükle → kapat) elle ekliyoruz.
+  const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(handleCloseDetail, isDetailOpen);
 
   const handleToggleLock = async () => {
     if (!selectedRequest) return;
@@ -1540,7 +1546,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
           const canManage = isManager && !isCreator;
           const canClose = !!selectedRequest.sorumluSicil && detailData?.girisTur === 'SORUMLU';
           return (
-            <View style={[styles.modalContainer, { backgroundColor: '#f8fafc' }]}>
+            <Animated.View
+              {...detailSwipeHandlers}
+              style={[styles.modalContainer, { backgroundColor: '#f8fafc', transform: [{ translateX: detailSwipeX }] }]}
+            >
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               enabled={true}
@@ -1741,6 +1750,37 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                             {selectedRequest.sorumluAd || 'Atanmadı'}
                           </Text>
                         </View>
+                      </View>
+                      <View style={[styles.detailDivider, { borderStyle: 'dashed' }]} />
+
+                      {/* Yardımcı Personel — referans: WebPortal Bakim/HelpDeskDetay.html pnlBilgiList.
+                          Ekleme "İşlemler" menüsünden (Yardımcı Personel Ekle); burada mevcut liste +
+                          (yetkiliyse) kaldırma gösterilir. WebPortal'daki gibi liste boş olsa da bölüm
+                          HER ZAMAN görünür (aksi halde özellik hiç keşfedilemiyordu — bkz. kullanıcı geri
+                          bildirimi: "yardımcı personelleri göremiyorum"). */}
+                      <View style={{ marginBottom: 4 }}>
+                        <Text style={[styles.infoRowLabel, { color: slateTokens.textDark, fontWeight: '700', marginLeft: 0, marginBottom: 8 }]}>Yardımcı Personel</Text>
+                        {(detailData?.bilgiPersonelleri?.length ?? 0) > 0 ? (
+                          <View style={styles.helperList}>
+                            {detailData?.bilgiPersonelleri?.map(h => (
+                              <View key={h.bilgiSicil} style={styles.helperChip}>
+                                <Text style={styles.helperText}>{h.adSoyad}</Text>
+                                {(detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'YONETICI') && (
+                                  <TouchableOpacity
+                                    style={styles.deleteHelperBtn}
+                                    onPress={() => handleDeleteHelper(h.bilgiSicil)}
+                                  >
+                                    <Ionicons name="close-circle" size={16} color={colors.danger} />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            ))}
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: 12.5, color: slateTokens.textMuted, fontStyle: 'italic' }}>
+                            Henüz yardımcı personel eklenmedi.
+                          </Text>
+                        )}
                       </View>
                       <View style={[styles.detailDivider, { borderStyle: 'dashed' }]} />
 
@@ -2103,7 +2143,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                   {(() => {
                     const statusStyle = getStatusStyle(selectedRequest.durum, !!detailData?.onayBilgisi);
                     const isClosed = statusStyle.label === 'TAMAMLANDI';
-                    const canClose = detailData?.girisTur === 'SAHIP' || detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'HAVUZ';
+                    const canClose = detailData?.girisTur === 'SAHIP' || detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'HAVUZ' || detailData?.girisTur === 'YONETICI';
 
                     if (detailData?.onayBilgisi && detailData.onayBilgisi.durum === null && detailData.onayBilgisi.amirSicil === user?.sicilNo) {
                       // Referans: WebPortal push bildirim başlığı (case "09") ile aynı metin —
@@ -2378,18 +2418,6 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                           </TouchableOpacity>
                         )}
 
-                        {/* Helper Add */}
-                        <TouchableOpacity 
-                          style={styles.sheetItem} 
-                          onPress={() => {
-                            setIsActionsMenuOpen(false);
-                            setIsHelperSelectOpen(true);
-                          }}
-                        >
-                          <Ionicons name="person-add-outline" size={20} color={colors.text} />
-                          <Text style={styles.sheetItemText}>Yardımcı Personel Ekle</Text>
-                        </TouchableOpacity>
-
                         {/* Ask Question */}
                         <TouchableOpacity 
                           style={styles.sheetItem} 
@@ -2420,8 +2448,22 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
                         </TouchableOpacity>
                       </>
                     )}
+
+                    {/* Helper Add — sorumlu VEYA (BAKIM için) kategori yöneticisi ekleyebilir */}
+                    {(detailData?.girisTur === 'SORUMLU' || detailData?.girisTur === 'YONETICI') && (
+                      <TouchableOpacity
+                        style={styles.sheetItem}
+                        onPress={() => {
+                          setIsActionsMenuOpen(false);
+                          setIsHelperSelectOpen(true);
+                        }}
+                      >
+                        <Ionicons name="person-add-outline" size={20} color={colors.text} />
+                        <Text style={styles.sheetItemText}>Yardımcı Personel Ekle</Text>
+                      </TouchableOpacity>
+                    )}
                   </ScrollView>
-                  
+
                   <TouchableOpacity style={styles.sheetCancelBtn} onPress={() => setIsActionsMenuOpen(false)}>
                     <Text style={styles.sheetCancelBtnText}>İptal</Text>
                   </TouchableOpacity>
@@ -2639,7 +2681,7 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
               <KeyboardDismissBar />
             </Modal>
 
-          </View>
+          </Animated.View>
         )}} />}
         </ErrorBoundary>
         <KeyboardDismissBar />

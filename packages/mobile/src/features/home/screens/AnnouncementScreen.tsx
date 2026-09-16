@@ -13,6 +13,7 @@ import { ListHeader } from '../../../components/ListHeader';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import * as ImagePicker from 'expo-image-picker';
 import { getBase64FromFileUri } from '../../../utils/fileUtils';
+import { ImageLightbox } from '../../../components/ImageLightbox';
 
 export const AnnouncementScreen = () => {
   const { colors } = useThemeStore();
@@ -28,6 +29,7 @@ export const AnnouncementScreen = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   
   // Date Filter Modal States
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -203,7 +205,9 @@ export const AnnouncementScreen = () => {
           const fileObj = { fileName, fileBase64: base64 as string };
           const uploadRes = await api.uploadFile(fileObj, 'HaberImg');
           if (uploadRes.success) {
-            setFormProfilUrl(uploadRes.fileName); // Store just fileName
+            // Sunucuya kaydedilen dosya benzersiz isimle (relativePath/filePath) saklanır — orijinal
+            // dosya adı (fileName) DEĞİL, çünkü backend her yüklemede diske o benzersiz adla yazıyor.
+            setFormProfilUrl(uploadRes.relativePath);
             setTimeout(() => Alert.alert('Başarılı', 'Resim başarıyla yüklendi.'), 150);
           } else {
             setTimeout(() => Alert.alert('Hata', uploadRes.message || 'Resim yükleme başarısız.'), 150);
@@ -265,6 +269,14 @@ export const AnnouncementScreen = () => {
   // 'duyuru.jpg' varsayılan değerdir, gerçek bir yükleme değil.
   const hasImage = (url?: string | null) => !!url && url !== 'duyuru.jpg';
 
+  // WebPortal'ın DataYonetim/UploadHandler.ashx'i yüklenen görseli SADECE "Small_<ad>" (küçük) ve
+  // "Orj_<ad>" (orijinal boyut) önekli iki dosya olarak diske yazar — DB'ye (ProfilUrl) kaydedilen
+  // ÖNEKSİZ ada sahip bir dosya HİÇBİR ZAMAN diskte var olmaz. WebPortal'ın kendi ekranları da bu
+  // yüzden görüntülerken hep önek ekliyor (bkz. DataYonetim/js/Haberler.js "Small_", Dashboard/js/
+  // index.js "Orj_") — mobil de aynı kurala uymalı, aksi halde her duyuru resmi 404 verir.
+  const haberImgName = (url: string, prefix: 'Small_' | 'Orj_') =>
+    url !== 'duyuru.jpg' ? prefix + url : url;
+
   const renderItem = ({ item }: { item: Announcement }) => {
     const formattedDate = formatApiDateLong(item.tarih);
 
@@ -279,7 +291,7 @@ export const AnnouncementScreen = () => {
       >
         {hasImage(item.profilUrl) ? (
           <Image
-            source={{ uri: api.downloadFileUrl(item.profilUrl!, 'HABERIMG') }}
+            source={{ uri: api.downloadFileUrl(haberImgName(item.profilUrl!, 'Small_'), 'HABERIMG') }}
             style={styles.cardImage}
             resizeMode="cover"
           />
@@ -539,23 +551,25 @@ export const AnnouncementScreen = () => {
         visible={selectedNews !== null}
         animationType="fade"
         transparent={true}
-        onRequestClose={() => setSelectedNews(null)}
+        onRequestClose={() => { setSelectedNews(null); setLightboxOpen(false); }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle} numberOfLines={1}>Duyuru Detayı</Text>
-              <TouchableOpacity onPress={() => setSelectedNews(null)}>
+              <TouchableOpacity onPress={() => { setSelectedNews(null); setLightboxOpen(false); }}>
                 <CustomIcon name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBodyScroll} showsVerticalScrollIndicator={false}>
               {selectedNews?.profilUrl && selectedNews?.profilUrl !== 'duyuru.jpg' && (
-                <Image
-                  source={{ uri: api.downloadFileUrl(selectedNews.profilUrl || 'duyuru.jpg', 'HABERIMG') }}
-                  style={styles.detailImage}
-                  resizeMode="contain"
-                />
+                <TouchableOpacity activeOpacity={0.85} onPress={() => setLightboxOpen(true)}>
+                  <Image
+                    source={{ uri: api.downloadFileUrl(haberImgName(selectedNews.profilUrl, 'Orj_'), 'HABERIMG') }}
+                    style={styles.detailImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               )}
               <Text style={styles.detailTitle}>{selectedNews?.konu}</Text>
               <View style={styles.detailMetaRow}>
@@ -572,13 +586,21 @@ export const AnnouncementScreen = () => {
               </Text>
             </ScrollView>
             <View style={styles.detailFooter}>
-              <TouchableOpacity style={styles.closeDetailBtn} onPress={() => setSelectedNews(null)}>
+              <TouchableOpacity style={styles.closeDetailBtn} onPress={() => { setSelectedNews(null); setLightboxOpen(false); }}>
                 <Text style={styles.closeDetailBtnText}>Kapat</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      <ImageLightbox
+        visible={lightboxOpen}
+        uri={selectedNews?.profilUrl && selectedNews.profilUrl !== 'duyuru.jpg'
+          ? api.downloadFileUrl(haberImgName(selectedNews.profilUrl, 'Orj_'), 'HABERIMG')
+          : null}
+        onClose={() => setLightboxOpen(false)}
+      />
 
       {/* ====================================================================
           CREATE / EDIT FORM MODAL
@@ -646,7 +668,7 @@ export const AnnouncementScreen = () => {
                     {localImageUri ? (
                       <Image source={{ uri: localImageUri }} style={styles.selectedImgPreview} />
                     ) : formProfilUrl && formProfilUrl !== 'duyuru.jpg' ? (
-                      <Image source={{ uri: api.downloadFileUrl(formProfilUrl, 'HABERIMG') }} style={styles.selectedImgPreview} />
+                      <Image source={{ uri: api.downloadFileUrl(haberImgName(formProfilUrl, 'Orj_'), 'HABERIMG') }} style={styles.selectedImgPreview} />
                     ) : (
                       <View style={styles.imagePlaceholderBox}>
                         <CustomIcon name="camera-outline" size={28} color={colors.placeholder} />
@@ -1072,7 +1094,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   detailImage: {
     width: '100%',
-    height: 200,
+    height: 280,
     borderRadius: 12,
     marginBottom: 16,
     backgroundColor: colors.background,

@@ -163,8 +163,10 @@ export const TrainingScreen = () => {
           const fileObj = { fileName: asset.name || 'document', fileBase64: base64 };
           const uploadRes = await api.uploadFile(fileObj, 'trainings');
           if (uploadRes.success) {
-            const fullUrl = api.downloadFileUrl(uploadRes.relativePath, 'HABERDOCS');
-            setFormDosyaUrl(fullUrl);
+            // Sadece sunucudaki benzersiz dosya adı saklanır (AttachmentPreview/downloadFileUrl bunu
+            // görüntülerken module ile birleştirip URL'i kendisi kurar) — tam URL DEĞİL, aksi halde
+            // görüntüleme anında URL ikinci kez sarmalanıp geçersiz hale geliyor.
+            setFormDosyaUrl(uploadRes.relativePath);
             setTimeout(() => Alert.alert('Başarılı', 'Dosya başarıyla yüklendi.'), 150);
           } else {
             setTimeout(() => Alert.alert('Hata', uploadRes.message || 'Dosya yükleme başarısız oldu.'), 150);

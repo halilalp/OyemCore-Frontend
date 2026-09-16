@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oyemsoft.oyemcore",
-      "buildNumber": "60",
+      "buildNumber": "68",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -25,13 +25,17 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Demirbaş sayımında barkod/kod okutmak, taleplerinize belge/fotoğraf eklemek ve görüntülü görüşme yapmak için kamera kullanılır.",
         "NSMicrophoneUsageDescription": "Sohbet üzerinden görüntülü/sesli görüşme yapabilmek için mikrofon kullanılır.",
-        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir."
+        "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir.",
+        "UIBackgroundModes": [
+          "voip",
+          "audio"
+        ]
       },
       "bitcode": false
     },
     "android": {
       "package": "com.oyemsoft.oyemcore",
-      "versionCode": 15,
+      "versionCode": 18,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": false,
       "permissions": [
@@ -89,11 +93,17 @@
         }
       ],
       "./plugins/withPodfilePostInstall",
+      "./plugins/withRNFirebaseDisableSPM",
+      "./plugins/withFirebaseModularHeaders",
+      "./plugins/withIosVoipPushDelegate",
       "expo-audio",
+      "expo-video",
       [
         "expo-notifications",
         {
-          "sounds": ["./assets/sounds/incoming_call.wav"]
+          "sounds": [
+            "./assets/sounds/incoming_call.wav"
+          ]
         }
       ]
     ],

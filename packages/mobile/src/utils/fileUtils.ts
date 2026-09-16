@@ -1,9 +1,25 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 import { api } from '@oyemcore/shared';
 import { useAuthStore } from '../features/auth/store/useAuthStore';
+
+// Linking.openURL tamamen uygulamadan çıkıp harici tarayıcıyı (Chrome) önplana alır. expo-web-browser
+// ise Chrome Custom Tab / SFSafariViewController açar — uygulamanın üzerinde bir sheet gibi görünür,
+// kapatınca doğrudan uygulamaya döner. PDF/Office gibi dosyalar için de aynı native görüntüleyiciyi
+// kullanır, tek fark kullanıcının uygulamadan hiç ayrılmamış hissetmesi.
+export const openFileInApp = async (url: string) => {
+  try {
+    await WebBrowser.openBrowserAsync(url);
+  } catch (_) {
+    // WebBrowser bir nedenle kullanılamazsa (ör. bazı Android sistem tarayıcı yapılandırmaları) harici
+    // tarayıcıya düş — hiç açılamamaktan iyidir. Bu da başarısız olursa çağırana (varsa kendi hata
+    // gösterimi için) fırlatılır.
+    await Linking.openURL(url);
+  }
+};
 
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
@@ -80,7 +96,7 @@ export const buildFileDownloadUrl = (
 };
 
 export const openFileLink = (relativePath: string) => {
-  Linking.openURL(buildFileDownloadUrl({ relativePath }, { cacheBust: true }));
+  openFileInApp(buildFileDownloadUrl({ relativePath }, { cacheBust: true }));
 };
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic'];

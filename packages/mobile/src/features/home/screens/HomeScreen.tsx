@@ -9,7 +9,6 @@ import {
   Image,
   Modal,
   TextInput,
-  Linking,
   Alert,
   UIManager
 } from 'react-native';
@@ -29,6 +28,7 @@ import { LogoLoader } from '../../../components/LogoLoader';
 import EventMonthCalendar from '../../../components/EventMonthCalendar';
 import { getEventDayRange } from '../../../utils/calendarEvents';
 import { setAppIconBadge } from '../../../utils/badge';
+import { openFileInApp } from '../../../utils/fileUtils';
 import { buildMalzemeStokMobilePages } from '../../malzeme/malzemeStokMenu';
 
 
@@ -81,7 +81,6 @@ export const HomeScreen = () => {
   } | null>(null);
 
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [newsItems, setNewsItems] = useState<any[]>([]);
   const [trainingItems, setTrainingItems] = useState<any[]>([]);
@@ -107,10 +106,6 @@ export const HomeScreen = () => {
   const [bildirimUnread, setBildirimUnread] = useState(0);
   // Chat okunmamış mesaj sayısı — sohbet ikonu rozeti.
   const [chatUnread, setChatUnread] = useState(0);
-  // Metrik kartları: her HelpDesk türü için {açtığım, işlem bekleyen, onay bekleyen}
-  type TalepStat = { actigim: number; islem: number; onay: number };
-  const bosStat: TalepStat = { actigim: 0, islem: 0, onay: 0 };
-  const [talepStats, setTalepStats] = useState<{ IT: TalepStat; ERP: TalepStat; BAKIM: TalepStat }>({ IT: bosStat, ERP: bosStat, BAKIM: bosStat });
   // Proje kartı: açık proje / toplam görev / gecikmiş görev
   const [projeOzet, setProjeOzet] = useState<{ acikProje: number; gorev: number; gecikmis: number } | null>(null);
   // Zimmetli demirbaş sayısı (kullanıcıya zimmetli)
@@ -132,19 +127,36 @@ export const HomeScreen = () => {
         // allSettled kullanılıyor: önceden her çağrıda .catch(() => []) vardı,
         // hata sessizce yutulup boş değer atanıyordu — bağlantı koptuğunda bile
         // ekran normal açılmış gibi görünüyordu.
-        // getTaleps boş 'tur' ile çağrılıyordu; backend türü zorunlu tuttuğu için
-        // her seferinde 400 dönüyordu ve bu sessizce yutulduğu için "Bugünün
-        // görevleri" hep boş görünüyordu. Üç tür ayrı çekilip birleştiriliyor.
+        // Sadece ilk görünüme kritik olan çağrılar burada — ekranın açılışını bekletmez.
+        // HelpDesk badge'leri (getTaleps x3) ve diğer ikincil rozetler aşağıda ayrı,
+        // sessiz ve paralel yükleniyor (anasayfada helpdesk zaten en öne çıkan içerik
+        // değil, sadece Hızlı İşlemler'deki küçük bir rozet — ekranı bekletmemeli).
         const sonuclar = await Promise.allSettled([
           api.getDashboardMenu(),
           api.getTakvimEvents(prevMonth, nextMonth),
-          api.getTaleps('IT'),
           api.getDashboardStats(),
           api.getDashboardNews(),
           api.getDashboardTrainings(),
-          api.getTaleps('ERP'),
-          api.getTaleps('BAKIM'),
         ]);
+
+        // HelpDesk badge'leri (Hızlı İşlemler kartlarındaki "toplam/bende" rozeti):
+        // kritik yoldan çıkarıldı, arka planda paralel çekilip geldiğinde rozet güncellenir.
+        Promise.allSettled([api.getTaleps('IT'), api.getTaleps('ERP'), api.getTaleps('BAKIM')])
+          .then(([itR, erpR, bakimR]) => {
+            const itData = itR.status === 'fulfilled' ? (itR.value || []) : [];
+            const erpData = erpR.status === 'fulfilled' ? (erpR.value || []) : [];
+            const bakimData = bakimR.status === 'fulfilled' ? (bakimR.value || []) : [];
+            // Webportal case 20 formatı "toplam/bende": toplam açık talep / sorumlusu
+            // ben olan açık talep. Açık = kapalı/iptal olmayan. Toplam 0 ise badge yok.
+            const acik = (t: any) => t.durum !== 'Kapalı' && t.durum !== 'İptal' && t.durum !== 'KAPATILDI';
+            const badge = (arr: any[]) => {
+              const toplam = arr.filter(acik).length;
+              const bende = arr.filter((t: any) => acik(t) && t.isMine).length;
+              return toplam > 0 ? `${toplam}/${bende}` : '';
+            };
+            setHelpdeskBadges({ IT: badge(itData), ERP: badge(erpData), BAKIM: badge(bakimData) });
+          })
+          .catch(() => {});
 
         // Bildirimler ayrı ve sessiz: backend henüz her ortamda olmayabilir,
         // 404 olursa ana yükleme hata banner'ını tetiklemesin.
@@ -178,7 +190,7 @@ export const HomeScreen = () => {
         const deger = <T,>(i: number, varsayilan: T): T =>
           sonuclar[i].status === 'fulfilled' ? ((sonuclar[i] as PromiseFulfilledResult<any>).value ?? varsayilan) : varsayilan;
 
-        const adlar = ['menu', 'takvim', 'talep-IT', 'stats', 'duyurular', 'egitimler', 'talep-ERP', 'talep-BAKIM'];
+        const adlar = ['menu', 'takvim', 'stats', 'duyurular', 'egitimler'];
         sonuclar.forEach((r, i) => {
           if (r.status === 'rejected') {
             console.error(`ANASAYFA_YUKLEME_HATASI [${adlar[i]}]:`, (r as PromiseRejectedResult).reason?.message || r);
@@ -186,8 +198,8 @@ export const HomeScreen = () => {
         });
 
         const basarisiz = sonuclar.filter(r => r.status === 'rejected').length;
-        // İkincil widget'lar (stats/haber/eğitim/talep listeleri) deger() ile boş varsayılana
-        // düşer; tekil hataları kalıcı banner ile rahatsız etmesin. Banner yalnızca TÜM çağrılar
+        // İkincil widget'lar (stats/haber/eğitim) deger() ile boş varsayılana düşer; tekil
+        // hataları kalıcı banner ile rahatsız etmesin. Banner yalnızca TÜM çağrılar
         // başarısızsa (bağlantı yok) veya KRİTİK içerik (menü=0, takvim=1) başarısızsa gösterilir.
         const kritikBasarisiz = sonuclar[0].status === 'rejected' || sonuclar[1].status === 'rejected';
         if (basarisiz === sonuclar.length) {
@@ -198,34 +210,9 @@ export const HomeScreen = () => {
 
         const menuRes = deger<any[]>(0, []);
         const takvimRes = deger<any[]>(1, []);
-        const itData = deger<any[]>(2, []);
-        const erpData = deger<any[]>(6, []);
-        const bakimData = deger<any[]>(7, []);
-        // Webportal case 20 formatı "toplam/bende": toplam açık talep / sorumlusu
-        // ben olan açık talep. Açık = kapalı/iptal olmayan. Toplam 0 ise badge yok.
-        const acik = (t: any) => t.durum !== 'Kapalı' && t.durum !== 'İptal' && t.durum !== 'KAPATILDI';
-        const badge = (arr: any[]) => {
-          const toplam = arr.filter(acik).length;
-          const bende = arr.filter(t => acik(t) && t.isMine).length;
-          return toplam > 0 ? `${toplam}/${bende}` : '';
-        };
-        setHelpdeskBadges({ IT: badge(itData), ERP: badge(erpData), BAKIM: badge(bakimData) });
-        const talepRes = [...itData, ...erpData, ...bakimData];
-        // Metrik kartları: tür başına {açtığım, işlem bekleyen, onay bekleyen}
-        const mySicil = (user as any)?.sicilNo;
-        const isOnay = (t: any) => (t.durum || '').toLocaleUpperCase('tr-TR').includes('ONAY');
-        const stat = (arr: any[]) => {
-          const open = arr.filter(acik);
-          return {
-            actigim: open.filter(t => t.kayitSicil === mySicil).length,
-            onay: open.filter(isOnay).length,
-            islem: open.filter(t => !isOnay(t)).length,
-          };
-        };
-        setTalepStats({ IT: stat(itData), ERP: stat(erpData), BAKIM: stat(bakimData) });
-        const statsRes = deger<any>(3, null);
-        const newsRes = deger<any[]>(4, []);
-        const trainingRes = deger<any[]>(5, []);
+        const statsRes = deger<any>(2, null);
+        const newsRes = deger<any[]>(3, []);
+        const trainingRes = deger<any[]>(4, []);
 
         setMenuItems(menuRes || []);
         setCalendarEvents(takvimRes || []);
@@ -233,15 +220,6 @@ export const HomeScreen = () => {
         // "Tümünü gör" ile Duyurular/Eğitimler ekranlarından erişilir (FlatList + arama).
         setNewsItems(newsRes || []);
         setTrainingItems(trainingRes || []);
-
-        const activeTalepler = (talepRes || []).filter((t: any) => t.durum !== 'Kapalı' && t.durum !== 'İptal').slice(0, 5);
-        setTasks(activeTalepler.map((t: any) => ({
-          id: t.talepID,
-          title: t.konu || 'Konusuz Talep',
-          sub: t.talepTurKodu || 'Talep',
-          dot: colors.primary
-        })));
-
         setStats(statsRes);
       } catch (err) {
         console.error("Dashboard data fetch error:", err);
@@ -322,6 +300,7 @@ export const HomeScreen = () => {
     { title: 'Malzeme & Stok', icon: 'cube-outline', color: '#0d9488', bg: '#f0fdfa', screen: 'MalzemeStokHub', params: undefined, requires: [] },
     { title: 'Kelime Oyunu', icon: 'game-controller-outline', color: '#a855f7', bg: '#faf5ff', screen: 'Game', params: undefined, requires: [] },
     { title: 'Anket', icon: 'clipboard-outline', color: '#0ea5e9', bg: '#f0f9ff', screen: 'AnketList', params: undefined, requires: [] },
+    { title: 'Akademi', icon: 'school-outline', color: '#0d9488', bg: '#f0fdfa', screen: 'Akademi', params: undefined, requires: [] },
   ];
   // Avans & Masraf artık panolarda değil; Yetkili Projeler menüsünde (BottomNavBar).
   const allowedDashboards = allDashboards.filter(d =>
@@ -329,6 +308,7 @@ export const HomeScreen = () => {
       : d.screen === 'MalzemeStokHub' ? hasMalzemeStok
       : d.screen === 'Game' ? true   // Kelime Oyunu herkese açık
       : d.screen === 'AnketList' ? true   // Anket herkese açık
+      : d.screen === 'Akademi' ? true   // Akademi herkese açık — atamalar zaten SicilNo'ya göre filtreleniyor
       : d.requires.some(r => allowedMobilUrls.has(r))
   );
   
@@ -445,12 +425,21 @@ export const HomeScreen = () => {
           onLayout={e => setHeaderH(e.nativeEvent.layout.height)}>
           {/* Üst Logo ve İkonlar */}
           <View style={styles.topRow}>
-            <Image 
-              source={require('../../../../assets/oyemcore-menu2.png')} 
-              style={styles.logoImage} 
-              resizeMode="contain" 
-            />
-            
+            <View style={styles.topLeftGroup}>
+              <TouchableOpacity
+                style={styles.hamburgerBtn}
+                activeOpacity={0.8}
+                onPress={() => bottomNavRef.current?.openProjectsMenu()}
+              >
+                <Ionicons name="menu" size={22} color="#fff" />
+              </TouchableOpacity>
+              <Image
+                source={require('../../../../assets/oyemcore-menu2.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+
             <View style={styles.topActions}>
               <TouchableOpacity style={styles.bellBtn} activeOpacity={0.8} onPress={() => navigation.navigate('ChatList')}>
                 <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
@@ -729,8 +718,11 @@ export const HomeScreen = () => {
                   onPress={() => {
                     const cleanedDesc = stripHtml(item.aciklama || item.Aciklama);
                     const imageUrl = item.profilUrl || item.ProfilUrl;
+                    // WebPortal'ın upload handler'ı görseli SADECE "Orj_<ad>"/"Small_<ad>" önekli
+                    // dosyalar olarak diske yazar, öneksiz ad hiç var olmaz (bkz. AnnouncementScreen
+                    // haberImgName) — detay önizlemesi için orijinal boyutlu "Orj_" öneki kullanılır.
                     const fullFileUrl = (imageUrl && imageUrl !== 'duyuru.jpg')
-                      ? api.downloadFileUrl(imageUrl, 'HABERIMG')
+                      ? api.downloadFileUrl('Orj_' + imageUrl, 'HABERIMG')
                       : undefined;
 
                     setSelectedItem({
@@ -786,7 +778,8 @@ export const HomeScreen = () => {
                   activeOpacity={0.7}
                   onPress={() => {
                     const cleanedDesc = stripHtml(item.aciklama || item.Aciklama);
-                    const fullFileUrl = item.dosyaUrl || item.DosyaUrl;
+                    const rawFileName = item.dosyaUrl || item.DosyaUrl;
+                    const fullFileUrl = rawFileName ? api.downloadFileUrl(rawFileName, 'HABERDOCS') : undefined;
 
                     setSelectedItem({
                       type: 'training',
@@ -939,7 +932,7 @@ export const HomeScreen = () => {
                   }}
                   onPress={() => {
                     if (selectedItem.fileUrl) {
-                      Linking.openURL(selectedItem.fileUrl).catch(err => {
+                      openFileInApp(selectedItem.fileUrl).catch((err: any) => {
                         console.error("Failed to open URL:", err);
                         Alert.alert("Hata", "Dosya açılamadı.");
                       });
@@ -1125,6 +1118,19 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
     logoImage: {
       width: 180,
       height: 50,
+    },
+    topLeftGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    hamburgerBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     topActions: {
       flexDirection: 'row',

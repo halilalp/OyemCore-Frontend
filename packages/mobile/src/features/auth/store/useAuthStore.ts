@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, setAuthToken, setApiBaseUrl, setClientType, api } from '@oyemcore/shared';
+import { User, setAuthToken, setApiBaseUrl, setClientType, setCurrentTenantId, api } from '@oyemcore/shared';
 import { authService } from '../services/authService';
 import AsyncStorage from '../../../store/storage';
 import { Platform } from 'react-native';
@@ -44,6 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (sirketUnvan) {
         await AsyncStorage.setItem('tenantUnvan', sirketUnvan);
       }
+      setCurrentTenantId(sirketKodu || null);
       set({ token, user, tenantId: sirketKodu || null, tenantUnvan: sirketUnvan || null, isAuthenticated: true, isLoading: false, error: null });
     } catch (err: any) {
       let msg = err.message || 'Giriş yapılamadı.';
@@ -102,6 +103,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (token && userStr) {
         const user = JSON.parse(userStr);
         setAuthToken(token);
+        setCurrentTenantId(savedTenantId);
         set({ token, user, tenantId: savedTenantId, tenantUnvan: savedTenantUnvan, isAuthenticated: true, isLoading: false });
       } else {
         set({ isLoading: false });
