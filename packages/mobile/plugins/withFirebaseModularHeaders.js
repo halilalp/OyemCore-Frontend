@@ -12,11 +12,12 @@ const path = require('path');
 // (yani hâlâ target bloğunun içinde) explicit pod bildirimleri olarak ekleniyor —
 // withPodfilePostInstall.js'in kullandığı AYNI, güvenilir sabit metin çapası.
 //
-// AYNI KÖK NEDEN RNCallKeep/RNVoipPushNotification İÇİN DE GEÇERLİ: bu pod'lar modül
-// tanımlamıyor, bu yüzden withIosVoipPushDelegate.js'in oluşturduğu Objective-C bridging
-// header üzerinden import edilseler bile statik framework linkajında Swift derleyicisi
-// sembollerini göremiyor ("cannot find 'RNCallKeep' in scope" hatası). Aynı :modular_headers
-// => true çözümü buraya da uygulanıyor.
+// NOT: RNCallKeep/RNVoipPushNotification İÇİN AYNI TEKNİK KULLANILAMAZ — bunlar (Firebase
+// pod'larının aksine) React Native autolinking tarafından zaten `:path => '../../../node_modules/...'`
+// ile bildiriliyor; buraya ikinci bir `pod 'RNCallKeep', ...` satırı eklemek CocoaPods'un
+// "multiple dependencies with different sources" hatasıyla durmasına yol açtı (denendi, geri
+// alındı). Onlar için withPodfilePostInstall.js'teki CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES
+// ayarı kullanılıyor (pod'u yeniden bildirmeden, mevcut autolink edilmiş target'a build setting olarak uygulanıyor).
 const MODULAR_HEADER_PODS = [
   'GoogleUtilities',
   'GoogleDataTransport',
@@ -25,8 +26,6 @@ const MODULAR_HEADER_PODS = [
   'FirebaseCoreInternal',
   'FirebaseCoreExtension',
   'FirebaseInstallations',
-  'RNCallKeep',
-  'RNVoipPushNotification',
 ];
 
 const withFirebaseModularHeaders = (config) => {
