@@ -246,11 +246,33 @@ try {
 
 export function wireIosVoipToken(onToken: (token: string) => void): () => void {
   if (Platform.OS !== 'ios' || !VoipPushNotification) return () => {};
+
+  // KRİTİK: AppDelegate.swift'teki voipRegistration() çağrısı uygulama açılışında,
+  // JS/React henüz mount olmadan (kullanıcı henüz login olmadan) ÇOK ÖNCE tetikleniyor.
+  // Kütüphane bu erken 'register' olayını (asıl token) JS'te henüz dinleyici yokken
+  // native tarafta "delayed event" olarak biriktirip, SADECE JS ilk dinleyiciyi
+  // eklediğinde ayrı bir 'didLoadWithEvents' olayıyla TOPLU geri oynatıyor (kütüphanenin
+  // kendi belgelenmiş davranışı). Sadece 'register'ı dinlemek bu yüzden token'ı hiç
+  // yakalamıyordu — VoIP token backend'e hiç kaydedilmiyordu, bu da tam ekran arama
+  // push'unun (SendCallWakeAsync) hedef cihaz bulamayıp hiç gönderilmemesine yol açıyordu.
+  // 'didLoadWithEvents' dinleyicisini 'register'dan ÖNCE ekliyoruz ki native taraf ilk
+  // dinleyicide (hangisi olursa olsun) biriken olayları anında geri oynattığında onu
+  // kesin olarak yakalamış olalım.
+  VoipPushNotification.addEventListener('didLoadWithEvents', (events: any[]) => {
+    (events || []).forEach((ev: any) => {
+      if (ev && ev.name === VoipPushNotification.RNVoipPushRemoteNotificationsRegisteredEvent && ev.data) {
+        onToken(ev.data);
+      }
+    });
+  });
+
   VoipPushNotification.addEventListener('register', (token: string) => {
     if (token) onToken(token);
   });
+
   return () => {
     try { VoipPushNotification.removeEventListener('register'); } catch (_) {}
+    try { VoipPushNotification.removeEventListener('didLoadWithEvents'); } catch (_) {}
   };
 }
 
