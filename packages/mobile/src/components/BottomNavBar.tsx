@@ -304,9 +304,14 @@ export const BottomNavBar = forwardRef<BottomNavBarHandle, BottomNavBarProps>(({
     }
 
     if (m.mobilUrl === 'Talepler' || m.sayfaAdi === 'Talepler' || m.mobilUrl === 'TalepScreen') {
-      // IT/ERP/Bakım HelpDesk kayıtları artık "Yetkili Projeler" listesinde ayrı proje
-      // olarak GÖSTERİLMİYOR (kısayollar/Hızlı Kayıt üzerinden zaten erişilebiliyor) —
-      // bu blok bilerek boş bırakıldı.
+      // WebPortal'da IT/ERP talepleri tek ekranda yönetilir ama sorumlu departmanlar
+      // (dolayısıyla yetkileri) farklıdır — mobilde bu yüzden IT-HelpDesk ve ERP-HelpDesk
+      // (ve Bakım-HelpDesk) ayrı ekranlar/projeler olarak sunuluyor (Hızlı Kayıt ve bottom
+      // nav kısayollarıyla aynı ayrım). "Yetkili Projeler" listesinde de ayrı proje kartları
+      // olarak görünmeleri gerekiyor.
+      mobilePages.push({ ...m, sayfaAdi: 'IT Helpdesk', mobilUrl: 'ITHelpDesk', projeAdi: 'IT-HelpDesk', ikon: 'laptop-outline', mobilIcon: 'laptop-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'ERP Helpdesk', mobilUrl: 'ERPHelpDesk', projeAdi: 'ERP-HelpDesk', ikon: 'server-outline', mobilIcon: 'server-outline' });
+      mobilePages.push({ ...m, sayfaAdi: 'Bakım Helpdesk', mobilUrl: 'BakimHelpDesk', projeAdi: 'Bakım-HelpDesk', ikon: 'construct-outline', mobilIcon: 'construct-outline' });
       return;
     }
     mobilePages.push(m);
