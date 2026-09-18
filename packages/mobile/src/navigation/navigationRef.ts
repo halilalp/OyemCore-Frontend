@@ -67,6 +67,13 @@ export function navigateFromNotificationData(data: any, _retry = 0) {
     return;
   }
 
+  // Akademi atama bildirimleri: ekran 'atamaID' parametresi bekliyor, jenerik
+  // akış (aşağıda) sadece code/id/type geçiyor — bu yüzden atamaID hiç ulaşmıyordu.
+  if (targetScreen === 'AkademiDetay') {
+    (navigationRef as any).navigate('AkademiDetay', { atamaID: data.atamaID });
+    return;
+  }
+
   // SVG desteği olmayan cihaz/emülatör ortamlarında panoları doğrudan işlem sayfalarına yönlendir
   const isSvgSupported = !!UIManager.getViewManagerConfig('RNSVGPath') || !!UIManager.getViewManagerConfig('RCTRNSVGPath');
   if (!isSvgSupported) {
