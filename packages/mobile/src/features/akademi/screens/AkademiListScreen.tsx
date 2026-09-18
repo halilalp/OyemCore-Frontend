@@ -29,6 +29,8 @@ export const AkademiListScreen = () => {
 
   const [items, setItems] = useState<AkademiAssignment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'ongoing' | 'done' | 'required'>('all');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,6 +45,23 @@ export const AkademiListScreen = () => {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const filteredItems = items.filter((item) => {
+    let durumMatch = true;
+    if (activeFilter === 'ongoing') durumMatch = !item.tamamlandiMi;
+    else if (activeFilter === 'done') durumMatch = item.tamamlandiMi;
+    else if (activeFilter === 'required') durumMatch = item.zorunluMu && !item.tamamlandiMi;
+
+    let queryMatch = true;
+    if (searchText.trim() !== '') {
+      const query = searchText.toLocaleLowerCase('tr');
+      const baslik = (item.baslik || '').toLocaleLowerCase('tr');
+      const kategori = (item.kategoriKodu || '').toLocaleLowerCase('tr');
+      queryMatch = baslik.includes(query) || kategori.includes(query);
+    }
+
+    return durumMatch && queryMatch;
+  });
 
   const renderItem = ({ item }: { item: AkademiAssignment }) => {
     const pct = item.sureSaniye ? Math.min(100, Math.round((100 * item.maxIzlenenSaniye) / item.sureSaniye)) : (item.tamamlandiMi ? 100 : 0);
@@ -87,19 +106,35 @@ export const AkademiListScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ListHeader title="Akademi" subtitle={`${items.length} eğitim atandı`} />
+      <ListHeader
+        title="Akademi"
+        subtitle={`${filteredItems.length} eğitim`}
+        searchPlaceholder="Eğitim veya kategori ara..."
+        searchValue={searchText}
+        onSearchChange={setSearchText}
+        filters={[
+          { id: 'all', label: 'Tümü' },
+          { id: 'ongoing', label: 'Devam Eden' },
+          { id: 'done', label: 'Tamamlanan' },
+          { id: 'required', label: 'Zorunlu' },
+        ]}
+        activeFilter={activeFilter}
+        onFilterChange={(id: any) => setActiveFilter(id)}
+      />
       {loading ? (
         <LoadingIndicator message="Akademi eğitimleri yükleniyor..." style={styles.loaderContainer} />
       ) : (
         <FlatList
-          data={items}
+          data={filteredItems}
           keyExtractor={(item) => item.atamaID.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="school-outline" size={48} color={colors.placeholder} />
-              <Text style={styles.emptyText}>Size atanmış bir Akademi eğitimi bulunmuyor.</Text>
+              <Text style={styles.emptyText}>
+                {items.length === 0 ? 'Size atanmış bir Akademi eğitimi bulunmuyor.' : 'Bu filtreye uyan eğitim bulunamadı.'}
+              </Text>
             </View>
           }
         />
