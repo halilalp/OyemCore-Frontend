@@ -374,6 +374,10 @@ export const api = {
   },
 
   // Akademi — Faz 2 sınav motoru (personel tarafı, web ile aynı sunucu-yetkili mantık).
+  getAkademiExamBrief: async (atamaId: number): Promise<any> => {
+    const response = await apiClient.get<any>(`/Akademi/${atamaId}/exam/brief`);
+    return response.data;
+  },
   startOrResumeAkademiExam: async (atamaId: number): Promise<any> => {
     const response = await apiClient.post<any>(`/Akademi/${atamaId}/exam/start`);
     return response.data;

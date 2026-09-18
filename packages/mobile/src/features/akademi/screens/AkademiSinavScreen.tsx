@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, ActivityIndicator, Alert, Platform, StatusBar } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '@oyemcore/shared';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { api, slateTokens } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
 
 // Akademi Faz 2 — sınav ekranı. WebPortal EgitimlerimSinav.js ile AYNI sunucu-yetkili
 // mantık: süre/sıra/karıştırma sunucuda tutulur, istemci sayaç sadece gösterge.
+// Once bir "hazirlik" adimi gosterilir (sinav kurallari + tek-hak uyarisi); sinav
+// StartOrResumeExam'a ancak kullanici "Sinavi Baslat" dedikten sonra cagrilir. Tekrar
+// deneme kilidi sunucu tarafinda (AkademiService.StartOrResumeExam) uygulanir.
 interface Secenek { harf: string; metin: string; }
 interface SoruView {
   tamamlandiMi: false;
@@ -26,31 +31,59 @@ interface SonucView {
   toplamSoru: number;
   sekmeDegisimSayisi: number;
 }
+interface BriefView {
+  soruSayisi: number;
+  soruSuresiSaniye: number;
+  gecmePuanYuzdesi: number;
+  tekrarHakkiKalmadi: boolean;
+}
+
+type Phase = 'briefLoading' | 'brief' | 'exam' | 'result' | 'error';
 
 export const AkademiSinavScreen = () => {
   const { colors } = useThemeStore();
   const styles = createStyles(colors);
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const atamaID: number = route.params?.atamaID;
 
-  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState<Phase>('briefLoading');
+  const [brief, setBrief] = useState<BriefView | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [soru, setSoru] = useState<SoruView | null>(null);
   const [sonuc, setSonuc] = useState<SonucView | null>(null);
   const [secilen, setSecilen] = useState<string | null>(null);
   const [kalanSaniye, setKalanSaniye] = useState(0);
   const [gonderiliyor, setGonderiliyor] = useState(false);
+  const [baslatiliyor, setBaslatiliyor] = useState(false);
 
   const appStateRef = useRef(AppState.currentState);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const durdurSayac = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
 
+  const briefYukle = useCallback(async () => {
+    setPhase('briefLoading');
+    setHata(null);
+    try {
+      const data = await api.getAkademiExamBrief(atamaID);
+      setBrief(data);
+      setPhase('brief');
+    } catch (e: any) {
+      setHata(e?.response?.data?.message || 'Sınav bilgileri alınamadı.');
+      setPhase('error');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atamaID]);
+
+  useEffect(() => { briefYukle(); return () => durdurSayac(); }, [briefYukle]);
+
   const soruGoster = useCallback((s: SoruView) => {
     setSoru(s);
     setSecilen(null);
     setKalanSaniye(s.kalanSaniye);
+    setPhase('exam');
     durdurSayac();
     timerRef.current = setInterval(() => {
       setKalanSaniye((prev) => {
@@ -65,21 +98,19 @@ export const AkademiSinavScreen = () => {
     }, 1000);
   }, []);
 
-  const baslat = useCallback(async () => {
-    setLoading(true);
+  const baslat = async () => {
+    setBaslatiliyor(true);
     setHata(null);
     try {
       const data = await api.startOrResumeAkademiExam(atamaID);
       soruGoster(data);
     } catch (e: any) {
       setHata(e?.response?.data?.message || 'Sınav başlatılamadı.');
+      setPhase('error');
     } finally {
-      setLoading(false);
+      setBaslatiliyor(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [atamaID]);
-
-  useEffect(() => { baslat(); return () => durdurSayac(); }, [baslat]);
+  };
 
   // Arka plana alınınca sekme-degisimi bildir (bilgilendirici, engelleyici degil).
   useEffect(() => {
@@ -103,6 +134,7 @@ export const AkademiSinavScreen = () => {
       if (data.tamamlandiMi) {
         setSonuc(data);
         setSoru(null);
+        setPhase('result');
       } else {
         soruGoster(data);
       }
@@ -113,33 +145,169 @@ export const AkademiSinavScreen = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Sınav yükleniyor...</Text>
-      </View>
-    );
-  }
+  const headerPaddingTop = Platform.OS === 'ios' ? Math.max(insets.top, 40) : Math.max(insets.top, StatusBar.currentHeight || 24) + 12;
 
-  if (hata) {
-    return (
-      <View style={styles.loaderContainer}>
-        <Ionicons name="alert-circle-outline" size={40} color={colors.danger} />
-        <Text style={{ color: colors.text, marginTop: 12, textAlign: 'center', paddingHorizontal: 24 }}>{hata}</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.completeBtn, { marginTop: 20, paddingHorizontal: 30 }]}>
-          <Text style={styles.completeBtnText}>Geri Dön</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const headerTitle = phase === 'exam' && soru ? `Soru ${soru.soruNo} / ${soru.toplamSoru}` : phase === 'result' ? 'Sınav Sonucu' : 'Sınav';
 
-  if (sonuc) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Sınav Sonucu</Text>
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#4338CA', slateTokens.brandPurple]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: headerPaddingTop }]}
+      >
+        <View style={styles.bgCircleLarge} />
+        <View style={styles.bgCircleSmall} />
+
+        <View style={styles.headerTopRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', zIndex: 2, flex: 1 }}>
+            {phase !== 'exam' && (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                <Ionicons name="arrow-back" size={22} color="#FFF" />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.headerTitle} numberOfLines={1}>{headerTitle}</Text>
+          </View>
+          {phase === 'exam' && soru && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 2 }}>
+              {soru.sekmeDegisimSayisi > 0 && (
+                <View style={styles.sekmeBadge}>
+                  <Ionicons name="eye-off-outline" size={12} color="#FFF" />
+                  <Text style={styles.sekmeBadgeText}>{soru.sekmeDegisimSayisi}</Text>
+                </View>
+              )}
+              <View style={[styles.sayacBadge, kalanSaniye <= 10 && styles.sayacBadgeUyari]}>
+                <Text style={styles.sayacText}>{kalanSaniye}</Text>
+              </View>
+            </View>
+          )}
         </View>
+
+        {phase === 'exam' && soru && (
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.round((100 * (soru.soruNo - 1)) / soru.toplamSoru)}%` }]} />
+          </View>
+        )}
+      </LinearGradient>
+
+      {phase === 'briefLoading' && (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Sınav bilgileri yükleniyor...</Text>
+        </View>
+      )}
+
+      {phase === 'error' && (
+        <View style={styles.loaderContainer}>
+          <Ionicons name="alert-circle-outline" size={40} color={colors.danger} />
+          <Text style={{ color: colors.text, marginTop: 12, textAlign: 'center', paddingHorizontal: 24 }}>{hata}</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.completeBtn, { marginTop: 20, paddingHorizontal: 30 }]}>
+            <Text style={styles.completeBtnText}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {phase === 'brief' && brief && (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[styles.card, { alignItems: 'center', gap: 10 }]}>
+            <Ionicons name="school-outline" size={40} color={colors.primary} />
+            <Text style={styles.briefBaslik}>Sınava Başlamadan Önce</Text>
+            <Text style={styles.briefAciklama}>Aşağıdaki kurallara göre sınav olacak. Hazır olduğunuzda başlatabilirsiniz.</Text>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.infoRow}>
+              <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
+              <Text style={styles.infoText}>{brief.soruSayisi} soru sorulacak</Text>
+            </View>
+            <View style={styles.dividerDashed} />
+            <View style={styles.infoRow}>
+              <Ionicons name="timer-outline" size={18} color={colors.primary} />
+              <Text style={styles.infoText}>Her soru için {brief.soruSuresiSaniye} saniye süreniz var, süre dolunca otomatik geçilir</Text>
+            </View>
+            <View style={styles.dividerDashed} />
+            <View style={styles.infoRow}>
+              <Ionicons name="ribbon-outline" size={18} color={colors.primary} />
+              <Text style={styles.infoText}>Geçmek için %{brief.gecmePuanYuzdesi} başarı gerekiyor</Text>
+            </View>
+            <View style={styles.dividerDashed} />
+            <View style={styles.infoRow}>
+              <Ionicons name="arrow-back-circle-outline" size={18} color={colors.danger} />
+              <Text style={styles.infoText}>Bir soruyu cevapladıktan sonra geri dönüp değiştiremezsiniz</Text>
+            </View>
+          </View>
+
+          <View style={[styles.card, { backgroundColor: colors.dangerLight, borderColor: colors.danger }]}>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+              <Ionicons name="warning-outline" size={20} color={colors.danger} />
+              <Text style={[styles.infoText, { color: colors.danger, flex: 1 }]}>
+                {brief.tekrarHakkiKalmadi
+                  ? 'Bu sınav için hakkınızı kullandınız. Tekrar sınava girmek için yöneticinizle iletişime geçin.'
+                  : 'Sınavı başlattıktan sonra iptal edemezsiniz ve tek hakkınız var — tamamlamadan çıkarsanız kaldığınız yerden devam eder, ama bitirdikten sonra tekrar giremezsiniz.'}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      )}
+
+      {phase === 'brief' && brief && (
+        <View style={styles.bottomBar}>
+          {brief.tekrarHakkiKalmadi ? (
+            <TouchableOpacity style={styles.completeBtn} onPress={() => navigation.goBack()}>
+              <Text style={styles.completeBtnText}>Geri Dön</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+                <Text style={styles.cancelBtnText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.completeBtn, { flex: 1 }, baslatiliyor && styles.completeBtnDisabled]}
+                disabled={baslatiliyor}
+                onPress={baslat}
+              >
+                <Text style={styles.completeBtnText}>{baslatiliyor ? 'Başlatılıyor...' : 'Sınavı Başlat'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
+      {phase === 'exam' && soru && (
+        <>
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.card}>
+              <Text selectable={false} style={styles.soruMetni}>{soru.soruMetni}</Text>
+            </View>
+
+            {soru.secenekler.map((s) => (
+              <TouchableOpacity
+                key={s.harf}
+                style={[styles.secenek, secilen === s.harf && styles.secenekSecili]}
+                onPress={() => setSecilen(s.harf)}
+              >
+                <View style={[styles.radioDis, secilen === s.harf && { borderColor: colors.primary }]}>
+                  {secilen === s.harf && <View style={[styles.radioIc, { backgroundColor: colors.primary }]} />}
+                </View>
+                <Text selectable={false} style={[styles.secenekMetin, secilen === s.harf && { fontWeight: '700', color: colors.text }]}>{s.metin}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={styles.bottomBar}>
+            <TouchableOpacity
+              style={[styles.completeBtn, (!secilen || gonderiliyor) && styles.completeBtnDisabled]}
+              disabled={!secilen || gonderiliyor}
+              onPress={() => cevapGonder(false)}
+            >
+              <Text style={styles.completeBtnText}>{gonderiliyor ? 'Gönderiliyor...' : 'Cevapla ve Devam Et'}</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {phase === 'result' && sonuc && (
         <View style={styles.sonucWrap}>
           <Ionicons
             name={sonuc.basariliMi ? 'ribbon' : 'close-circle'}
@@ -158,59 +326,7 @@ export const AkademiSinavScreen = () => {
             <Text style={styles.completeBtnText}>Eğitimlerime Dön</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    );
-  }
-
-  if (!soru) return null;
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Soru {soru.soruNo} / {soru.toplamSoru}</Text>
-        <View style={styles.headerRight}>
-          {soru.sekmeDegisimSayisi > 0 && (
-            <View style={styles.sekmeBadge}>
-              <Ionicons name="eye-off-outline" size={12} color={colors.warning} />
-              <Text style={styles.sekmeBadgeText}>{soru.sekmeDegisimSayisi}</Text>
-            </View>
-          )}
-          <Text style={[styles.sayac, kalanSaniye <= 10 && { color: colors.danger }]}>{kalanSaniye}</Text>
-        </View>
-      </View>
-
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.round((100 * (soru.soruNo - 1)) / soru.toplamSoru)}%`, backgroundColor: colors.primary }]} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <Text selectable={false} style={styles.soruMetni}>{soru.soruMetni}</Text>
-        </View>
-
-        {soru.secenekler.map((s) => (
-          <TouchableOpacity
-            key={s.harf}
-            style={[styles.secenek, secilen === s.harf && styles.secenekSecili]}
-            onPress={() => setSecilen(s.harf)}
-          >
-            <View style={[styles.radioDis, secilen === s.harf && { borderColor: colors.primary }]}>
-              {secilen === s.harf && <View style={[styles.radioIc, { backgroundColor: colors.primary }]} />}
-            </View>
-            <Text selectable={false} style={[styles.secenekMetin, secilen === s.harf && { fontWeight: '700', color: colors.text }]}>{s.metin}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[styles.completeBtn, (!secilen || gonderiliyor) && styles.completeBtnDisabled]}
-          disabled={!secilen || gonderiliyor}
-          onPress={() => cevapGonder(false)}
-        >
-          <Text style={styles.completeBtnText}>{gonderiliyor ? 'Gönderiliyor...' : 'Cevapla ve Devam Et'}</Text>
-        </TouchableOpacity>
-      </View>
+      )}
     </View>
   );
 };
@@ -218,21 +334,29 @@ export const AkademiSinavScreen = () => {
 const createStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 12,
-  },
-  headerTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sekmeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.warningLight, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  sekmeBadgeText: { fontSize: 11, fontWeight: '700', color: colors.warning },
-  sayac: { fontSize: 20, fontWeight: '900', color: colors.text, minWidth: 32, textAlign: 'right' },
-  progressTrack: { height: 4, backgroundColor: colors.border, marginHorizontal: 16, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
-  scroll: { padding: 16, gap: 10, paddingBottom: 40 },
+  header: { paddingHorizontal: 20, paddingBottom: 16, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
+  bgCircleLarge: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,255,255,0.03)', top: -50, right: -80 },
+  bgCircleSmall: { position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.05)', top: 60, right: 40 },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFF', flexShrink: 1 },
+  sekmeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
+  sekmeBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  sayacBadge: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, minWidth: 40, alignItems: 'center' },
+  sayacBadgeUyari: { backgroundColor: 'rgba(239,68,68,0.35)' },
+  sayacText: { fontSize: 16, fontWeight: '900', color: '#FFF' },
+  progressTrack: { height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'hidden', marginTop: 14 },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#FFF' },
+  scroll: { padding: 16, paddingBottom: 40, gap: 12 },
   card: {
-    backgroundColor: colors.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: colors.border, marginBottom: 6,
+    backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border,
+    shadowColor: colors.shadowColor || '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1,
   },
+  briefBaslik: { fontSize: 17, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  briefAciklama: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  infoText: { flex: 1, fontSize: 13.5, color: colors.text, fontWeight: '500', lineHeight: 19 },
+  dividerDashed: { height: 1, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: colors.border, marginVertical: 6 },
   soruMetni: { fontSize: 16, fontWeight: '700', color: colors.text, lineHeight: 23 },
   secenek: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12,
@@ -246,6 +370,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   completeBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   completeBtnDisabled: { backgroundColor: colors.border },
   completeBtnText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
+  cancelBtn: { paddingVertical: 15, paddingHorizontal: 22, borderRadius: 12, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
+  cancelBtnText: { color: colors.textSecondary, fontWeight: '800', fontSize: 14 },
   sonucWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
   sonucBaslik: { fontSize: 18, fontWeight: '800', marginTop: 14, textAlign: 'center' },
   sonucPuan: { fontSize: 40, fontWeight: '900', color: colors.text, marginTop: 10 },
