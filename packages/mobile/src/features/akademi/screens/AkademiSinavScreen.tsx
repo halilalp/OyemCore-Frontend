@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, ActivityIndicator, Alert, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, ActivityIndicator, Alert, Platform, StatusBar, TextInput } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +36,7 @@ interface BriefView {
   soruSuresiSaniye: number;
   gecmePuanYuzdesi: number;
   tekrarHakkiKalmadi: boolean;
+  tekrarTalebiBekliyor: boolean;
 }
 
 type Phase = 'briefLoading' | 'brief' | 'exam' | 'result' | 'error';
@@ -57,6 +58,8 @@ export const AkademiSinavScreen = () => {
   const [kalanSaniye, setKalanSaniye] = useState(0);
   const [gonderiliyor, setGonderiliyor] = useState(false);
   const [baslatiliyor, setBaslatiliyor] = useState(false);
+  const [talepSebebi, setTalepSebebi] = useState('');
+  const [talepGonderiliyor, setTalepGonderiliyor] = useState(false);
 
   const appStateRef = useRef(AppState.currentState);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -109,6 +112,20 @@ export const AkademiSinavScreen = () => {
       setPhase('error');
     } finally {
       setBaslatiliyor(false);
+    }
+  };
+
+  const talepGonder = async () => {
+    if (!talepSebebi.trim() || talepGonderiliyor) return;
+    setTalepGonderiliyor(true);
+    try {
+      await api.requestAkademiExamRetry(atamaID, talepSebebi.trim());
+      setTalepSebebi('');
+      await briefYukle();
+    } catch (e: any) {
+      Alert.alert('Hata', e?.response?.data?.message || 'Talep gönderilemedi.');
+    } finally {
+      setTalepGonderiliyor(false);
     }
   };
 
@@ -243,11 +260,35 @@ export const AkademiSinavScreen = () => {
               <Ionicons name="warning-outline" size={20} color={colors.danger} />
               <Text style={[styles.infoText, { color: colors.danger, flex: 1 }]}>
                 {brief.tekrarHakkiKalmadi
-                  ? 'Bu sınav için hakkınızı kullandınız. Tekrar sınava girmek için yöneticinizle iletişime geçin.'
+                  ? (brief.tekrarTalebiBekliyor
+                      ? 'Ek sınav hakkı talebiniz gönderildi, yöneticinizin onayı bekleniyor.'
+                      : 'Bu sınav için hakkınızı kullandınız. Aşağıya sebep yazarak yöneticinizden ek hak talep edebilirsiniz.')
                   : 'Sınavı başlattıktan sonra iptal edemezsiniz ve tek hakkınız var — tamamlamadan çıkarsanız kaldığınız yerden devam eder, ama bitirdikten sonra tekrar giremezsiniz.'}
               </Text>
             </View>
           </View>
+
+          {brief.tekrarHakkiKalmadi && !brief.tekrarTalebiBekliyor && (
+            <View style={styles.card}>
+              <Text style={styles.aciklamaLabel}>TALEP SEBEBİ</Text>
+              <TextInput
+                style={styles.talepInput}
+                placeholder="Örn: sınav sırasında bağlantı koptu..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={3}
+                value={talepSebebi}
+                onChangeText={setTalepSebebi}
+              />
+              <TouchableOpacity
+                style={[styles.completeBtn, { marginTop: 10 }, (!talepSebebi.trim() || talepGonderiliyor) && styles.completeBtnDisabled]}
+                disabled={!talepSebebi.trim() || talepGonderiliyor}
+                onPress={talepGonder}
+              >
+                <Text style={styles.completeBtnText}>{talepGonderiliyor ? 'Gönderiliyor...' : 'Talep Gönder'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -357,6 +398,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   infoText: { flex: 1, fontSize: 13.5, color: colors.text, fontWeight: '500', lineHeight: 19 },
   dividerDashed: { height: 1, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: colors.border, marginVertical: 6 },
+  aciklamaLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.3, marginBottom: 8 },
+  talepInput: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12,
+    fontSize: 13.5, color: colors.text, minHeight: 80, textAlignVertical: 'top',
+    backgroundColor: colors.background,
+  },
   soruMetni: { fontSize: 16, fontWeight: '700', color: colors.text, lineHeight: 23 },
   secenek: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12,

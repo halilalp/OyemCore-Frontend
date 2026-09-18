@@ -34,6 +34,7 @@ interface AkademiDetail {
   tamamlandiMi: boolean;
   tamamlanmaTarihi: string | null;
   sinavAktif: boolean;
+  ekSinavRedSebebi: string | null;
 }
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
@@ -260,6 +261,16 @@ export const AkademiDetailScreen = () => {
             </TouchableOpacity>
           ) : null}
         </View>
+
+        {/* Ek sınav hakkı talebi reddedildiyse sebebi göster */}
+        {detail.ekSinavRedSebebi ? (
+          <View style={[styles.card, { backgroundColor: colors.dangerLight, borderColor: colors.danger, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }]}>
+            <Ionicons name="close-circle-outline" size={20} color={colors.danger} />
+            <Text style={{ flex: 1, fontSize: 13, color: colors.danger, fontWeight: '600', lineHeight: 19 }}>
+              Ek sınav hakkı isteğiniz reddedildi: {detail.ekSinavRedSebebi}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Sınav (Faz 2) */}
         {detail.sinavAktif && (

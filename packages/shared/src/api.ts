@@ -378,6 +378,10 @@ export const api = {
     const response = await apiClient.get<any>(`/Akademi/${atamaId}/exam/brief`);
     return response.data;
   },
+  requestAkademiExamRetry: async (atamaId: number, sebep: string): Promise<any> => {
+    const response = await apiClient.post<any>(`/Akademi/${atamaId}/exam/retry-request`, { sebep });
+    return response.data;
+  },
   startOrResumeAkademiExam: async (atamaId: number): Promise<any> => {
     const response = await apiClient.post<any>(`/Akademi/${atamaId}/exam/start`);
     return response.data;
