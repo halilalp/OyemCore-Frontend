@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, ScrollView, Platform, StatusBar, Alert } from 'react-native';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { api, slateTokens } from '@oyemcore/shared';
+import { api, slateTokens, parseAdminBelgeTuru } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { LogoLoader } from '../../../components/LogoLoader';
@@ -43,8 +43,7 @@ export const ProjeListScreen = () => {
 
   // Proje türü seçenekleri: kullanıcının yetkili olduğu türler (AdminBelgeTur)
   const projeTurleri = React.useMemo(() => {
-    const raw = (user as any)?.adminBelgeTur || '';
-    return String(raw).split('*').map(s => s.trim()).filter(Boolean);
+    return parseAdminBelgeTuru((user as any)?.adminBelgeTur);
   }, [user]);
 
   const resetForm = () => {

@@ -9,7 +9,7 @@ import { useEdgeSwipeBack } from '../../../hooks/useEdgeSwipeBack';
 import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { api, Ticket, Company, Personel, slateTokens } from '@oyemcore/shared';
+import { api, Ticket, Company, Personel, slateTokens, isSistemAdmin } from '@oyemcore/shared';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { getBase64FromFileUri, buildFileDownloadUrl } from '../../../utils/fileUtils';
@@ -1151,7 +1151,7 @@ export const TicketScreen = () => {
                   )}
 
                   {/* Sil — sadece admin veya bilet sahibi */}
-                  {(user?.adminBelgeTur === 'ADMIN' || selectedTicket.kayitSicilNo === user?.sicilNo) && (
+                  {(isSistemAdmin(user?.adminBelgeTur) || selectedTicket.kayitSicilNo === user?.sicilNo) && (
                     <TouchableOpacity
                       style={[styles.sheetItem, { backgroundColor: colors.dangerLight + '80', borderColor: colors.danger + '40' }]}
                       onPress={() => {

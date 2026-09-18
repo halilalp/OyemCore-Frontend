@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { formatApiDateLong } from '../../../utils/apiDate';
 import { useAuthStore } from '../../auth/store/useAuthStore';
-import { api, Announcement } from '@oyemcore/shared';
+import { api, Announcement, isSistemAdmin } from '@oyemcore/shared';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LoadingIndicator } from '../../../components/LoadingIndicator';
 import { BottomNavBar } from '../../../components/BottomNavBar';
@@ -280,7 +280,7 @@ export const AnnouncementScreen = () => {
   const renderItem = ({ item }: { item: Announcement }) => {
     const formattedDate = formatApiDateLong(item.tarih);
 
-    const isAdmin = user?.kullaniciAdi === 'admin' || (user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('ADMIN'));
+    const isAdmin = user?.kullaniciAdi === 'admin' || isSistemAdmin(user?.adminBelgeTur);
     const isOwner = item.kayitEposta?.trim() === user?.eposta?.trim() || isAdmin;
 
     return (

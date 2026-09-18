@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { api } from '@oyemcore/shared';
+import { api, hasAdminYetki } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
@@ -82,7 +82,7 @@ export const BakimRaporScreen = () => {
         const data = await api.getBakimDropdowns();
         setDropdowns(data);
         // Şirket kapısı: admin ise ilk şirket, değilse kendi şirketi.
-        const admin = !!user?.adminBelgeTur?.includes('BAKIM');
+        const admin = hasAdminYetki(user?.adminBelgeTur, 'BAKIM');
         const ownSirket = user?.sirketKodu || '';
         if (data?.sirkets?.length > 0) {
           setRaporSirket(admin ? data.sirkets[0].sirketKodu : (ownSirket || data.sirkets[0].sirketKodu));

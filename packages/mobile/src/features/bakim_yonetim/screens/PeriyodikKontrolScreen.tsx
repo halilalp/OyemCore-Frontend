@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, FlatList, Platform, KeyboardAvoidingView, Animated } from 'react-native';
 import { useIsFocused, useRoute, useNavigation } from '@react-navigation/native';
-import { api, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme, Personel, TemizlikOnayDurum, TemizlikOnayDetay } from '@oyemcore/shared';
+import { api, PeriyodikKontrol, PeriyodikSarfiyat, Malzeme, Personel, TemizlikOnayDurum, TemizlikOnayDetay, hasAdminYetki } from '@oyemcore/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useAppStore } from '../../../store/useAppStore';
@@ -174,7 +174,7 @@ export const PeriyodikKontrolScreen = () => {
       try {
         const data = await api.getBakimDropdowns();
         setDropdowns(data);
-        const admin = !!user?.adminBelgeTur?.includes('BAKIM');
+        const admin = hasAdminYetki(user?.adminBelgeTur, 'BAKIM');
         setIsBakimAdmin(admin);
         const ownSirket = user?.sirketKodu || '';
         const initialGate = admin ? '' : ownSirket;

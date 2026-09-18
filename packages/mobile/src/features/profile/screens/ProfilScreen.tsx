@@ -7,7 +7,7 @@ import { BottomNavBar } from '../../../components/BottomNavBar';
 import { UserAvatar } from '../../../components/UserAvatar';
 import { ListHeader } from '../../../components/ListHeader';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '@oyemcore/shared';
+import { api, parseAdminBelgeTuru } from '@oyemcore/shared';
 import { useNavigation } from '@react-navigation/native';
 
 export const ProfilScreen = () => {
@@ -156,7 +156,7 @@ export const ProfilScreen = () => {
 
           <Text style={styles.profileName}>{user?.adSoyad || 'Halil Alp Çalışan'}</Text>
           <Text style={styles.profileTitle}>
-            {(user as any)?.unvan || user?.adminBelgeTur || 'BİLGİ İŞLEM MÜDÜRÜ'}
+            {(user as any)?.unvan || parseAdminBelgeTuru(user?.adminBelgeTur).join(', ') || 'BİLGİ İŞLEM MÜDÜRÜ'}
           </Text>
 
           <View style={styles.divider} />

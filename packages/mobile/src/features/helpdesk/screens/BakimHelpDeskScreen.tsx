@@ -8,7 +8,7 @@ import { useHelpdeskStore } from '../store/useHelpdeskStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { apiHataMesaji } from '../../../utils/apiError';
-import { Talep, api } from '@oyemcore/shared';
+import { Talep, api, hasAdminYetki } from '@oyemcore/shared';
 import { BottomNavBar } from '../../../components/BottomNavBar';
 import { SearchableSelectorModal } from '../../../components/SearchableSelectorModal';
 import { MultiSelectModal } from '../../../components/MultiSelectModal';
@@ -114,10 +114,10 @@ const stripHtml = (html: string | null | undefined, maxLength?: number): string 
   const type = 'BAKIM';
   // Referans: WebPortal Bakim/js/HelpDeskIslemleri.js CheckOnemPermission — TLPACIL yetkisi olmayan
   // kullanıcıya Önem Seviyesi alanı hiç gösterilmez, kayıt "ACİL DEĞİL" (D) olarak geçer.
-  const hasTlpAcil = !!user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('TLPACIL');
+  const hasTlpAcil = hasAdminYetki(user?.adminBelgeTur, 'TLPACIL');
   // AdminBelgeTur'unda BAKIMADMIN olmayan kullanıcı Şirket'i değiştiremez — talep formu
   // kendi (tb_Personel'e bağlı) şirketiyle sabit açılır, Bölüm listesi buna göre filtrelenir.
-  const hasBakimAdmin = !!user?.adminBelgeTur && user.adminBelgeTur.toUpperCase().includes('BAKIMADMIN');
+  const hasBakimAdmin = hasAdminYetki(user?.adminBelgeTur, 'BAKIMADMIN');
 
   const { colors, theme } = useThemeStore();
   const styles = createStyles(colors, type, theme);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { parseAdminBelgeTuru } from '@oyemcore/shared';
 
 interface InnerPageLayoutProps {
   children: React.ReactNode;
@@ -95,7 +96,7 @@ export const InnerPageLayout: React.FC<InnerPageLayoutProps> = ({ children }) =>
                     {user?.adSoyad || 'Sistem Kullanıcısı'}
                   </a>
                   <span className="text-gray-600 fw-bold d-block fs-8 mb-1 text-truncate" style={{ maxWidth: '150px' }} title={user?.adminBelgeTur || ''}>
-                    {user?.adminBelgeTur ? user.adminBelgeTur.split('*').filter(Boolean).join(', ') : 'Kullanıcı'}
+                    {user?.adminBelgeTur ? (parseAdminBelgeTuru(user.adminBelgeTur).join(', ') || 'Kullanıcı') : 'Kullanıcı'}
                   </span>
                   <div className="d-flex align-items-center text-success fs-9">
                     <span className="bullet bullet-dot bg-success me-1"></span>online
