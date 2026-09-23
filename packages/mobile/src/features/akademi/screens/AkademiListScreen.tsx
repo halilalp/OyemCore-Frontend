@@ -20,6 +20,9 @@ interface AkademiAssignment {
   zorunluMu: boolean;
   maxIzlenenSaniye: number;
   tamamlandiMi: boolean;
+  sinavGirildiMi: boolean;
+  sinavBasariliMi: boolean | null;
+  sinavPuanYuzdesi: number | null;
 }
 
 export const AkademiListScreen = () => {
@@ -82,7 +85,18 @@ export const AkademiListScreen = () => {
             )}
           </View>
           {item.kategoriKodu ? <Text style={styles.kategori}>{item.kategoriKodu}</Text> : null}
-          {item.tamamlandiMi ? (
+          {item.sinavGirildiMi ? (
+            <View style={styles.doneRow}>
+              <Ionicons
+                name={item.sinavBasariliMi ? 'ribbon' : 'close-circle'}
+                size={14}
+                color={item.sinavBasariliMi ? colors.success : colors.danger}
+              />
+              <Text style={[styles.doneText, { color: item.sinavBasariliMi ? colors.success : colors.danger }]}>
+                Sınav: %{item.sinavPuanYuzdesi ?? 0} · {item.sinavBasariliMi ? 'Geçti' : 'Kaldı'}
+              </Text>
+            </View>
+          ) : item.tamamlandiMi ? (
             <View style={styles.doneRow}>
               <Ionicons name="checkmark-circle" size={14} color={colors.success} />
               <Text style={styles.doneText}>Tamamlandı</Text>

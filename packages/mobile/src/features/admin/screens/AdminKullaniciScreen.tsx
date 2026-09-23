@@ -159,10 +159,12 @@ export const AdminKullaniciScreen = () => {
       setLoading(true);
       setResetPwModal(false);
       await api.adminResetPassword(selectedUser.id, newPassword);
-      Alert.alert('Başarılı', 'Şifre başarıyla güncellendi.');
+      // Modal kapanmasiyla ayni anda Alert.alert cagirmak iOS'ta uyariyi kapanmakta olan
+      // formun ARKASINDA birakiyordu — 150ms gecikme modalin kapanmasini tamamlamasina izin verir.
+      setTimeout(() => Alert.alert('Başarılı', 'Şifre başarıyla güncellendi.'), 150);
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Hata', err.response?.data?.message || 'Şifre güncellenemedi.');
+      setTimeout(() => Alert.alert('Hata', err.response?.data?.message || 'Şifre güncellenemedi.'), 150);
     } finally {
       setLoading(false);
     }
@@ -178,8 +180,9 @@ export const AdminKullaniciScreen = () => {
       setDocTypes(data);
     } catch (e) {
       console.error(e);
-      Alert.alert('Hata', 'Belge yetkileri alınamadı.');
-      setDocAuthModal(false);
+      // Modal onPress'te kapaniyor — alert acikken modal aninda kapanip yeniden acilmasi
+      // gibi bir yaris olmasin diye kapanma, kullanicinin "Tamam" demesine erteleniyor.
+      Alert.alert('Hata', 'Belge yetkileri alınamadı.', [{ text: 'Tamam', onPress: () => setDocAuthModal(false) }]);
     } finally {
       setSavingDoc(false);
     }
@@ -198,7 +201,7 @@ export const AdminKullaniciScreen = () => {
       const activeCodes = docTypes.filter(t => t.aktif).map(t => t.kod);
       await api.adminSaveUserDocumentTypes(selectedUser.id, activeCodes);
       setDocAuthModal(false);
-      Alert.alert('Başarılı', 'Yönetici belge yetkileri kaydedildi.');
+      setTimeout(() => Alert.alert('Başarılı', 'Yönetici belge yetkileri kaydedildi.'), 150);
       fetchUsers();
     } catch (err: any) {
       console.error(err);
@@ -228,8 +231,7 @@ export const AdminKullaniciScreen = () => {
       }
     } catch (e) {
       console.error(e);
-      Alert.alert('Hata', 'Sayfa yetkileri alınamadı.');
-      setPagePermModal(false);
+      Alert.alert('Hata', 'Sayfa yetkileri alınamadı.', [{ text: 'Tamam', onPress: () => setPagePermModal(false) }]);
     } finally {
       setSavingPerm(false);
     }
@@ -254,7 +256,7 @@ export const AdminKullaniciScreen = () => {
     try {
       await api.adminSavePermissions(selectedUser.id, userPermissions);
       setPagePermModal(false);
-      Alert.alert('Başarılı', 'Sayfa erişim yetkileri güncellendi.');
+      setTimeout(() => Alert.alert('Başarılı', 'Sayfa erişim yetkileri güncellendi.'), 150);
     } catch (err: any) {
       console.error(err);
       Alert.alert('Hata', err.response?.data?.message || 'Yetkiler kaydedilemedi.');
@@ -290,7 +292,9 @@ export const AdminKullaniciScreen = () => {
       setPersonnelList(data);
     } catch (e) {
       console.error(e);
-      Alert.alert('Hata', 'Personel listesi alınamadı.');
+      // wizardModal az once acildi (satir 288) — cok hizli basarisiz olursa acilis
+      // animasyonuyla ayni ana denk gelebilir, kisa gecikme guvenli tarafta kalir.
+      setTimeout(() => Alert.alert('Hata', 'Personel listesi alınamadı.'), 150);
     }
   };
 
@@ -424,26 +428,33 @@ export const AdminKullaniciScreen = () => {
       };
 
       const res = await api.adminSaveUser(payload);
-      Alert.alert(
-        'Başarılı',
-        userForm.kullaniciID > 0 ? 'Kullanıcı bilgileri güncellendi.' : 'Kullanıcı başarıyla oluşturuldu.',
-        [
-          {
-            text: 'Tamam',
-            onPress: () => {
-              fetchUsers();
-              if (userForm.kullaniciID === 0 && res.id) {
-                // If new user, directly prompt page permissions config
-                openPagePerm({ id: res.id, adSoyad: userForm.adSoyad });
+      // wizardModal az once kapandi (satir 412) — Alert.alert'i hemen ayni tikte cagirmak
+      // iOS'ta uyariyi kapanmakta olan sihirbazin ARKASINDA birakiyordu, 150ms bekletiyoruz.
+      setTimeout(() => {
+        Alert.alert(
+          'Başarılı',
+          userForm.kullaniciID > 0 ? 'Kullanıcı bilgileri güncellendi.' : 'Kullanıcı başarıyla oluşturuldu.',
+          [
+            {
+              text: 'Tamam',
+              onPress: () => {
+                fetchUsers();
+                if (userForm.kullaniciID === 0 && res.id) {
+                  // If new user, directly prompt page permissions config
+                  openPagePerm({ id: res.id, adSoyad: userForm.adSoyad });
+                }
               }
             }
-          }
-        ]
-      );
+          ]
+        );
+      }, 150);
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Hata', err.response?.data?.message || 'Kullanıcı kaydedilirken hata oluştu.');
-      setWizardModal(true);
+      // Sihirbazi alert'le AYNI ANDA degil, kullanici "Tamam"a bastiktan SONRA yeniden ac —
+      // aksi halde modal'in yeniden acilmasiyla alert'in gorunmesi yine ayni yarisa giriyordu.
+      Alert.alert('Hata', err.response?.data?.message || 'Kullanıcı kaydedilirken hata oluştu.', [
+        { text: 'Tamam', onPress: () => setWizardModal(true) }
+      ]);
     } finally {
       setLoading(false);
     }

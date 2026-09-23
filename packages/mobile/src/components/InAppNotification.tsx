@@ -97,12 +97,19 @@ export const InAppNotification = () => {
 
   if (!visible) return null;
 
+  const isCallNotification = !!(data && (data.roomUrl || data.RoomUrl || data.type === 'call' || data.Type === 'call' || data.screen === 'IncomingCall' || data.Screen === 'IncomingCall'));
+
   return (
     <Animated.View
       style={[styles.wrapper, { transform: [{ translateY }] }]}
       {...panResponder.panHandlers}
     >
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={isCallNotification ? 1 : 0.85}
+        disabled={isCallNotification}
+        onPress={handlePress}
+      >
         <View style={styles.infoRow}>
           <View style={styles.iconContainer}>
             <Ionicons name="notifications" size={22} color="#ffffff" />
@@ -117,6 +124,9 @@ export const InAppNotification = () => {
               </Text>
             )}
           </View>
+          {!isCallNotification && !!(data && data.screen) && (
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginRight: 4 }} />
+          )}
           <TouchableOpacity
             onPress={dismiss}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -167,16 +177,8 @@ export const InAppNotification = () => {
               <Text style={styles.callBtnText}>Cevapla</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          !!(data && data.screen) && (
-            <TouchableOpacity style={styles.goButton} activeOpacity={0.85} onPress={handlePress}>
-              <Ionicons name="open-outline" size={16} color="#ffffff" />
-              <Text style={styles.goButtonText}>Detayları Gör</Text>
-              <Ionicons name="arrow-forward" size={15} color="#ffffff" />
-            </TouchableOpacity>
-          )
-        )}
-      </View>
+        ) : null}
+      </TouchableOpacity>
       <View style={styles.grabber} />
     </Animated.View>
   );
@@ -208,21 +210,6 @@ const createStyles = (colors: any) =>
     infoRow: {
       flexDirection: 'row',
       alignItems: 'center',
-    },
-    goButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      paddingVertical: 10,
-      marginTop: 12,
-    },
-    goButtonText: {
-      color: '#ffffff',
-      fontSize: 13,
-      fontWeight: '800',
     },
     callButtonsRow: {
       flexDirection: 'row',

@@ -311,14 +311,20 @@ export const TicketScreen = () => {
     setIsHistoryExpanded(false);
     try {
       const detail = await api.getTicketDetail(ticket.id);
+      const fullTicket = detail.ticket || ticket;
       setDetails({
-        ticket: detail.ticket || ticket,
+        ticket: fullTicket,
         yorumlar: detail.yorumlar || [],
         dosyalar: detail.dosyalar || [],
         tarihce: detail.tarihce || []
       });
+      // Bildirimden acildiginda 'ticket' sadece {id} iceren bir placeholder oluyor (liste
+      // henuz yuklenmemis olabilir) — formun cogu alani 'details' degil 'selectedTicket'
+      // okudugundan, API'den gelen tam veriyi buraya da yaziyoruz, aksi halde bos gorunuyordu.
+      setSelectedTicket(prev => (prev && prev.id === fullTicket.id ? { ...prev, ...fullTicket } : prev));
     } catch (err) {
       console.error('Detay yüklenemedi:', err);
+      setTimeout(() => Alert.alert('Hata', 'Talep detayı yüklenemedi. Lütfen tekrar deneyiniz.'), 150);
     }
   };
 

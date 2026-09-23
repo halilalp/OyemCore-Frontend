@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "OyemCore",
-    "slug": "mobile",
+    "slug": "oyemcore",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oyemsoft.oyemcore",
-      "buildNumber": "69",
+      "buildNumber": "77",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -27,7 +27,6 @@
         "NSMicrophoneUsageDescription": "Sohbet üzerinden görüntülü/sesli görüşme yapabilmek için mikrofon kullanılır.",
         "NSPhotoLibraryUsageDescription": "Taleplerinize belge veya fotoğraf eklemek için fotoğraf galerinize erişilir.",
         "UIBackgroundModes": [
-          "voip",
           "audio"
         ]
       },
@@ -54,7 +53,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE_MICROPHONE",
-        "android.permission.BLUETOOTH"
+        "android.permission.BLUETOOTH",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -66,7 +66,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "fc93a513-dc4a-4b7c-a9c4-b0ba29ef21b3"
+        "projectId": "42d97154-3a16-4efc-bfa2-92d14614962d"
       }
     },
     "plugins": [
@@ -95,7 +95,6 @@
       "./plugins/withPodfilePostInstall",
       "./plugins/withRNFirebaseDisableSPM",
       "./plugins/withFirebaseModularHeaders",
-      "./plugins/withIosVoipPushDelegate",
       "expo-audio",
       "expo-video",
       [
@@ -107,6 +106,6 @@
         }
       ]
     ],
-    "owner": "halilalp"
+    "owner": "oyemsoft-tr"
   }
 }

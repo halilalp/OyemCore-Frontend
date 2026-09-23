@@ -35,7 +35,6 @@ import { Platform, Alert, View, ActivityIndicator, LogBox, Text, TouchableOpacit
 LogBox.ignoreAllLogs();
 import { api, setUnauthorizedHandler } from '@oyemcore/shared';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { getAndroidVoipToken, onAndroidVoipTokenRefresh, wireIosVoipToken } from './src/features/chat/call/nativeCallBridge';
 
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useThemeStore } from './src/store/useThemeStore';
@@ -123,6 +122,7 @@ import { TrainingScreen } from './src/features/home/screens/TrainingScreen';
 import { AkademiListScreen } from './src/features/akademi/screens/AkademiListScreen';
 import { AkademiDetailScreen } from './src/features/akademi/screens/AkademiDetailScreen';
 import { AkademiSinavScreen } from './src/features/akademi/screens/AkademiSinavScreen';
+import { AkademiSinavIstekleriScreen } from './src/features/akademi/screens/AkademiSinavIstekleriScreen';
 import { AnnouncementScreen } from './src/features/home/screens/AnnouncementScreen';
 import { SatSasScreen } from './src/features/satsas/screens/SatSasScreen';
 import { SatDetailScreen } from './src/features/satsas/screens/SatDetailScreen';
@@ -273,8 +273,15 @@ export default function App() {
   // apiClient bu handler'ı platformdan bağımsız çalışabilmek için @oyemcore/shared üzerinden çağırır.
   React.useEffect(() => {
     setUnauthorizedHandler(() => {
-      Alert.alert('Oturum Süresi Doldu', 'Lütfen tekrar giriş yapın.');
-      logout();
+      // Onceki sira (once Alert.alert, sonra logout()) iOS'ta bir yaris durumuna yol
+      // aciyordu: logout() navigasyon yiginini Login ekranina degistirirken Alert.alert
+      // hala ayni tikte cagriliyor, sonuc olarak uyari o an gecis yapan ekranin ARKASINDA
+      // kaliyordu (Akademi dahil, 401 alan HERHANGI bir ekranda tekrarlanan bir hataydi).
+      // Once logout() TAMAMLANSIN (navigasyon Login ekranina otursun), SONRA kisa bir
+      // gecikmeyle uyari goster — TrainingScreen'deki ayni koruma deseniyle tutarli.
+      logout().finally(() => {
+        setTimeout(() => Alert.alert('Oturum Süresi Doldu', 'Lütfen tekrar giriş yapın.'), 150);
+      });
     });
     return () => setUnauthorizedHandler(null);
   }, [logout]);
@@ -302,47 +309,11 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  // Android: native tam ekran gelen arama arayüzünü uygulama kapalıyken de uyandırabilmek için
-  // ayrı bir FCM token'ı kaydet (Expo push token'dan bağımsız — bkz. nativeCallBridge.ts).
-  React.useEffect(() => {
-    if (!isAuthenticated || Platform.OS !== 'android' || !Device.isDevice) return;
-
-    let unsubscribeRefresh: (() => void) | undefined;
-
-    getAndroidVoipToken()
-      .then(token => {
-        if (token) {
-          api.saveVoipToken(token, 'FcmVoip').catch(err => {
-            console.warn('Voip token kaydedilemedi:', err);
-          });
-        }
-      })
-      .catch(err => {
-        console.warn('Android voip token alinamadi:', err);
-      });
-
-    unsubscribeRefresh = onAndroidVoipTokenRefresh((token) => {
-      api.saveVoipToken(token, 'FcmVoip').catch(() => {});
-    });
-
-    return () => {
-      if (unsubscribeRefresh) unsubscribeRefresh();
-    };
-  }, [isAuthenticated]);
-
-  // iOS: native tam ekran gelen arama arayüzünü uygulama kapalıyken de uyandırabilmek için
-  // PushKit VoIP token'ını kaydet (Expo push token'dan bağımsız — bkz. nativeCallBridge.ts).
-  React.useEffect(() => {
-    if (!isAuthenticated || Platform.OS !== 'ios' || !Device.isDevice) return;
-
-    const unsubscribe = wireIosVoipToken((token) => {
-      api.saveVoipToken(token, 'ApnsVoipProduction').catch(err => {
-        console.warn('iOS voip token kaydedilemedi:', err);
-      });
-    });
-
-    return unsubscribe;
-  }, [isAuthenticated]);
+  // KALDIRILDI (2026-09-23): CallKit/PushKit VoIP tam ekran arama arayüzü — native tarafta
+  // güvenilir şekilde debug edilemedi (bu ortamdan Xcode/cihaz konsoluna erişim yok, her
+  // denemede 15-20dk native build döngüsü). Kullanıcı kararıyla tamamen kaldırıldı, yerine
+  // mevcut push bildirimi + uygulama içi tam ekran arama ekranı (CallRingOverlay,
+  // triggerIncomingCallNotification) kullanılıyor — bu zaten JS tarafında çalışıyordu.
 
   React.useEffect(() => {
     if (!isAuthenticated || !Device.isDevice) return;
@@ -389,18 +360,18 @@ export default function App() {
         }
       });
 
-      // Kullanıcı sistem bildirimine (arka plan/kilit ekranı) dokunduğunda:
-      // doğrudan yönlendirmek yerine uygulama içi banner (popup) göster; kullanıcı
-      // isterse banner'a dokunup ilgili işlem detayına gider.
+      // Kullanıcı sistem bildirimine (arka plan/kilit ekranı) dokunduğunda: zaten dokunarak
+      // niyetini belirtti, tekrar banner gösterip ikinci bir dokunuş istemek yerine
+      // DOĞRUDAN ilgili sayfaya yönlendir.
       responseListener = Notifications.addNotificationResponseReceivedListener(response => {
         try {
           const content = response?.notification?.request?.content || {};
           const data = content.data || {};
 
-          // Görüntülü/sesli arama ise doğrudan arama ekranını tetikle, banner gösterme!
-          const isCall = data.roomUrl || data.RoomUrl || 
-                         data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' || 
-                         data.screen === 'Call' || data.Screen === 'Call' || 
+          // Görüntülü/sesli arama ise doğrudan arama ekranını tetikle.
+          const isCall = data.roomUrl || data.RoomUrl ||
+                         data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' ||
+                         data.screen === 'Call' || data.Screen === 'Call' ||
                          data.type === 'call' || data.Type === 'call';
           if (isCall) {
             const callInfo = {
@@ -418,18 +389,16 @@ export default function App() {
             return;
           }
 
-          useNotificationStore.getState().showNotification(
-            content.title || 'Bildirim',
-            content.body || '',
-            data
-          );
+          navigateFromNotificationData(data);
         } catch (e) {
-          console.warn('Notification response banner failed:', e);
+          console.warn('Notification response navigation failed:', e);
         }
       });
 
       // Soğuk başlangıç: uygulama tamamen kapalıyken bildirime dokunulup açıldıysa,
-      // doğrudan arama ekranını tetikle (kısa gecikme ile, UI hazır olsun).
+      // (arama ise arama ekranını, değilse ilgili sayfayı) DOĞRUDAN tetikle — kısa
+      // gecikme sadece navigasyon/UI hazır olsun diye (navigateFromNotificationData
+      // navigationRef hazır olana kadar zaten kendi içinde yeniden dener).
       if (Notifications.getLastNotificationResponseAsync) {
         Notifications.getLastNotificationResponseAsync()
           .then((response: any) => {
@@ -437,9 +406,9 @@ export default function App() {
             if (content) {
               const data = content.data || {};
               setTimeout(() => {
-                const isCall = data.roomUrl || data.RoomUrl || 
-                               data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' || 
-                               data.screen === 'Call' || data.Screen === 'Call' || 
+                const isCall = data.roomUrl || data.RoomUrl ||
+                               data.screen === 'IncomingCall' || data.Screen === 'IncomingCall' ||
+                               data.screen === 'Call' || data.Screen === 'Call' ||
                                data.type === 'call' || data.Type === 'call';
                 if (isCall) {
                    const callInfo = {
@@ -456,11 +425,7 @@ export default function App() {
                    }
                    return;
                 }
-                useNotificationStore.getState().showNotification(
-                  content.title || 'Bildirim',
-                  content.body || '',
-                  data
-                );
+                navigateFromNotificationData(data);
               }, 1200);
             }
           })
@@ -631,6 +596,7 @@ export default function App() {
             <Stack.Screen name="Akademi" component={AkademiListScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AkademiDetay" component={AkademiDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AkademiSinav" component={AkademiSinavScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AkademiSinavIstekleri" component={AkademiSinavIstekleriScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Announcement" component={AnnouncementScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SatSas" component={SatSasScreen} options={{ headerShown: false }} />
             <Stack.Screen name="SatDetail" component={SatDetailScreen} options={{ headerShown: false }} />

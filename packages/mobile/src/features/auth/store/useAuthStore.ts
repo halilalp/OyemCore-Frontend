@@ -15,7 +15,7 @@ interface AuthState {
   avatarRefreshKey: number;
   setAvatarRefreshKey: (key: number) => void;
   login: (username: string, password: string, sirketKodu?: string, sirketUnvan?: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   resetPassword: (sicilNo: string, username: string) => Promise<string>;
   restoreSession: () => Promise<void>;
 }

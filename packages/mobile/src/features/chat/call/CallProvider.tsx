@@ -7,7 +7,6 @@ import { ActiveCallScreen } from './ActiveCallScreen';
 import { isCallAvailable, getCallLoadError } from './dailyClient';
 import { api } from '@oyemcore/shared';
 import { startRingtone, stopRingtone } from '../../../utils/audioSynthesizer';
-import { wireNativeCallEvents, reportNativeCallActive, endNativeCall, rejectNativeCall } from './nativeCallBridge';
 
 
 interface OutgoingState { sicil: string; name: string; type: string; }
@@ -37,9 +36,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const incomingRef = useRef<IncomingCallInfo | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
   const callTimeoutRef = useRef<any>(null);
-  // Arama, native CallKit/ConnectionService ekranından (uygulama kapalıyken/kilit ekranından)
-  // cevaplandıysa dolu olur — görüşme bitince native tarafın da kapanması için kullanılır.
-  const nativeCallUuidRef = useRef<string | null>(null);
 
   useEffect(() => { outgoingRef.current = outgoing; }, [outgoing]);
   useEffect(() => { activeRef.current = active; }, [active]);
@@ -166,8 +162,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const offEnded = chatSignalR.onCallEnded(() => {
       clearCallTimeout();
       stopRingtone();
-      endNativeCall(nativeCallUuidRef.current);
-      nativeCallUuidRef.current = null;
       // Karşı taraf kapattı → aktif görüşmeyi veya çalan aramayı temizle.
       if (activeRef.current) setActive(null);
       if (incomingRef.current) setIncoming(null);
@@ -187,63 +181,10 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => { offIncoming(); offAccepted(); offRejected(); offEnded(); offAnsweredElsewhere(); offNotif(); clearCallTimeout(); };
   }, [isAuthenticated, mySicil]);
 
-  // Native CallKit/ConnectionService ekranından cevapla/kapat — uygulama tamamen kapalıyken
-  // FCM/PushKit ile tetiklenen tam ekran arama arayüzünden gelen kullanıcı aksiyonları.
-  const acceptFromNative = useCallback((info: IncomingCallInfo, callUuid: string) => {
-    if (activeRef.current || outgoingRef.current) {
-      rejectNativeCall(callUuid);
-      return;
-    }
-    nativeCallUuidRef.current = callUuid;
-    (async () => {
-      // Soğuk başlangıçta oturum/SignalR henüz hazır olmayabilir — kısa süre bekle.
-      const start = Date.now();
-      let sicil = '';
-      while (Date.now() - start < 6000) {
-        sicil = (useAuthStore.getState().user?.sicilNo || '').trim();
-        if (sicil) break;
-        await new Promise((r) => setTimeout(r, 200));
-      }
-      if (!sicil || !isCallAvailable()) {
-        rejectNativeCall(callUuid);
-        nativeCallUuidRef.current = null;
-        return;
-      }
-      try {
-        await chatSignalR.connect(sicil);
-        const accepted = await chatSignalR.acceptCall(info.callerSicilNo, info.roomUrl);
-        if (accepted) {
-          reportNativeCallActive(callUuid);
-          setActive({ roomUrl: info.roomUrl, peerName: info.callerName, peerSicil: info.callerSicilNo, type: info.callType, role: 'callee' });
-        } else {
-          endNativeCall(callUuid);
-          nativeCallUuidRef.current = null;
-        }
-      } catch (_) {
-        endNativeCall(callUuid);
-        nativeCallUuidRef.current = null;
-      }
-    })();
-  }, []);
-
-  const endFromNative = useCallback((info: IncomingCallInfo | null, callUuid: string) => {
-    if (nativeCallUuidRef.current === callUuid) nativeCallUuidRef.current = null;
-    if (!info) return;
-    // Görüşme zaten "active" olduysa (kullanıcı konuşma sırasında native UI'dan kapattıysa)
-    // normal hangupActive akışı sunucuyu zaten bilgilendirir — tekrar RejectCall göndermeye gerek yok.
-    if (activeRef.current && activeRef.current.peerSicil === info.callerSicilNo) return;
-    (async () => {
-      const sicil = (useAuthStore.getState().user?.sicilNo || '').trim();
-      if (!sicil) return;
-      await chatSignalR.connect(sicil);
-      chatSignalR.rejectCall(info.callerSicilNo, 'Reddedildi').catch(() => {});
-    })();
-  }, []);
-
-  useEffect(() => {
-    const unwire = wireNativeCallEvents({ acceptFromNative, endFromNative });
-    return unwire;
-  }, [acceptFromNative, endFromNative]);
+  // KALDIRILDI (2026-09-23): Native CallKit event handler'ları (acceptFromNative/endFromNative/
+  // wireNativeCallEvents) — CallKit tamamen kaldırıldı. Gelen aramalar artık SADECE push
+  // bildirimi + triggerIncomingCallNotification (aşağıda) ile tetikleniyor; acceptIncoming/
+  // rejectIncoming (bu dosyada zaten var olan, JS tabanlı akış) aynen kullanılmaya devam ediyor.
 
   const startCall = useCallback((targetSicilNo: string, targetName: string, callType: string = 'video') => {
     if (!isCallAvailable()) {
@@ -337,8 +278,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const a = active;
     if (!a) return;
     chatSignalR.endCall(a.peerSicil, a.roomUrl).catch(() => {});
-    endNativeCall(nativeCallUuidRef.current);
-    nativeCallUuidRef.current = null;
 
     let durationText = '';
     if (callStartTimeRef.current) {

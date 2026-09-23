@@ -1,11 +1,61 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, ActivityIndicator, Alert, Platform, StatusBar, TextInput } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, ActivityIndicator, Alert, Platform, StatusBar, TextInput, Animated } from 'react-native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, slateTokens } from '@oyemcore/shared';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { KeyboardDismissBar } from '../../../components/KeyboardDismissBar';
+
+// Sonuc ekranindaki kutlama efekti — yeni native bagimlilik eklememek icin (rebuild
+// gerektirmesin diye) sadece cekirdek Animated API'siyle yapiliyor. Parcaciklarin
+// aci/mesafe/renk/gecikmesi SADECE ilk render'da (useRef initializer) rastgele
+// belirlenir, sonraki render'larda sabit kalir — yoksa her render'da titrer.
+const CONFETTI_COLORS = ['#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
+const ConfettiBurst = () => {
+  const particles = useRef(
+    Array.from({ length: 18 }).map((_, i) => {
+      const angle = (i / 18) * Math.PI * 2 + (Math.random() * 0.4 - 0.2);
+      return {
+        anim: new Animated.Value(0),
+        angle,
+        distance: 70 + Math.random() * 70,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: 6 + Math.random() * 6,
+        delay: Math.random() * 220,
+        rotateTo: Math.round(Math.random() * 360),
+      };
+    })
+  ).current;
+
+  useEffect(() => {
+    Animated.stagger(8, particles.map((p) =>
+      Animated.timing(p.anim, { toValue: 1, duration: 900 + Math.random() * 350, delay: p.delay, useNativeDriver: true })
+    )).start();
+  }, [particles]);
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {particles.map((p, i) => {
+        const translateX = p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(p.angle) * p.distance] });
+        const translateY = p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(p.angle) * p.distance - 30] });
+        const opacity = p.anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
+        const rotate = p.anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', `${p.rotateTo}deg`] });
+        return (
+          <Animated.View
+            key={i}
+            style={{
+              position: 'absolute', top: '32%', left: '50%',
+              width: p.size, height: p.size, borderRadius: p.size / 3, backgroundColor: p.color,
+              opacity, transform: [{ translateX }, { translateY }, { rotate }],
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+};
 
 // Akademi Faz 2 — sınav ekranı. WebPortal EgitimlerimSinav.js ile AYNI sunucu-yetkili
 // mantık: süre/sıra/karıştırma sunucuda tutulur, istemci sayaç sadece gösterge.
@@ -50,6 +100,8 @@ export const AkademiSinavScreen = () => {
   const atamaID: number = route.params?.atamaID;
 
   const [phase, setPhase] = useState<Phase>('briefLoading');
+  const phaseRef = useRef<Phase>('briefLoading');
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
   const [brief, setBrief] = useState<BriefView | null>(null);
   const [hata, setHata] = useState<string | null>(null);
   const [soru, setSoru] = useState<SoruView | null>(null);
@@ -66,6 +118,50 @@ export const AkademiSinavScreen = () => {
 
   const durdurSayac = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
 
+  // Sonuç ekranı efektleri — başarılı/başarısıza göre otomatik davranır (bkz. asağıdaki effect).
+  const sonucIconScale = useRef(new Animated.Value(0)).current;
+  const sonucIconShake = useRef(new Animated.Value(0)).current;
+  const sonucCardOpacity = useRef(new Animated.Value(0)).current;
+  const sonucCardTranslateY = useRef(new Animated.Value(24)).current;
+  const sonucBarAnim = useRef(new Animated.Value(0)).current;
+  const sonucScoreAnim = useRef(new Animated.Value(0)).current;
+  const [animatedScore, setAnimatedScore] = useState(0);
+
+  useEffect(() => {
+    if (phase !== 'result' || !sonuc) return;
+
+    sonucIconScale.setValue(0);
+    sonucIconShake.setValue(0);
+    sonucCardOpacity.setValue(0);
+    sonucCardTranslateY.setValue(24);
+    sonucBarAnim.setValue(0);
+    sonucScoreAnim.setValue(0);
+    setAnimatedScore(0);
+
+    const listenerId = sonucScoreAnim.addListener(({ value }) => setAnimatedScore(Math.round(value)));
+
+    Animated.spring(sonucIconScale, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(sonucCardOpacity, { toValue: 1, duration: 450, delay: 150, useNativeDriver: true }),
+      Animated.timing(sonucCardTranslateY, { toValue: 0, duration: 450, delay: 150, useNativeDriver: true }),
+      Animated.timing(sonucBarAnim, { toValue: sonuc.puanYuzdesi, duration: 1000, delay: 350, useNativeDriver: false }),
+      Animated.timing(sonucScoreAnim, { toValue: sonuc.puanYuzdesi, duration: 1000, delay: 350, useNativeDriver: false }),
+    ]).start();
+
+    if (!sonuc.basariliMi) {
+      Animated.sequence([
+        Animated.delay(450),
+        Animated.timing(sonucIconShake, { toValue: 1, duration: 55, useNativeDriver: true }),
+        Animated.timing(sonucIconShake, { toValue: -1, duration: 55, useNativeDriver: true }),
+        Animated.timing(sonucIconShake, { toValue: 1, duration: 55, useNativeDriver: true }),
+        Animated.timing(sonucIconShake, { toValue: 0, duration: 55, useNativeDriver: true }),
+      ]).start();
+    }
+
+    return () => sonucScoreAnim.removeListener(listenerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, sonuc]);
+
   const briefYukle = useCallback(async () => {
     setPhase('briefLoading');
     setHata(null);
@@ -81,6 +177,14 @@ export const AkademiSinavScreen = () => {
   }, [atamaID]);
 
   useEffect(() => { briefYukle(); return () => durdurSayac(); }, [briefYukle]);
+
+  // KOK NEDEN (2026-09-23): ek sinav hakki onaylandiktan sonra bu ekran hala acik/mount'luysa
+  // (kapatilip acilmadan) "tekrarHakkiKalmadi: true" eski anlik goruntusu kaliyordu — sadece
+  // mount'ta cekiliyordu. Sinav ORTASINDA (phase 'exam'/'sonuc') tazeleme YAPILMAZ — faz'i
+  // geri "brief"e dusurup devam eden sinavi kesmemesi icin phaseRef ile korunuyor.
+  useFocusEffect(useCallback(() => {
+    if (phaseRef.current === 'brief') briefYukle();
+  }, [briefYukle]));
 
   const soruGoster = useCallback((s: SoruView) => {
     setSoru(s);
@@ -123,7 +227,10 @@ export const AkademiSinavScreen = () => {
       setTalepSebebi('');
       await briefYukle();
     } catch (e: any) {
-      Alert.alert('Hata', e?.response?.data?.message || 'Talep gönderilemedi.');
+      // 150ms gecikme — iOS'ta ekran/durum gecisiyle ayni anda tetiklenen Alert.alert bazen
+      // formun ARKASINDA aciliyordu (TestFlight'ta sikca bildirildi); TrainingScreen'deki
+      // ayni koruma burada da uygulanir.
+      setTimeout(() => Alert.alert('Hata', e?.response?.data?.message || 'Talep gönderilemedi.'), 150);
     } finally {
       setTalepGonderiliyor(false);
     }
@@ -156,7 +263,7 @@ export const AkademiSinavScreen = () => {
         soruGoster(data);
       }
     } catch (e: any) {
-      Alert.alert('Hata', e?.response?.data?.message || 'Cevap gönderilemedi.');
+      setTimeout(() => Alert.alert('Hata', e?.response?.data?.message || 'Cevap gönderilemedi.'), 150);
     } finally {
       setGonderiliyor(false);
     }
@@ -292,26 +399,20 @@ export const AkademiSinavScreen = () => {
         </ScrollView>
       )}
 
-      {phase === 'brief' && brief && (
+      {phase === 'brief' && brief && !brief.tekrarHakkiKalmadi && (
         <View style={styles.bottomBar}>
-          {brief.tekrarHakkiKalmadi ? (
-            <TouchableOpacity style={styles.completeBtn} onPress={() => navigation.goBack()}>
-              <Text style={styles.completeBtnText}>Geri Dön</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+              <Text style={styles.cancelBtnText}>İptal</Text>
             </TouchableOpacity>
-          ) : (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-                <Text style={styles.cancelBtnText}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.completeBtn, { flex: 1 }, baslatiliyor && styles.completeBtnDisabled]}
-                disabled={baslatiliyor}
-                onPress={baslat}
-              >
-                <Text style={styles.completeBtnText}>{baslatiliyor ? 'Başlatılıyor...' : 'Sınavı Başlat'}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+            <TouchableOpacity
+              style={[styles.completeBtn, { flex: 1 }, baslatiliyor && styles.completeBtnDisabled]}
+              disabled={baslatiliyor}
+              onPress={baslat}
+            >
+              <Text style={styles.completeBtnText}>{baslatiliyor ? 'Başlatılıyor...' : 'Sınavı Başlat'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -349,25 +450,63 @@ export const AkademiSinavScreen = () => {
       )}
 
       {phase === 'result' && sonuc && (
-        <View style={styles.sonucWrap}>
-          <Ionicons
-            name={sonuc.basariliMi ? 'ribbon' : 'close-circle'}
-            size={72}
-            color={sonuc.basariliMi ? colors.success : colors.danger}
-          />
-          <Text style={[styles.sonucBaslik, { color: sonuc.basariliMi ? colors.success : colors.danger }]}>
-            {sonuc.basariliMi ? 'Tebrikler, Sınavı Geçtiniz!' : 'Sınav Başarısız'}
-          </Text>
-          <Text style={styles.sonucPuan}>%{sonuc.puanYuzdesi}</Text>
-          <Text style={styles.sonucDetay}>
-            {sonuc.dogruSayisi} / {sonuc.toplamSoru} doğru
-            {sonuc.sekmeDegisimSayisi > 0 ? ` · ${sonuc.sekmeDegisimSayisi} sekme değişimi` : ''}
-          </Text>
-          <TouchableOpacity style={styles.completeBtn} onPress={() => navigation.navigate('Akademi')}>
-            <Text style={styles.completeBtnText}>Eğitimlerime Dön</Text>
-          </TouchableOpacity>
-        </View>
+        <LinearGradient
+          colors={sonuc.basariliMi ? ['#ECFDF5', colors.background] : ['#FEF2F2', colors.background]}
+          style={styles.sonucWrap}
+        >
+          {sonuc.basariliMi && <ConfettiBurst />}
+
+          <Animated.View
+            style={{
+              transform: [
+                { scale: sonucIconScale },
+                { translateX: sonucIconShake.interpolate({ inputRange: [-1, 0, 1], outputRange: [-8, 0, 8] }) },
+              ],
+            }}
+          >
+            <View style={[styles.sonucIconRing, { backgroundColor: sonuc.basariliMi ? colors.successLight : colors.dangerLight }]}>
+              <Ionicons
+                name={sonuc.basariliMi ? 'trophy' : 'close-circle'}
+                size={54}
+                color={sonuc.basariliMi ? colors.success : colors.danger}
+              />
+            </View>
+          </Animated.View>
+
+          <Animated.View style={{ opacity: sonucCardOpacity, transform: [{ translateY: sonucCardTranslateY }], width: '100%', alignItems: 'center' }}>
+            <Text style={[styles.sonucBaslik, { color: sonuc.basariliMi ? colors.success : colors.danger }]}>
+              {sonuc.basariliMi ? 'Tebrikler, Sınavı Geçtiniz!' : 'Sınav Başarısız'}
+            </Text>
+
+            <Text style={styles.sonucPuan}>%{animatedScore}</Text>
+
+            <View style={styles.sonucBarTrack}>
+              <Animated.View
+                style={[
+                  styles.sonucBarFill,
+                  {
+                    backgroundColor: sonuc.basariliMi ? colors.success : colors.danger,
+                    width: sonucBarAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+                  },
+                ]}
+              />
+            </View>
+
+            <Text style={styles.sonucDetay}>
+              {sonuc.dogruSayisi} / {sonuc.toplamSoru} doğru
+              {sonuc.sekmeDegisimSayisi > 0 ? ` · ${sonuc.sekmeDegisimSayisi} sekme değişimi` : ''}
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.completeBtn, { width: '100%', marginTop: 22, backgroundColor: sonuc.basariliMi ? colors.success : colors.primary }]}
+              onPress={() => navigation.navigate('Akademi')}
+            >
+              <Text style={styles.completeBtnText}>Eğitimlerime Dön</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </LinearGradient>
       )}
+      <KeyboardDismissBar />
     </View>
   );
 };
@@ -420,7 +559,10 @@ const createStyles = (colors: any) => StyleSheet.create({
   cancelBtn: { paddingVertical: 15, paddingHorizontal: 22, borderRadius: 12, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
   cancelBtnText: { color: colors.textSecondary, fontWeight: '800', fontSize: 14 },
   sonucWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
-  sonucBaslik: { fontSize: 18, fontWeight: '800', marginTop: 14, textAlign: 'center' },
-  sonucPuan: { fontSize: 40, fontWeight: '900', color: colors.text, marginTop: 10 },
-  sonucDetay: { fontSize: 13, color: colors.textSecondary, marginTop: 6, marginBottom: 24, textAlign: 'center' },
+  sonucIconRing: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center' },
+  sonucBaslik: { fontSize: 18, fontWeight: '800', marginTop: 16, textAlign: 'center' },
+  sonucPuan: { fontSize: 40, fontWeight: '900', color: colors.text, marginTop: 8 },
+  sonucBarTrack: { width: '100%', height: 8, borderRadius: 5, backgroundColor: colors.border, overflow: 'hidden', marginTop: 12 },
+  sonucBarFill: { height: '100%', borderRadius: 5 },
+  sonucDetay: { fontSize: 13, color: colors.textSecondary, marginTop: 10, marginBottom: 4, textAlign: 'center' },
 });

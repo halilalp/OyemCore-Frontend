@@ -161,12 +161,16 @@ export const AdminHelpDeskScreen = () => {
       setLoading(true);
       setCategoryModal(false);
       await api.adminSaveHelpDeskCategory(categoryForm);
-      Alert.alert('Başarılı', 'Kategori kaydedildi.');
+      // Modal kapanmasiyla ayni anda Alert.alert iOS'ta uyariyi kapanmakta olan formun
+      // ARKASINDA birakiyordu — 150ms gecikme modalin kapanmasini tamamlamasina izin verir.
+      setTimeout(() => Alert.alert('Başarılı', 'Kategori kaydedildi.'), 150);
       fetchCategories();
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Hata', err.response?.data?.message || 'Kategori kaydedilemedi.');
-      setCategoryModal(true);
+      // Modali alert'le AYNI ANDA degil, kullanici "Tamam"a bastiktan SONRA yeniden ac.
+      Alert.alert('Hata', err.response?.data?.message || 'Kategori kaydedilemedi.', [
+        { text: 'Tamam', onPress: () => setCategoryModal(true) }
+      ]);
       setLoading(false);
     }
   };
@@ -210,12 +214,13 @@ export const AdminHelpDeskScreen = () => {
       setLoading(true);
       setResponsibleModal(false);
       await api.adminSaveCategoryResponsible(respForm);
-      Alert.alert('Başarılı', 'Sorumlu personel atandı.');
+      setTimeout(() => Alert.alert('Başarılı', 'Sorumlu personel atandı.'), 150);
       fetchCategories();
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Hata', err.response?.data?.message || 'Atama başarısız.');
-      setResponsibleModal(true);
+      Alert.alert('Hata', err.response?.data?.message || 'Atama başarısız.', [
+        { text: 'Tamam', onPress: () => setResponsibleModal(true) }
+      ]);
       setLoading(false);
     }
   };

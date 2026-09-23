@@ -368,8 +368,8 @@ export const api = {
     const response = await apiClient.get<any>(`/Akademi/${atamaId}`);
     return response.data;
   },
-  updateAkademiProgress: async (atamaId: number, maxIzlenenSaniye: number, aktifIzlemeSaniyeArtis: number, tamamlaZorla: boolean = false): Promise<{ success: boolean }> => {
-    const response = await apiClient.post<{ success: boolean }>(`/Akademi/${atamaId}/progress`, { maxIzlenenSaniye, aktifIzlemeSaniyeArtis, tamamlaZorla });
+  updateAkademiProgress: async (atamaId: number, maxIzlenenSaniye: number, aktifIzlemeSaniyeArtis: number, tamamlaZorla: boolean = false): Promise<{ success: boolean; tamamlandiMi: boolean; maxIzlenenSaniye: number }> => {
+    const response = await apiClient.post<{ success: boolean; tamamlandiMi: boolean; maxIzlenenSaniye: number }>(`/Akademi/${atamaId}/progress`, { maxIzlenenSaniye, aktifIzlemeSaniyeArtis, tamamlaZorla });
     return response.data;
   },
 
@@ -401,6 +401,21 @@ export const api = {
       if (e?.response?.status === 404) return null;
       throw e;
     }
+  },
+
+  // Akademi — AKADEMI admin: ek sınav hakkı talepleri (mobil onay/red, WebPortal
+  // Akademi/Default.html ile aynı tb_AkademiSinavTalep verisi).
+  getAkademiExamRetryRequests: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Akademi/exam/retry-requests');
+    return response.data;
+  },
+  approveAkademiExamRetryRequest: async (talepId: number): Promise<any> => {
+    const response = await apiClient.post<any>(`/Akademi/exam/retry-requests/${talepId}/approve`);
+    return response.data;
+  },
+  rejectAkademiExamRetryRequest: async (talepId: number, redSebebi: string): Promise<any> => {
+    const response = await apiClient.post<any>(`/Akademi/exam/retry-requests/${talepId}/reject`, { redSebebi });
+    return response.data;
   },
 
   // Dosya yükleme (module bazlı)

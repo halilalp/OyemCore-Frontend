@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, AppStateStatus, Animated, Platform, StatusBar } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +35,13 @@ interface AkademiDetail {
   tamamlanmaTarihi: string | null;
   sinavAktif: boolean;
   ekSinavRedSebebi: string | null;
+  ekSinavTalebiBekliyor: boolean;
+  tekrarHakkiKalmadi: boolean;
+  sinavGirildiMi: boolean;
+  sinavBasariliMi: boolean | null;
+  sinavPuanYuzdesi: number | null;
+  sinavDogruSayisi: number | null;
+  sinavToplamSoru: number | null;
 }
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
@@ -66,6 +73,12 @@ export const AkademiDetailScreen = () => {
   const icerikBaslamisRef = useRef(false); // video oynatilmaya / dokuman acilmadan once "devam ediyor" bildirimi cikmasin
   const docOpenedAtRef = useRef<number | null>(null);
   const [docCanComplete, setDocCanComplete] = useState(false);
+  // maxIzlenenRef'in render'a yansiyan aynasi — ref'in kendisi mutasyona ugrasa da
+  // React re-render tetiklemez, ilerleme çubuğu bu state olmadan hiç güncellenmezdi.
+  const [maxIzlenenDisplay, setMaxIzlenenDisplay] = useState(0);
+  // sampleTick effect'i sadece icerikTipi/player degisince yeniden kuruluyor (asagida), o
+  // yuzden interval icinden guncel 'detail'i okumak icin ref kullaniliyor (stale closure onlenir).
+  const detailRef = useRef<AkademiDetail | null>(null);
 
   const videoUri = detail && detail.icerikTipi === 'Video'
     ? api.downloadFileUrl(detail.dosyaUrl, 'AKADEMI')
@@ -82,6 +95,7 @@ export const AkademiDetailScreen = () => {
       setDetail(data);
       maxIzlenenRef.current = data?.maxIzlenenSaniye || 0;
       lastSentMaxRef.current = data?.maxIzlenenSaniye || 0;
+      setMaxIzlenenDisplay(data?.maxIzlenenSaniye || 0);
     } catch (_) {
       setDetail(null);
     } finally {
@@ -90,6 +104,13 @@ export const AkademiDetailScreen = () => {
   }, [atamaID]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { detailRef.current = detail; }, [detail]);
+
+  // KOK NEDEN (2026-09-23): ek sinav hakki onaylandiktan sonra, bu ekran zaten acikken
+  // (uygulama tamamen kapatilip acilmadan) geri donulunce eski "tekrarHakkiKalmadi: true"
+  // anlik goruntusu gosterilmeye devam ediyordu — sadece mount'ta cekiliyordu. Artik ekran
+  // her odaklandiginda (onay ekranindan geri donuldugunde dahil) tazeleniyor.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const showResumeBanner = useCallback(() => {
     setResumeBanner(true);
@@ -107,7 +128,15 @@ export const AkademiDetailScreen = () => {
     if (max === lastSentMaxRef.current && aktifDelta === 0 && !tamamlaZorla) return;
     lastSentMaxRef.current = max;
     aktifSaniyeBirikenRef.current = 0;
-    api.updateAkademiProgress(atamaID, max, aktifDelta, tamamlaZorla).catch(() => {});
+    api.updateAkademiProgress(atamaID, max, aktifDelta, tamamlaZorla)
+      .then((res) => {
+        // Sunucu tamamlandi derse yerel durumu hemen guncelle — aksi halde "Sınavı Başlat"
+        // butonu, kullanici ekrani kapatip acana kadar (bir sonraki load()) aktif olmuyordu.
+        if (res?.tamamlandiMi) {
+          setDetail((d) => (d && !d.tamamlandiMi) ? { ...d, tamamlandiMi: true } : d);
+        }
+      })
+      .catch(() => {});
   }, [atamaID]);
 
   // Video: player.currentTime'ı periyodik örnekleyip en yüksek noktayı ve (sadece ön
@@ -118,7 +147,17 @@ export const AkademiDetailScreen = () => {
     const sampleTick = setInterval(() => {
       if (player.playing) icerikBaslamisRef.current = true;
       const current = Math.floor(player.currentTime || 0);
-      if (current > maxIzlenenRef.current) maxIzlenenRef.current = current;
+      if (current > maxIzlenenRef.current) {
+        maxIzlenenRef.current = current;
+        setMaxIzlenenDisplay(current);
+
+        // Esik (%90) video oynarken asilirsa 15sn'lik periyodik heartbeat'i beklemeden
+        // hemen senkronize et — "Sınavı Başlat" butonu video biter bitmez aktif olsun.
+        const d = detailRef.current;
+        if (d && !d.tamamlandiMi && d.sureSaniye && current / d.sureSaniye >= 0.9) {
+          sendHeartbeat();
+        }
+      }
       if (appStateRef.current === 'active') {
         aktifSaniyeBirikenRef.current += 1;
       }
@@ -180,7 +219,7 @@ export const AkademiDetailScreen = () => {
   }
 
   const pct = detail.sureSaniye
-    ? Math.min(100, Math.round((100 * maxIzlenenRef.current) / detail.sureSaniye))
+    ? Math.min(100, Math.round((100 * maxIzlenenDisplay) / detail.sureSaniye))
     : (detail.tamamlandiMi ? 100 : 0);
 
   const durumMetni = detail.tamamlandiMi ? 'TAMAMLANDI' : (detail.zorunluMu ? 'ZORUNLU' : 'DEVAM EDİYOR');
@@ -275,18 +314,50 @@ export const AkademiDetailScreen = () => {
         {/* Sınav (Faz 2) */}
         {detail.sinavAktif && (
           <View style={[styles.card, { alignItems: 'center', gap: 6 }]}>
-            <Ionicons name="school-outline" size={28} color={colors.primary} />
-            {detail.tamamlandiMi ? (
+            {detail.sinavGirildiMi ? (
+              <>
+                <View style={[styles.sinavSonucRozet, { backgroundColor: detail.sinavBasariliMi ? colors.successLight : colors.dangerLight }]}>
+                  <Ionicons
+                    name={detail.sinavBasariliMi ? 'ribbon' : 'close-circle'}
+                    size={26}
+                    color={detail.sinavBasariliMi ? colors.success : colors.danger}
+                  />
+                </View>
+                <Text style={[styles.sinavSonucBaslik, { color: detail.sinavBasariliMi ? colors.success : colors.danger }]}>
+                  {detail.sinavBasariliMi ? 'Sınavı Geçtiniz' : 'Sınavı Geçemediniz'}
+                </Text>
+                <Text style={styles.sinavSonucDetay}>
+                  %{detail.sinavPuanYuzdesi ?? 0} · {detail.sinavDogruSayisi ?? 0}/{detail.sinavToplamSoru ?? 0} doğru
+                </Text>
+              </>
+            ) : (
+              <Ionicons name="school-outline" size={28} color={colors.primary} />
+            )}
+
+            {!detail.tamamlandiMi ? (
+              <Text style={{ color: colors.textMuted, fontSize: 12.5, textAlign: 'center', marginTop: detail.sinavGirildiMi ? 6 : 0 }}>
+                Sınava girmek için önce içeriği tamamlamalısınız.
+              </Text>
+            ) : !detail.tekrarHakkiKalmadi ? (
+              // sinavGirildiMi DEGIL tekrarHakkiKalmadi kullanilir — ek sinav hakki
+              // ONAYLANDIKTAN SONRA da (daha once denenmis olsa bile) tekrar girilebilir olmali.
               <TouchableOpacity
                 style={[styles.completeBtn, { width: '100%', marginTop: 6 }]}
                 onPress={() => navigation.navigate('AkademiSinav', { atamaID: detail.atamaID })}
               >
                 <Text style={styles.completeBtnText}>Sınavı Başlat</Text>
               </TouchableOpacity>
-            ) : (
-              <Text style={{ color: colors.textMuted, fontSize: 12.5, textAlign: 'center' }}>
-                Sınava girmek için önce içeriği tamamlamalısınız.
+            ) : detail.ekSinavTalebiBekliyor ? (
+              <Text style={{ color: colors.textMuted, fontSize: 12.5, textAlign: 'center', marginTop: 6 }}>
+                Ek sınav hakkı talebiniz gönderildi, yöneticinizin onayı bekleniyor.
               </Text>
+            ) : (
+              <TouchableOpacity
+                style={[styles.completeBtn, { width: '100%', marginTop: 6, backgroundColor: colors.warning }]}
+                onPress={() => navigation.navigate('AkademiSinav', { atamaID: detail.atamaID })}
+              >
+                <Text style={styles.completeBtnText}>Ek Sınav İsteğinde Bulun</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -318,6 +389,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFF', flexShrink: 1 },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   statusText: { fontSize: 11, fontWeight: '800' },
+  sinavSonucRozet: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  sinavSonucBaslik: { fontSize: 15, fontWeight: '800', marginTop: 4 },
+  sinavSonucDetay: { fontSize: 12.5, color: colors.textSecondary, fontWeight: '600' },
   resumeBanner: {
     position: 'absolute', top: 56, alignSelf: 'center', zIndex: 10,
     flexDirection: 'row', alignItems: 'center', gap: 8,
