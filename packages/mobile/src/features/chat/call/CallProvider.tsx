@@ -36,6 +36,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const incomingRef = useRef<IncomingCallInfo | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
   const callTimeoutRef = useRef<any>(null);
+  // undefined = henüz hiç bağlanılmadı (ilk mount). Sadece bu, GERÇEKTEN farklı bir sicile
+  // geçildiğinde (hesap değişimi) true olan bir bayrağı ayırt etmek için — bkz. asağıdaki efekt.
+  const prevSicilRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => { outgoingRef.current = outgoing; }, [outgoing]);
   useEffect(() => { activeRef.current = active; }, [active]);
@@ -110,18 +113,31 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // unmount olmuyor — bu yüzden incoming/outgoing/active state'i, kullanıcı çıkış yapıp FARKLI
   // BİR ŞİRKETLE tekrar giriş yaptığında (aynı fiziksel cihaz/uygulama) eski oturumdan sızabiliyordu
   // ("hayalet arama": oyemsoft'a geçince isiktarim'den kalma bir çağrı tam ekran açıldı). Ayrıca
-  // SignalR bağlantısı da logout'ta hiç kapatılmıyordu (chatSignalR.connect'in kendi ic
-  // disconnect()'i SADECE bir sonraki connect() cagrisinda devreye giriyordu — o ana kadar eski
-  // baglanti, artik hic dinleyicisi olmasa da, canli kalabiliyordu). Bu efekt her calistiginda
-  // (kullanici DEGISTIGINDE veya oturum kapandiginda) once eski state'i ZORLA temizler, oturum
-  // kapaliysa baglantiyi da aciktan kapatir — boylece bir onceki hesabin hicbir kalintisi
-  // yeni oturuma tasinmaz.
+  // SignalR bağlantısı da logout'ta hiç kapatılmıyordu. Bu efekt, GERÇEK bir hesap değişimi
+  // (mySicil ÖNCEKİ bir çalıştırmada BAŞKA bir değerdeyken şimdi değişti) tespit ettiğinde eski
+  // state'i temizler.
+  //
+  // REGRESYON DÜZELTMESİ (aynı gün): İlk sürüm bu temizliği KOŞULSUZ, efekt her çalıştığında
+  // yapıyordu — bu da UYGULAMA KAPALIYKEN gelen bir arama bildirimine dokunulduğunda (soğuk
+  // başlatma) çalışan AYRI mekanizmayı ("pendingCallNotification" / doğrudan
+  // triggerIncomingCallNotification çağrısı, App.tsx'te — bu efektle YARIŞ HALİNDE, ikisi de
+  // ilk mount'ta çalışabiliyor) BOZDU: bildirime dokunulup uygulama açıldığında arama bilgisi
+  // ZATEN setIncoming ile set edilmiş olabiliyordu, ama bu efekt hemen ardından (isAuthenticated
+  // ilk kez true olurken) setIncoming(null) ile onu SİLİYORDU — tam ekran arama ekranı hiç
+  // açılmıyordu. Artık SADECE mySicil GERÇEKTEN değiştiyse (önceki calistirmada BASKA bir
+  // deger vardi) temizlik yapılıyor; ilk mount'ta (prevSicilRef.current === undefined) hiç
+  // dokunulmuyor.
   useEffect(() => {
-    setIncoming(null);
-    setOutgoing(null);
-    setActive(null);
-    clearCallTimeout();
-    stopRingtone();
+    const isGenuineAccountSwitch = prevSicilRef.current !== undefined && prevSicilRef.current !== (mySicil || null);
+    prevSicilRef.current = mySicil || null;
+
+    if (isGenuineAccountSwitch) {
+      setIncoming(null);
+      setOutgoing(null);
+      setActive(null);
+      clearCallTimeout();
+      stopRingtone();
+    }
 
     if (!isAuthenticated || !mySicil) {
       chatSignalR.disconnect().catch(() => {});
