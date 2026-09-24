@@ -66,9 +66,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.warn('Could not clear push token on logout:', e);
     }
     authService.logout();
+    // KOK NEDEN (2026-09-24): tenantId/tenantUnvan AsyncStorage'da ve store state'inde
+    // temizlenmiyordu — kullanıcı çıkış yapıp FARKLI bir şirketle tekrar girdiğinde, kısa bir
+    // an için (yeni login tamamlanana kadar) eski tenant bilgisi hâlâ okunabiliyordu. Ayrıca
+    // setCurrentTenantId(null) çağrılmazsa @oyemcore/shared'daki modül-seviyesi currentTenantId
+    // değişkeni de eski değerde kalır (SignalR/dosya indirme URL'lerine yanlışlıkla eski tenantId
+    // eklenebilir).
+    setCurrentTenantId(null);
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
-    set({ token: null, user: null, isAuthenticated: false, error: null });
+    await AsyncStorage.removeItem('tenantId');
+    await AsyncStorage.removeItem('tenantUnvan');
+    set({ token: null, user: null, tenantId: null, tenantUnvan: null, isAuthenticated: false, error: null });
   },
 
   resetPassword: async (sicilNo, username) => {

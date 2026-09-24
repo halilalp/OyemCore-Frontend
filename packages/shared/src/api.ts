@@ -196,9 +196,16 @@ export const api = {
     return response.data;
   },
   // SignalR hub URL (baseUrl'den /api atılıp /hubs/chat eklenir).
+  // KOK NEDEN (2026-09-23): api.oyemsoft.com host'unu oyemsoft/adore/ashley AYNI ANDA paylasiyor —
+  // tenantId SignalR baglanti URL'inde acikca gecilmezse backend (TenantService.GetCurrentTenant)
+  // hangi sirkete ait oldugunu KESTIREMIYOR (host-bazli fallback rastgele/yanlis bir tenant secebiliyor).
+  // StartCall dahil TUM hub metodlari sessizce YANLIS sirketin veritabanina yazip okuyabiliyordu —
+  // arama push'u hic gorunmuyordu cunku aslinda BASKA bir sirketin tablolarina dusuyordu. WebPortal
+  // tarafinda ayni sorun ayni sekilde duzeltildi (bkz. Chat.js/Modul.js).
   getChatHubUrl: (sicilNo: string): string => {
     const root = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -'/api'.length) : apiBaseUrl;
-    return `${root}/hubs/chat?sicilNo=${encodeURIComponent(sicilNo)}`;
+    const tenantParam = currentTenantId ? `&tenantId=${encodeURIComponent(currentTenantId)}` : '';
+    return `${root}/hubs/chat?sicilNo=${encodeURIComponent(sicilNo)}${tenantParam}`;
   },
   // ── Avans-Masraf (referans: WebServiceAvansMasraf) ──
   getAvansListesi: async (): Promise<any[]> => {

@@ -106,79 +106,115 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Oturum açıkken SignalR bağlantısını uygulama genelinde canlı tut (arama her ekrandan gelebilsin).
+  // KOK NEDEN (2026-09-24): CallProvider App kökünde TEK SEFER mount olup oturum boyunca hiç
+  // unmount olmuyor — bu yüzden incoming/outgoing/active state'i, kullanıcı çıkış yapıp FARKLI
+  // BİR ŞİRKETLE tekrar giriş yaptığında (aynı fiziksel cihaz/uygulama) eski oturumdan sızabiliyordu
+  // ("hayalet arama": oyemsoft'a geçince isiktarim'den kalma bir çağrı tam ekran açıldı). Ayrıca
+  // SignalR bağlantısı da logout'ta hiç kapatılmıyordu (chatSignalR.connect'in kendi ic
+  // disconnect()'i SADECE bir sonraki connect() cagrisinda devreye giriyordu — o ana kadar eski
+  // baglanti, artik hic dinleyicisi olmasa da, canli kalabiliyordu). Bu efekt her calistiginda
+  // (kullanici DEGISTIGINDE veya oturum kapandiginda) once eski state'i ZORLA temizler, oturum
+  // kapaliysa baglantiyi da aciktan kapatir — boylece bir onceki hesabin hicbir kalintisi
+  // yeni oturuma tasinmaz.
   useEffect(() => {
-    if (!isAuthenticated || !mySicil) return;
-    chatSignalR.connect(mySicil);
+    setIncoming(null);
+    setOutgoing(null);
+    setActive(null);
+    clearCallTimeout();
+    stopRingtone();
 
-    const offIncoming = chatSignalR.onIncomingCall((info) => {
-      // Zaten görüşmede/arama sürüyorsa yeni gelen aramayı meşgul reddet.
-      if (activeRef.current || outgoingRef.current) {
-        chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
-        api.sendChatMessage({
-          aliciSicilNo: info.callerSicilNo,
-          mesajMetni: '❌ Görüntülü Arama Cevaplanmadı. (Meşgul)'
-        }).catch(() => {});
-        return;
-      }
-      if (incomingRef.current) {
-        if (incomingRef.current.callerSicilNo === info.callerSicilNo) {
-          return;
-        } else {
+    if (!isAuthenticated || !mySicil) {
+      chatSignalR.disconnect().catch(() => {});
+      return;
+    }
+
+    // KOK NEDEN (2. yarim, 2026-09-24): connect() eski baglantiyi ASENKRON olarak (await disconnect())
+    // kapatiyor — eger dinleyiciler burada SENKRON olarak hemen kaydedilseydi, connect()'in kendi
+    // ic disconnect()'i henuz TAMAMLANMADAN once (eski baglanti hala canliyken) eski hesaptan gelen
+    // bir olay YENI kaydedilen dinleyiciye dusebilirdi ("hayalet arama"). Artik dinleyiciler SADECE
+    // connect() (ve onun ic disconnect()'i) TAMAMEN bittikten SONRA kaydediliyor; bu sirada (cok kisa
+    // bir pencerede) hicbir dinleyici yok, o an gelen bir olay sessizce yok sayilir — kaybolan
+    // gercek bir arama degil, cunku arayan taraf zaten cevap gelmezse kendi 30sn zaman asimina duser.
+    let cancelled = false;
+    const unsubscribers: Array<() => void> = [];
+
+    (async () => {
+      await chatSignalR.connect(mySicil);
+      if (cancelled) return;
+
+      unsubscribers.push(chatSignalR.onIncomingCall((info) => {
+        // Zaten görüşmede/arama sürüyorsa yeni gelen aramayı meşgul reddet.
+        if (activeRef.current || outgoingRef.current) {
           chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
+          api.sendChatMessage({
+            aliciSicilNo: info.callerSicilNo,
+            mesajMetni: '❌ Görüntülü Arama Cevaplanmadı. (Meşgul)'
+          }).catch(() => {});
           return;
         }
-      }
-      setIncoming(info);
-    });
+        if (incomingRef.current) {
+          if (incomingRef.current.callerSicilNo === info.callerSicilNo) {
+            return;
+          } else {
+            chatSignalR.rejectCall(info.callerSicilNo, 'Meşgul').catch(() => {});
+            return;
+          }
+        }
+        setIncoming(info);
+      }));
 
-    const offAccepted = chatSignalR.onCallAccepted((_from, roomUrl) => {
-      const out = outgoingRef.current;
-      if (!out) return;
-      clearCallTimeout();
-      stopRingtone();
-      setOutgoing(null);
-      setActive({ roomUrl, peerName: out.name, peerSicil: out.sicil, type: out.type, role: 'caller' });
-    });
-
-    const offRejected = chatSignalR.onCallRejected((_from, reason) => {
-      if (outgoingRef.current) {
+      unsubscribers.push(chatSignalR.onCallAccepted((_from, roomUrl) => {
+        const out = outgoingRef.current;
+        if (!out) return;
         clearCallTimeout();
         stopRingtone();
         setOutgoing(null);
-        Alert.alert('Arama', reason && reason !== 'Reddedildi' ? reason : 'Arama reddedildi.');
-      }
-    });
+        setActive({ roomUrl, peerName: out.name, peerSicil: out.sicil, type: out.type, role: 'caller' });
+      }));
 
-    // Aynı hesabın başka bir oturumu (farklı PC/tarayıcı/cihaz) bu gelen aramayı zaten
-    // cevapladı/reddetti — burada hâlâ çalıyorsa kapat. Kullanıcının aynı anda birden fazla
-    // oturumdan aynı Daily odasına girmeye çalışıp bağlantının kilitlenmesini önler.
-    const offAnsweredElsewhere = chatSignalR.onCallAnsweredElsewhere((callerSicilNo) => {
-      if (incomingRef.current && incomingRef.current.callerSicilNo === callerSicilNo) {
-        setIncoming(null);
-      }
-    });
+      unsubscribers.push(chatSignalR.onCallRejected((_from, reason) => {
+        if (outgoingRef.current) {
+          clearCallTimeout();
+          stopRingtone();
+          setOutgoing(null);
+          Alert.alert('Arama', reason && reason !== 'Reddedildi' ? reason : 'Arama reddedildi.');
+        }
+      }));
 
-    const offEnded = chatSignalR.onCallEnded(() => {
-      clearCallTimeout();
-      stopRingtone();
-      // Karşı taraf kapattı → aktif görüşmeyi veya çalan aramayı temizle.
-      if (activeRef.current) setActive(null);
-      if (incomingRef.current) setIncoming(null);
-      if (outgoingRef.current) setOutgoing(null);
-    });
+      // Aynı hesabın başka bir oturumu (farklı PC/tarayıcı/cihaz) bu gelen aramayı zaten
+      // cevapladı/reddetti — burada hâlâ çalıyorsa kapat. Kullanıcının aynı anda birden fazla
+      // oturumdan aynı Daily odasına girmeye çalışıp bağlantının kilitlenmesini önler.
+      unsubscribers.push(chatSignalR.onCallAnsweredElsewhere((callerSicilNo) => {
+        if (incomingRef.current && incomingRef.current.callerSicilNo === callerSicilNo) {
+          setIncoming(null);
+        }
+      }));
 
-    const offNotif = chatSignalR.onNotification((payload) => {
-      const desc = payload?.description || payload?.Description;
-      if (desc) {
+      unsubscribers.push(chatSignalR.onCallEnded(() => {
         clearCallTimeout();
         stopRingtone();
-        setOutgoing(null);
-        Alert.alert('Arama', String(desc));
-      }
-    });
+        // Karşı taraf kapattı → aktif görüşmeyi veya çalan aramayı temizle.
+        if (activeRef.current) setActive(null);
+        if (incomingRef.current) setIncoming(null);
+        if (outgoingRef.current) setOutgoing(null);
+      }));
 
-    return () => { offIncoming(); offAccepted(); offRejected(); offEnded(); offAnsweredElsewhere(); offNotif(); clearCallTimeout(); };
+      unsubscribers.push(chatSignalR.onNotification((payload) => {
+        const desc = payload?.description || payload?.Description;
+        if (desc) {
+          clearCallTimeout();
+          stopRingtone();
+          setOutgoing(null);
+          Alert.alert('Arama', String(desc));
+        }
+      }));
+    })();
+
+    return () => {
+      cancelled = true;
+      unsubscribers.forEach(off => off());
+      clearCallTimeout();
+    };
   }, [isAuthenticated, mySicil]);
 
   // KALDIRILDI (2026-09-23): Native CallKit event handler'ları (acceptFromNative/endFromNative/
