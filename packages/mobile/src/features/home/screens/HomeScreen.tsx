@@ -1116,13 +1116,20 @@ const createStyles = (colors: ReturnType<typeof useThemeStore.getState>['colors'
       marginBottom: 16,
     },
     logoImage: {
-      width: 180,
+      // KOK NEDEN (2026-09-29): topRow'a hamburger butonu eklendikten sonra bu satirdaki
+      // toplam genislik (hamburger 36 + gap + logo 180 + sag taraftaki 3 ikon+profil ~144)
+      // dar Android ekranlarda (360dp genislik, ~320px kullanilabilir alan sonra padding)
+      // mevcut alani asip en sagdaki profil resmini ekran disina itiyordu. Logo, tek
+      // basina en buyuk eleman oldugu icin kucultuldu (contain modunda oranti bozulmadan
+      // kuculur) — diger telefonlarda da guvenli pay birakmak icin.
+      width: 130,
       height: 50,
     },
     topLeftGroup: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 2,
+      flexShrink: 1,
     },
     hamburgerBtn: {
       width: 36,

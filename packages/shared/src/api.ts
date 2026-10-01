@@ -1138,6 +1138,51 @@ export const api = {
     return response.data;
   },
 
+  getPersonAssetHistory: async (sicilNo: string): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Zimmet/person-history/${sicilNo}`);
+    return response.data;
+  },
+
+  getBakimTurleri: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Zimmet/bakim-turleri');
+    return response.data;
+  },
+
+  createHurdaTalep: async (aygitId: number, sebep: string, dosyaUrls: string[]): Promise<{ success: boolean, hurdaTalepID: number, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, hurdaTalepID: number, message: string }>(`/Zimmet/asset/${aygitId}/hurda-talep`, { sebep, dosyaUrls });
+    return response.data;
+  },
+
+  getHurdaOnaylarim: async (): Promise<any[]> => {
+    const response = await apiClient.get<any[]>('/Zimmet/hurda-onaylarim');
+    return response.data;
+  },
+
+  decideHurdaOnay: async (onayId: number, onay: boolean, redSebebi?: string): Promise<{ success: boolean, sonuc: string, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, sonuc: string, message: string }>(`/Zimmet/hurda-onay/${onayId}/karar`, { onay, redSebebi });
+    return response.data;
+  },
+
+  getHurdaGecmisi: async (aygitId: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Zimmet/asset/${aygitId}/hurda-gecmisi`);
+    return response.data;
+  },
+
+  sendAssetToMaintenance: async (aygitId: number, data: { turuID: number, aciklama: string, servisFirma: string, dosyaUrls: string[] }): Promise<{ success: boolean, bakimID: number, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, bakimID: number, message: string }>(`/Zimmet/asset/${aygitId}/bakima-gonder`, data);
+    return response.data;
+  },
+
+  completeMaintenance: async (bakimId: number, sonucAciklama: string, maliyet?: number, geriZimmetle?: boolean): Promise<{ success: boolean, message: string }> => {
+    const response = await apiClient.post<{ success: boolean, message: string }>(`/Zimmet/bakim/${bakimId}/tamamla`, { sonucAciklama, maliyet, geriZimmetle: !!geriZimmetle });
+    return response.data;
+  },
+
+  getMaintenanceHistory: async (aygitId: number): Promise<any[]> => {
+    const response = await apiClient.get<any[]>(`/Zimmet/asset/${aygitId}/bakim-gecmisi`);
+    return response.data;
+  },
+
   // ====================================================================
   // Tedarikci (Supplier Evaluation) Endpoints
   // ====================================================================

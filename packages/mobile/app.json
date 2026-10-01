@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oyemsoft.oyemcore",
-      "buildNumber": "80",
+      "buildNumber": "82",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "com.oyemsoft.oyemcore",
-      "versionCode": 18,
+      "versionCode": 22,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": false,
       "permissions": [

@@ -129,7 +129,10 @@ export const GameScreen: React.FC<any> = ({ navigation }) => {
       const feedbackArr = feedback.split('');
       
       for (let j = 0; j < wordArr.length; j++) {
-        const char = wordArr[j].toUpperCase();
+        // .toUpperCase() locale'siz calisir: 'i' -> 'I' cevirir (dogrusu Turkce'de 'İ').
+        // Klavyede I ve İ AYRI tuslar oldugu icin bu, iki farkli harfin durumunu (yesil/sari/gri)
+        // ayni anahtarda (I) topluyor ve İ tusu hic renklenmiyor — "I harfleri karismis" sikayeti.
+        const char = wordArr[j].toLocaleUpperCase('tr-TR');
         const stat = feedbackArr[j] as 'G' | 'Y' | 'X';
         
         const currentStat = statuses[char];
@@ -344,7 +347,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   tileEmpty: { borderWidth: 2, borderColor: colors.border },
   tileInput: { borderWidth: 2, borderColor: colors.border },
   tileInputFilled: { borderColor: colors.primary },
-  tileText: { fontWeight: '800' },
+  // KOK NEDEN (2026-09-29, Android): fontWeight '800' iken noktali "İ" (U+0130) bazi Android
+  // cihazlarda TAMAMEN BOS render ediliyordu (kullanici ekran goruntusuyle dogruladi) — ayni
+  // harf klavye tusunda (fontWeight '700') sorunsuz gorunuyordu. Sistem fontunun '800' agirlik
+  // kesimi olmayinca Android'in sentetik kalinlastirmasinin nadir/az kullanilan bu Unicode
+  // karakterde (nokta bileseni) arizalandigi tahmin ediliyor — klavye tusuyla AYNI, kanitlanmis
+  // calisan agirliga (700) indirildi.
+  tileText: { fontWeight: '700' },
   errorText: { color: '#EF4444', fontSize: 13, marginTop: 8, fontWeight: '600' },
   resultBox: { marginTop: 16, marginHorizontal: 16, borderWidth: 2, borderRadius: 14, padding: 16, alignItems: 'center', backgroundColor: colors.card },
   resultTitle: { fontSize: 18, fontWeight: '800' },

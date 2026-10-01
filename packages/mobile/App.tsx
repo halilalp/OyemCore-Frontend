@@ -104,6 +104,7 @@ import { PerformansScreen } from './src/features/profile/screens/PerformansScree
 import { ZimmetlerimScreen } from './src/features/zimmet/screens/ZimmetlerimScreen';
 import { DemirbasYonetimScreen } from './src/features/zimmet/screens/DemirbasYonetimScreen';
 import { DemirbasSayimScreen } from './src/features/zimmet/screens/DemirbasSayimScreen';
+import { HurdaOnaylarimScreen } from './src/features/zimmet/screens/HurdaOnaylarimScreen';
 import { TedarikciScreen } from './src/features/tedarikci/screens/TedarikciScreen';
 
 import { AdminAyarlarScreen } from './src/features/admin/screens/AdminAyarlarScreen';
@@ -575,10 +576,15 @@ export default function App() {
               component={DemirbasYonetimScreen} 
               options={{ headerShown: false }} 
             />
-            <Stack.Screen 
-              name="DemirbasSayim" 
-              component={DemirbasSayimScreen} 
-              options={{ headerShown: false }} 
+            <Stack.Screen
+              name="DemirbasSayim"
+              component={DemirbasSayimScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="HurdaOnaylarimScreen"
+              component={HurdaOnaylarimScreen}
+              options={{ headerShown: false }}
             />
             <Stack.Screen 
               name="Tedarikci" 

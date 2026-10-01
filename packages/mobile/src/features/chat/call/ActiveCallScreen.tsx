@@ -30,10 +30,31 @@ async function ensureAndroidPermissions(): Promise<boolean> {
 }
 
 // Daily katılımcısından video/ses track'lerini normalize eder.
-const pickTracks = (p: any) => ({
-  video: p?.tracks?.video?.state === 'playable' ? p.tracks.video.persistentTrack : null,
-  audio: p?.tracks?.audio?.state === 'playable' ? p.tracks.audio.persistentTrack : null,
-});
+// KOK NEDEN (2026-09-29, SADECE Android REMOTE video): state==='playable' sartina bagli
+// kalindiginda Android'de bazi cihazlarda (Honor 600 dahil) UZAK video track'i HICBIR ZAMAN
+// 'playable'a gecmiyordu — native render view mount edilmeden decode zincirinin baslamadigi,
+// ama kod da 'playable' olmadan view'i mount etmedigi bir tavuk-yumurta kilitlenmesiydi
+// (persistentTrack VARDI, state hep 'loading' kaldi — cihaz logunda dogrulandi). Bu yuzden
+// SADECE remote video icin, Android'de persistentTrack var olur olmaz (loading dahil) view
+// mount ediliyor.
+// DIKKAT — denenip GERI ALINAN yaklasim: Bu gevsetme once LOCAL video'ya da uygulanmisti,
+// ama bu REGRESYONA yol acti (kendi kamera onizlemesi bos kaldi — 2026-09-29 canli testte
+// gozlemlendi). Native log local icin de "First frame rendered" diyordu, yani sorun native
+// render degildi — 'loading' aninda erken mount edilen local view, muhtemelen Daily'nin
+// state gecisinde degistirdigi persistentTrack referansina hic guncellenmeden baglı kaliyordu.
+// LOCAL video (ve HER IKI tarafin audio'su) bu yuzden eski, kanitlanmis 'playable' sartina
+// GERI DONDURULDU — sadece remote video gevsetiliyor. iOS'ta hicbir sart degismedi (o taraf
+// hic sorunlu degildi, webportal<->iOS "kusursuz calisiyor" dogrulandi).
+const pickTracks = (p: any, relaxVideoGateAndroid: boolean = false) => {
+  const videoOk = (relaxVideoGateAndroid && Platform.OS === 'android')
+    ? p?.tracks?.video?.state !== 'off'
+    : p?.tracks?.video?.state === 'playable';
+  const audioOk = p?.tracks?.audio?.state === 'playable';
+  return {
+    video: videoOk ? (p?.tracks?.video?.persistentTrack ?? null) : null,
+    audio: audioOk ? (p?.tracks?.audio?.persistentTrack ?? null) : null,
+  };
+};
 
 export const ActiveCallScreen: React.FC<Props> = ({ roomUrl, peerName, callType, onHangup }) => {
   const insets = useSafeAreaInsets();
@@ -91,6 +112,19 @@ export const ActiveCallScreen: React.FC<Props> = ({ roomUrl, peerName, callType,
       try {
         await call.join({ url: roomUrl });
         if (callType === 'audio') { try { await call.setLocalVideo(false); } catch (_) {} }
+        // KOK NEDEN (2026-09-29, SADECE Android, LOCAL onizleme): join sonrasi Daily, Android'de
+        // yerel video track'in 'playable' durumunu kendiliginden dogru bildirmiyordu — kamera
+        // native olarak calisiyor (cihaz loglarinda "First frame rendered" goruluyordu) ama JS
+        // tarafindaki tracks.video.state hep eski kaliyordu. Kullanicinin ekrandaki kamera
+        // ac/kapa butonuna basinca (setLocalVideo) sorunun duzelmesi gozlemlendi — bu, Daily'nin
+        // sadece bir setLocalVideo cagrisi sonrasi track durumunu dogru yeniden hesapladigini
+        // gosteriyor. Ayni islemi burada otomatik yapiyoruz ki kullanici elle mudahale etmesin.
+        if (Platform.OS === 'android' && callType !== 'audio') {
+          try {
+            await call.setLocalVideo(false);
+            await call.setLocalVideo(true);
+          } catch (_) {}
+        }
       } catch (e: any) {
         if (mounted) { setStatus('error'); setErrorMsg(e?.message || 'Odaya katılınamadı.'); }
       }
@@ -149,7 +183,7 @@ export const ActiveCallScreen: React.FC<Props> = ({ roomUrl, peerName, callType,
   };
 
   const localTracks = pickTracks(local);
-  const remoteTracks = pickTracks(remote);
+  const remoteTracks = pickTracks(remote, true);
   const remoteConnected = !!remote;
 
   return (

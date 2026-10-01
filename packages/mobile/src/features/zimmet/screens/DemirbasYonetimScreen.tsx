@@ -10,6 +10,7 @@ import { BottomNavBar } from '../../../components/BottomNavBar';
 import { ListHeader } from '../../../components/ListHeader';
 import { CreateModalHeader } from '../../../components/CreateModalHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { pickAndUploadFile } from '../../../utils/fileUtils';
 
 const confirmAction = (title: string, message: string, onConfirm: () => void) => {
   Alert.alert(title, message, [
@@ -49,9 +50,32 @@ export const DemirbasYonetimScreen = () => {
   const [personnels, setPersonnels] = useState<any[]>([]);
   
   // Views navigation
-  const [currentView, setCurrentView] = useState<'list' | 'detail' | 'create' | 'assign'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'detail' | 'create' | 'assign' | 'personHistory'>('list');
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [assetHistory, setAssetHistory] = useState<any[]>([]);
+
+  // Bakim & Tamir
+  const [bakimTurleri, setBakimTurleri] = useState<any[]>([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<any[]>([]);
+  const [isHurdaModalOpen, setIsHurdaModalOpen] = useState(false);
+  const [hurdaSebep, setHurdaSebep] = useState('');
+  const [hurdaDosyalar, setHurdaDosyalar] = useState<{ filePath: string, fileName: string }[]>([]);
+  const [isBakimModalOpen, setIsBakimModalOpen] = useState(false);
+  const [bakimTuruSecili, setBakimTuruSecili] = useState<any>(null);
+  const [bakimAciklama, setBakimAciklama] = useState('');
+  const [bakimServisFirma, setBakimServisFirma] = useState('');
+  const [bakimDosyalar, setBakimDosyalar] = useState<{ filePath: string, fileName: string }[]>([]);
+  const [bakimTamamlaTarget, setBakimTamamlaTarget] = useState<any>(null);
+  const [bakimSonucAciklama, setBakimSonucAciklama] = useState('');
+  const [bakimGeriZimmetle, setBakimGeriZimmetle] = useState(true);
+  const [bakimMaliyet, setBakimMaliyet] = useState('');
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  // Personel Demirbas Gecmisi
+  const [personSicilSearch, setPersonSicilSearch] = useState('');
+  const [personHistoryResults, setPersonHistoryResults] = useState<any[]>([]);
+  const [personHistoryLoading, setPersonHistoryLoading] = useState(false);
+  const [personHistorySearched, setPersonHistorySearched] = useState(false);
 
   // Detay ekranı ayrı bir stack sayfası değil, bu ekranın kendi içindeki bir <Modal> —
   // bu yüzden React Navigation'ın standart kaydırarak-geri-gitme jesti burada işlemiyor.
@@ -60,7 +84,7 @@ export const DemirbasYonetimScreen = () => {
   const { panHandlers: detailSwipeHandlers, translateX: detailSwipeX } = useEdgeSwipeBack(handleCloseDetail, currentView === 'detail');
 
   // Searchable Selector Overlays
-  const [activeSelector, setActiveSelector] = useState<'personel' | 'filterCategory' | 'filterBrand' | 'createCategory' | 'createBrand' | 'createDep' | null>(null);
+  const [activeSelector, setActiveSelector] = useState<'personel' | 'filterCategory' | 'filterBrand' | 'createCategory' | 'createBrand' | 'createDep' | 'bakimTuru' | null>(null);
   const [selectorSearchText, setSelectorSearchText] = useState('');
 
   // New Asset Form States
@@ -279,6 +303,7 @@ export const DemirbasYonetimScreen = () => {
   useEffect(() => {
     if (isFocused) {
       loadDropdowns();
+      fetchBakimTurleri();
       setPageIndex(1);
       fetchAllAssets(1);
     }
@@ -301,13 +326,138 @@ export const DemirbasYonetimScreen = () => {
     try {
       const detail = await api.getAssetDetail(asset.aygitID);
       const history = await api.getAssetHistory(asset.aygitID);
+      const bakimGecmisi = await api.getMaintenanceHistory(asset.aygitID);
       setAssetHistory(history || []);
+      setMaintenanceHistory(bakimGecmisi || []);
       setSelectedAsset(detail);
       setCurrentView('detail');
     } catch (e: any) {
       showAlert('Hata', e.response?.data?.message || e.message || 'Detaylar alınamadı.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchBakimTurleri = async () => {
+    try {
+      const list = await api.getBakimTurleri();
+      setBakimTurleri(list || []);
+    } catch (e) {
+      console.error('Bakim turleri load error:', e);
+    }
+  };
+
+  const refreshAssetDetail = async (aygitId: number) => {
+    const detail = await api.getAssetDetail(aygitId);
+    const history = await api.getAssetHistory(aygitId);
+    const bakimGecmisi = await api.getMaintenanceHistory(aygitId);
+    setAssetHistory(history || []);
+    setMaintenanceHistory(bakimGecmisi || []);
+    setSelectedAsset(detail);
+  };
+
+  const pickHurdaDosya = (source: 'camera' | 'document') => {
+    if (hurdaDosyalar.length >= 3) { showAlert('Uyarı', 'En fazla 3 dosya ekleyebilirsiniz.'); return; }
+    setIsUploadingFile(true);
+    pickAndUploadFile('ZIMMET', source)
+      .then((res) => { if (res) setHurdaDosyalar(prev => [...prev, res]); })
+      .catch((e: any) => showAlert('Hata', e.message || 'Dosya yüklenemedi.'))
+      .finally(() => setIsUploadingFile(false));
+  };
+
+  const pickBakimDosya = (source: 'camera' | 'document') => {
+    if (bakimDosyalar.length >= 3) { showAlert('Uyarı', 'En fazla 3 dosya ekleyebilirsiniz.'); return; }
+    setIsUploadingFile(true);
+    pickAndUploadFile('ZIMMET', source)
+      .then((res) => { if (res) setBakimDosyalar(prev => [...prev, res]); })
+      .catch((e: any) => showAlert('Hata', e.message || 'Dosya yüklenemedi.'))
+      .finally(() => setIsUploadingFile(false));
+  };
+
+  const handleSubmitHurdaTalep = async () => {
+    if (!hurdaSebep.trim()) { showAlert('Hata', 'Lütfen hurdaya ayırma sebebini yazın.'); return; }
+    setIsLoading(true);
+    try {
+      const res = await api.createHurdaTalep(selectedAsset.aygitID, hurdaSebep.trim(), hurdaDosyalar.map(d => d.filePath));
+      if (res.success) {
+        showAlert('Başarılı', res.message || 'Hurda talebi oluşturuldu.');
+        setIsHurdaModalOpen(false);
+        setHurdaSebep('');
+        setHurdaDosyalar([]);
+      } else {
+        showAlert('Hata', res.message || 'Hurda talebi oluşturulamadı.');
+      }
+    } catch (e: any) {
+      showAlert('Hata', e.response?.data?.message || e.message || 'İşlem başarısız.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitBakimaGonder = async () => {
+    if (!bakimTuruSecili) { showAlert('Hata', 'Lütfen işlem türü seçin.'); return; }
+    setIsLoading(true);
+    try {
+      const res = await api.sendAssetToMaintenance(selectedAsset.aygitID, {
+        turuID: bakimTuruSecili.id,
+        aciklama: bakimAciklama,
+        servisFirma: bakimServisFirma,
+        dosyaUrls: bakimDosyalar.map(d => d.filePath)
+      });
+      if (res.success) {
+        showAlert('Başarılı', res.message || 'Demirbaş bakıma gönderildi.');
+        setIsBakimModalOpen(false);
+        setBakimTuruSecili(null);
+        setBakimAciklama('');
+        setBakimServisFirma('');
+        setBakimDosyalar([]);
+        await refreshAssetDetail(selectedAsset.aygitID);
+      } else {
+        showAlert('Hata', res.message || 'Bakıma gönderilemedi.');
+      }
+    } catch (e: any) {
+      showAlert('Hata', e.response?.data?.message || e.message || 'İşlem başarısız.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitBakimTamamla = async () => {
+    if (!bakimTamamlaTarget) return;
+    setIsLoading(true);
+    try {
+      const maliyetNum = bakimMaliyet.trim() ? parseFloat(bakimMaliyet.replace(',', '.')) : undefined;
+      const geriZimmetle = !!bakimTamamlaTarget.oncekiZimmetliAdSoyad && bakimGeriZimmetle;
+      const res = await api.completeMaintenance(bakimTamamlaTarget.bakimID, bakimSonucAciklama, maliyetNum, geriZimmetle);
+      if (res.success) {
+        showAlert('Başarılı', res.message || 'Bakım/tamir tamamlandı.');
+        setBakimTamamlaTarget(null);
+        setBakimSonucAciklama('');
+        setBakimMaliyet('');
+        setBakimGeriZimmetle(true);
+        await refreshAssetDetail(selectedAsset.aygitID);
+      } else {
+        showAlert('Hata', res.message || 'Bakım tamamlanamadı.');
+      }
+    } catch (e: any) {
+      showAlert('Hata', e.response?.data?.message || e.message || 'İşlem başarısız.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearchPersonHistory = async () => {
+    if (!personSicilSearch.trim()) { showAlert('Hata', 'Lütfen sicil no girin.'); return; }
+    setPersonHistoryLoading(true);
+    setPersonHistorySearched(true);
+    try {
+      const list = await api.getPersonAssetHistory(personSicilSearch.trim());
+      setPersonHistoryResults(list || []);
+    } catch (e: any) {
+      showAlert('Hata', e.response?.data?.message || e.message || 'Geçmiş alınamadı.');
+      setPersonHistoryResults([]);
+    } finally {
+      setPersonHistoryLoading(false);
     }
   };
 
@@ -385,6 +535,18 @@ export const DemirbasYonetimScreen = () => {
             setSelectorSearchText('');
           }
         };
+      case 'bakimTuru':
+        return {
+          title: 'İşlem Türü Seçin',
+          data: bakimTurleri.map(t => ({ id: t.turuID, name: t.tanim })),
+          keyExtractor: (item: any) => item.id.toString(),
+          labelExtractor: (item: any) => item.name,
+          onSelect: (item: any) => {
+            setBakimTuruSecili(item);
+            setActiveSelector(null);
+            setSelectorSearchText('');
+          }
+        };
       default:
         return null;
     }
@@ -392,13 +554,14 @@ export const DemirbasYonetimScreen = () => {
 
   // Seçici tipini fonksiyonel gruba eşler; böylece seçici Modal'ı ilgili parent
   // modalının (create/assign) İÇİNDE render edilip iOS'ta üstte açılır.
-  const SELECTOR_GROUPS: Record<'filter' | 'create' | 'assign', string[]> = {
+  const SELECTOR_GROUPS: Record<'filter' | 'create' | 'assign' | 'bakim', string[]> = {
     filter: ['filterCategory', 'filterBrand'],
     create: ['createCategory', 'createBrand', 'createDep'],
     assign: ['personel'],
+    bakim: ['bakimTuru'],
   };
 
-  const renderSelectorModal = (group: 'filter' | 'create' | 'assign') => {
+  const renderSelectorModal = (group: 'filter' | 'create' | 'assign' | 'bakim') => {
     const inGroup = activeSelector != null && SELECTOR_GROUPS[group].includes(activeSelector);
     const config = getSelectorDataAndConfig();
     const visible = inGroup && !!config;
@@ -523,6 +686,22 @@ export const DemirbasYonetimScreen = () => {
                   <Ionicons name="close-circle" size={14} color="#fff" />
                 </TouchableOpacity>
               )}
+            </TouchableOpacity>
+
+            {/* Personel Demirbaş Geçmişi */}
+            <TouchableOpacity
+              style={styles.filterChip}
+              onPress={() => { setPersonSicilSearch(''); setPersonHistoryResults([]); setPersonHistorySearched(false); setCurrentView('personHistory'); }}
+            >
+              <Text style={styles.filterChipText}>Personel Geçmişi</Text>
+            </TouchableOpacity>
+
+            {/* Hurda Onaylarım (sadece onaylayıcı listesindeysem anlamlı, ama herkes görebilir — boşsa liste boş döner) */}
+            <TouchableOpacity
+              style={styles.filterChip}
+              onPress={() => navigation.navigate('HurdaOnaylarimScreen')}
+            >
+              <Text style={styles.filterChipText}>Hurda Onaylarım</Text>
             </TouchableOpacity>
           </ScrollView>
         </ListHeader>
@@ -663,6 +842,20 @@ export const DemirbasYonetimScreen = () => {
             </View>
           )}
 
+          {selectedAsset.hurdaDurum && (
+            <View style={[styles.objectionAlertCard, { marginTop: 12 }]}>
+              <Text style={styles.objectionAlertTitle}>🗑️ Bu Demirbaş Hurdaya Ayrılmıştır</Text>
+              <Text style={styles.objectionAlertText}>Artık zimmetlenemez veya düzenlenemez.</Text>
+            </View>
+          )}
+
+          {selectedAsset.bakimDurumu && !selectedAsset.hurdaDurum && (
+            <View style={[styles.objectionAlertCard, { marginTop: 12, backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+              <Text style={[styles.objectionAlertTitle, { color: colors.primary }]}>🔧 Bu Demirbaş Bakım/Tamir Sürecinde</Text>
+              <Text style={[styles.objectionAlertText, { color: colors.primary }]}>Süreç tamamlanana kadar zimmetlenemez.</Text>
+            </View>
+          )}
+
           {/* Log / History Timeline */}
           <View style={styles.historySection}>
             <Text style={styles.historyTitle}>Zimmet Geçmişi</Text>
@@ -690,30 +883,88 @@ export const DemirbasYonetimScreen = () => {
             )}
           </View>
 
+          {/* Bakim & Tamir Gecmisi */}
+          <View style={[styles.historySection, { marginTop: 16 }]}>
+            <Text style={styles.historyTitle}>Bakım-Tamir Geçmişi</Text>
+            {maintenanceHistory.length === 0 ? (
+              <Text style={styles.noHistoryText}>Bu demirbaşa ait bakım/tamir kaydı bulunmamaktadır.</Text>
+            ) : (
+              maintenanceHistory.map((item) => (
+                <View key={item.bakimID.toString()} style={styles.timelineItem}>
+                  <View style={[styles.timelinePoint, { backgroundColor: item.durum === 'SERVISTE' ? colors.danger : colors.success }]} />
+                  <View style={styles.timelineContent}>
+                    <Text style={styles.timelineDate}>{item.baslangicTarStr}</Text>
+                    <Text style={styles.timelinePerson}>{item.islemTuru} — {item.islemYapanAdSoyad || ''}</Text>
+                    {item.servisFirma ? <Text style={styles.timelineUser}>Servis: {item.servisFirma}</Text> : null}
+                    {item.durum === 'SERVISTE' ? (
+                      <Text style={[styles.timelineActive, { color: colors.danger }]}>Serviste</Text>
+                    ) : (
+                      <Text style={styles.timelineReturned}>
+                        Tamamlandı: {item.bitisTarStr}{item.maliyet ? ` — ${item.maliyet}₺` : ''}
+                      </Text>
+                    )}
+                    {item.oncekiZimmetliAdSoyad && <Text style={styles.timelineDesc}>Önceki kullanıcı: {item.oncekiZimmetliAdSoyad}</Text>}
+                    {item.aciklama && <Text style={styles.timelineDesc}>Not: {item.aciklama}</Text>}
+                    {item.sonucAciklama && <Text style={styles.timelineDesc}>Sonuç: {item.sonucAciklama}</Text>}
+                    {item.durum === 'SERVISTE' && (
+                      <TouchableOpacity
+                        style={styles.bakimTamamlaMiniBtn}
+                        onPress={() => { setBakimTamamlaTarget(item); setBakimSonucAciklama(''); setBakimMaliyet(''); setBakimGeriZimmetle(true); }}
+                      >
+                        <Text style={styles.bakimTamamlaMiniBtnText}>Bakımı Tamamla</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+
         </ScrollView>
 
         {/* Operations Buttons at the bottom of Detail view */}
-        <View style={styles.bottomActionBar}>
-          {selectedAsset.durum ? (
-            <TouchableOpacity
-              style={styles.assignBtn}
-              onPress={() => {
-                setAssignPersonel(null);
-                setAssignDesc('');
-                setAssignUsage('ŞAHSİ');
-                setIsAssignOpen(true);
-              }}
-            >
-              <Ionicons name="person-add-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.assignBtnText}>Personele Zimmetle</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.releaseBtn} onPress={() => handleReleaseAsset(selectedAsset.aygitID)}>
-              <Ionicons name="refresh-outline" size={18} color={colors.danger} style={{ marginRight: 6 }} />
-              <Text style={styles.releaseBtnText}>Zimmeti İade Al</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {!selectedAsset.hurdaDurum && (
+          <View style={styles.bottomActionBar}>
+            {selectedAsset.durum ? (
+              <TouchableOpacity
+                style={styles.assignBtn}
+                onPress={() => {
+                  setAssignPersonel(null);
+                  setAssignDesc('');
+                  setAssignUsage('ŞAHSİ');
+                  setIsAssignOpen(true);
+                }}
+              >
+                <Ionicons name="person-add-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.assignBtnText}>Personele Zimmetle</Text>
+              </TouchableOpacity>
+            ) : !selectedAsset.bakimDurumu ? (
+              <TouchableOpacity style={styles.releaseBtn} onPress={() => handleReleaseAsset(selectedAsset.aygitID)}>
+                <Ionicons name="refresh-outline" size={18} color={colors.danger} style={{ marginRight: 6 }} />
+                <Text style={styles.releaseBtnText}>Zimmeti İade Al</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {!selectedAsset.bakimDurumu && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.secondaryActionBtn, { flex: 1 }]}
+                  onPress={() => { setBakimTuruSecili(null); setBakimAciklama(''); setBakimServisFirma(''); setBakimDosyalar([]); setIsBakimModalOpen(true); }}
+                >
+                  <Ionicons name="construct-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.secondaryActionBtnText}>Bakıma Gönder</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.secondaryActionBtn, styles.hurdaActionBtn, { flex: 1 }]}
+                  onPress={() => { setHurdaSebep(''); setHurdaDosyalar([]); setIsHurdaModalOpen(true); }}
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} style={{ marginRight: 6 }} />
+                  <Text style={[styles.secondaryActionBtnText, { color: colors.danger }]}>Hurdaya Ayır</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </>
     );
   };
@@ -919,6 +1170,155 @@ export const DemirbasYonetimScreen = () => {
     );
   };
 
+  const renderFilePickerRow = (
+    dosyalar: { filePath: string, fileName: string }[],
+    onPick: (source: 'camera' | 'document') => void,
+    onRemove: (idx: number) => void
+  ) => (
+    <View style={styles.formGroup}>
+      <Text style={styles.formLabel}>Dosya/Resim (en fazla 3)</Text>
+      {dosyalar.map((d, idx) => (
+        <View key={idx} style={styles.fileRow}>
+          <Ionicons name="document-attach-outline" size={16} color={colors.textSecondary} />
+          <Text style={styles.fileRowText} numberOfLines={1}>{d.fileName}</Text>
+          <TouchableOpacity onPress={() => onRemove(idx)}>
+            <Ionicons name="close-circle" size={18} color={colors.danger} />
+          </TouchableOpacity>
+        </View>
+      ))}
+      {dosyalar.length < 3 && (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+          <TouchableOpacity style={styles.filePickBtn} onPress={() => onPick('camera')} disabled={isUploadingFile}>
+            <Ionicons name="camera-outline" size={16} color={colors.primary} />
+            <Text style={styles.filePickBtnText}>Kamera</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filePickBtn} onPress={() => onPick('document')} disabled={isUploadingFile}>
+            <Ionicons name="document-outline" size={16} color={colors.primary} />
+            <Text style={styles.filePickBtnText}>Dosya Seç</Text>
+          </TouchableOpacity>
+          {isUploadingFile && <ActivityIndicator size="small" color={colors.primary} />}
+        </View>
+      )}
+    </View>
+  );
+
+  const renderHurdaModalView = () => (
+    <>
+      <CreateModalHeader title="Hurdaya Ayırma Talebi" onClose={() => setIsHurdaModalOpen(false)} colorTheme="purple" />
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.formInfoBox}>
+          <Text style={styles.formInfoBoxTitle}>Çok Onaylı Süreç</Text>
+          <Text style={styles.formInfoBoxText}>Talep, Admin ayarlarında tanımlı onaylayıcıların tümüne aynı anda gider. Hepsi onaylarsa demirbaş hurdaya ayrılır; biri reddederse süreç kapanır.</Text>
+        </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.formLabel}>Sebep *</Text>
+          <TextInput
+            style={[styles.modalInput, styles.dialogTextArea]}
+            placeholder="Hurdaya ayırma sebebini yazın..."
+            placeholderTextColor={colors.placeholder}
+            multiline
+            value={hurdaSebep}
+            onChangeText={setHurdaSebep}
+          />
+        </View>
+        {renderFilePickerRow(hurdaDosyalar, pickHurdaDosya, (idx) => setHurdaDosyalar(prev => prev.filter((_, i) => i !== idx)))}
+        <TouchableOpacity style={[styles.createBtnSubmit, { marginTop: 16, backgroundColor: colors.danger }]} onPress={handleSubmitHurdaTalep} disabled={isLoading}>
+          {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnSubmitText}>Hurda Talebi Gönder</Text>}
+        </TouchableOpacity>
+      </ScrollView>
+    </>
+  );
+
+  const renderBakimModalView = () => (
+    <>
+      <CreateModalHeader title="Bakıma/Tamire Gönder" onClose={() => setIsBakimModalOpen(false)} colorTheme="purple" />
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modalScroll, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.formGroup}>
+          <Text style={styles.formLabel}>İşlem Türü *</Text>
+          <TouchableOpacity style={styles.selectBox} onPress={() => setActiveSelector('bakimTuru')}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="construct-outline" size={18} color={slateTokens.textMuted} />
+              <Text style={styles.selectBoxText}>{bakimTuruSecili ? bakimTuruSecili.name : 'Seçiniz...'}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color={slateTokens.textMuted} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.formLabel}>Servis Firma</Text>
+          <TextInput style={styles.modalInput} placeholder="Servis/tedarikçi adı" placeholderTextColor={colors.placeholder} value={bakimServisFirma} onChangeText={setBakimServisFirma} />
+        </View>
+        <View style={styles.formGroup}>
+          <Text style={styles.formLabel}>Açıklama</Text>
+          <TextInput style={[styles.modalInput, styles.dialogTextArea]} placeholder="Arıza/işlem açıklaması..." placeholderTextColor={colors.placeholder} multiline value={bakimAciklama} onChangeText={setBakimAciklama} />
+        </View>
+        {renderFilePickerRow(bakimDosyalar, pickBakimDosya, (idx) => setBakimDosyalar(prev => prev.filter((_, i) => i !== idx)))}
+        <TouchableOpacity style={[styles.createBtnSubmit, { marginTop: 16 }]} onPress={handleSubmitBakimaGonder} disabled={isLoading}>
+          {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnSubmitText}>Servise Gönder</Text>}
+        </TouchableOpacity>
+      </ScrollView>
+    </>
+  );
+
+  const renderPersonHistoryView = () => (
+    <>
+      <CreateModalHeader title="Personel Demirbaş Geçmişi" onClose={() => setCurrentView('list')} colorTheme="purple" />
+      <View style={{ padding: 20 }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TextInput
+            style={[styles.modalInput, { flex: 1 }]}
+            placeholder="Sicil no giriniz (örn. SCL0001-13)"
+            placeholderTextColor={colors.placeholder}
+            value={personSicilSearch}
+            onChangeText={setPersonSicilSearch}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity style={[styles.createBtnSubmit, { paddingHorizontal: 20 }]} onPress={handleSearchPersonHistory}>
+            <Ionicons name="search" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, paddingTop: 0, paddingBottom: 60 }}>
+        {personHistoryLoading ? (
+          <LogoLoader style={styles.loader} />
+        ) : personHistoryResults.length === 0 ? (
+          personHistorySearched && <Text style={styles.emptyText}>Bu sicil no için demirbaş geçmişi bulunamadı.</Text>
+        ) : (
+          personHistoryResults.map((item, idx) => {
+            const badgeColor = item.satirDurumu === 'Hala Kullanimda' ? colors.success
+              : item.satirDurumu === 'Demirbas Hurdaya Ayrilmis' ? colors.danger : colors.textSecondary;
+            const badgeLabel = item.satirDurumu === 'Hala Kullanimda' ? 'Hâlâ Kullanımda'
+              : item.satirDurumu === 'Demirbas Hurdaya Ayrilmis' ? 'Demirbaş Hurdaya Ayrılmış' : 'İade Edildi';
+            return (
+              <View key={idx} style={[styles.itemCard, { marginBottom: 12 }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.assetTitle}>{item.tanim}</Text>
+                  <View style={[styles.badge, { backgroundColor: badgeColor + '22' }]}>
+                    <Text style={[styles.badgeText, { color: badgeColor }]}>{badgeLabel}</Text>
+                  </View>
+                </View>
+                <Text style={styles.categorySub}>{item.kategori} {item.demirbasKodu ? `• ${item.demirbasKodu}` : ''}</Text>
+                <View style={styles.cardInfoGrid}>
+                  <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>Verildi</Text>
+                    <Text style={styles.infoValue}>{item.teslimEtTarStr || '-'}</Text>
+                  </View>
+                  <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>İade</Text>
+                    <Text style={styles.infoValue}>{item.teslimAlTarStr || '-'}</Text>
+                  </View>
+                  <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>Kullanım Süresi</Text>
+                    <Text style={styles.infoValue}>{item.kullanimGunSayisi} gün</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </>
+  );
+
   return (
     <View style={styles.container}>
       {/* Temel ekran: liste (diğer modüllerle aynı Modal tabanlı mimari) */}
@@ -986,7 +1386,111 @@ export const DemirbasYonetimScreen = () => {
             </KeyboardAvoidingView>
             <KeyboardDismissBar />
           </Modal>
+
+          {/* Hurdaya Ayırma Talebi — detay modalının İÇİNDE nested modal */}
+          <Modal
+            visible={isHurdaModalOpen}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            statusBarTranslucent={true}
+            onRequestClose={() => setIsHurdaModalOpen(false)}
+          >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+              <View style={styles.container}>
+                <View style={styles.contentWrapper}>
+                  {renderHurdaModalView()}
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+            <KeyboardDismissBar />
+          </Modal>
+
+          {/* Bakıma/Tamire Gönder — detay modalının İÇİNDE nested modal */}
+          <Modal
+            visible={isBakimModalOpen}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            statusBarTranslucent={true}
+            onRequestClose={() => setIsBakimModalOpen(false)}
+          >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+              <View style={styles.container}>
+                <View style={styles.contentWrapper}>
+                  {renderBakimModalView()}
+                </View>
+                {renderSelectorModal('bakim')}
+              </View>
+            </KeyboardAvoidingView>
+            <KeyboardDismissBar />
+          </Modal>
+
+          {/* Bakımı Tamamla — küçük onay modalı, timeline satırından tetiklenir */}
+          <Modal
+            visible={!!bakimTamamlaTarget}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setBakimTamamlaTarget(null)}
+          >
+            <View style={styles.modalBg}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Bakımı Tamamla</Text>
+                <Text style={styles.modalSubtitle}>{bakimTamamlaTarget?.islemTuru}</Text>
+                <TextInput
+                  style={[styles.modalInput, styles.dialogTextArea]}
+                  placeholder="Sonuç açıklaması..."
+                  placeholderTextColor={colors.placeholder}
+                  multiline
+                  value={bakimSonucAciklama}
+                  onChangeText={setBakimSonucAciklama}
+                />
+                <TextInput
+                  style={[styles.modalInput, { marginTop: 10 }]}
+                  placeholder="Maliyet (opsiyonel, ₺)"
+                  placeholderTextColor={colors.placeholder}
+                  keyboardType="numeric"
+                  value={bakimMaliyet}
+                  onChangeText={setBakimMaliyet}
+                />
+                {!!bakimTamamlaTarget?.oncekiZimmetliAdSoyad && (
+                  <TouchableOpacity
+                    style={styles.geriZimmetleRow}
+                    onPress={() => setBakimGeriZimmetle(!bakimGeriZimmetle)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name={bakimGeriZimmetle ? 'checkbox' : 'square-outline'} size={22} color={colors.primary} />
+                    <Text style={styles.geriZimmetleRowText}>
+                      {bakimTamamlaTarget.oncekiZimmetliAdSoyad} kullanıcısına geri zimmetle
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <View style={styles.modalBtnRow}>
+                  <TouchableOpacity style={styles.modalCancel} onPress={() => setBakimTamamlaTarget(null)}>
+                    <Text style={styles.modalCancelText}>İptal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.modalSubmit} onPress={handleSubmitBakimTamamla} disabled={isLoading}>
+                    {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSubmitText}>Tamamla</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </Animated.View>
+        <KeyboardDismissBar />
+      </Modal>
+
+      {/* Personel Demirbaş Geçmişi Modal */}
+      <Modal
+        visible={currentView === 'personHistory'}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={true}
+        onRequestClose={() => setCurrentView('list')}
+      >
+        <View style={styles.container}>
+          <View style={styles.contentWrapper}>
+            {renderPersonHistoryView()}
+          </View>
+        </View>
         <KeyboardDismissBar />
       </Modal>
 
@@ -1605,6 +2109,86 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     color: '#dc2626',
     fontWeight: '700',
     fontSize: 14,
+  },
+  secondaryActionBtn: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  secondaryActionBtnText: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  hurdaActionBtn: {
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerLight,
+  },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 6,
+  },
+  fileRowText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.text,
+  },
+  filePickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  filePickBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  bakimTamamlaMiniBtn: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  bakimTamamlaMiniBtnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  geriZimmetleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: colors.primaryLight,
+  },
+  geriZimmetleRowText: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: colors.text,
   },
   modalHeaderBtn: {
     padding: 4,
